@@ -1,12 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config) => {
-    // Handle better-sqlite3 native module
-    config.externals.push({
-      'better-sqlite3': 'commonjs better-sqlite3'
-    });
-    return config;
-  },
+  // Enable Turbopack (default in Next.js 16)
+  turbopack: {},
 };
 
 module.exports = nextConfig;
