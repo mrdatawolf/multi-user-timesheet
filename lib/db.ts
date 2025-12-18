@@ -2,7 +2,7 @@ import initSqlJs, { Database } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
 
-const dbPath = path.join(process.cwd(), 'timesheet.db');
+const dbPath = path.join(process.cwd(), 'attendance.db');
 
 let dbInstance: Database | null = null;
 

@@ -21,7 +21,7 @@ interface Employee {
 }
 
 
-interface TimesheetHeaderProps {
+interface AttendanceHeaderProps {
   employees: Employee[];
   selectedEmployeeId?: number;
   year: number;
@@ -30,14 +30,14 @@ interface TimesheetHeaderProps {
   onNewEmployee: () => void;
 }
 
-export function TimesheetHeader({
+export function AttendanceHeader({
   employees,
   selectedEmployeeId,
   year,
   onEmployeeChange,
   onYearChange,
   onNewEmployee,
-}: TimesheetHeaderProps) {
+}: AttendanceHeaderProps) {
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
   const years = Array.from(

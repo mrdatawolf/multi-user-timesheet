@@ -20,7 +20,7 @@ interface Database {
     hours_limit?: number;
     is_active: number;
   }>;
-  timesheet_entries: Array<{
+  attendance_entries: Array<{
     id: number;
     employee_id: number;
     entry_date: string;
@@ -49,7 +49,7 @@ function getDefaultDb(): Database {
       { id: 13, code: 'V', description: 'Vacation', is_active: 1 },
       { id: 14, code: 'WC', description: 'Workers Comp', is_active: 1 },
     ],
-    timesheet_entries: [],
+    attendance_entries: [],
   };
 }
 

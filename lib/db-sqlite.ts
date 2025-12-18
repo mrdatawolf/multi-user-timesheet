@@ -1,7 +1,7 @@
 import { createClient } from '@libsql/client';
 import path from 'path';
 
-const dbPath = path.join(process.cwd(), 'databases', 'timesheet.db');
+const dbPath = path.join(process.cwd(), 'databases', 'attendance.db');
 
 export const db = createClient({
   url: `file:${dbPath}`,
@@ -36,7 +36,7 @@ export async function initializeDatabase() {
   `);
 
   await db.execute(`
-    CREATE TABLE IF NOT EXISTS timesheet_entries (
+    CREATE TABLE IF NOT EXISTS attendance_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       employee_id INTEGER NOT NULL,
       entry_date DATE NOT NULL,

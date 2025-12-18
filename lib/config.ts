@@ -1,7 +1,7 @@
 /**
  * Application Configuration
  *
- * Feature flags and settings for the timesheet application
+ * Feature flags and settings for the attendance application
  */
 
 export const config = {
@@ -20,7 +20,7 @@ export const config = {
    * Application Settings
    */
   app: {
-    name: 'Multi-User Timesheet',
+    name: 'Multi-User Attendance',
     version: '1.0.0',
   },
 } as const;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { TimesheetGrid } from '@/components/timesheet-grid';
+import { AttendanceGrid } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
 import { NewEmployeeDialog } from '@/components/new-employee-dialog';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ interface TimeCode {
   hours_limit?: number;
 }
 
-interface TimesheetEntry {
+interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -37,10 +37,10 @@ interface TimesheetEntry {
   notes?: string;
 }
 
-export default function TimesheetPage() {
+export default function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
-  const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+  const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export default function TimesheetPage() {
 
   useEffect(() => {
     if (selectedEmployeeId) {
-      loadTimesheetData();
+      loadAttendanceData();
     }
   }, [selectedEmployeeId, year]);
 
@@ -95,12 +95,12 @@ export default function TimesheetPage() {
     }
   };
 
-  const loadTimesheetData = async () => {
+  const loadAttendanceData = async () => {
     if (!selectedEmployeeId) return;
 
     try {
       const res = await fetch(
-        `/api/timesheet?employeeId=${selectedEmployeeId}&year=${year}`
+        `/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`
       );
       const data = await res.json();
 
@@ -108,11 +108,11 @@ export default function TimesheetPage() {
       if (Array.isArray(data)) {
         setEntries(data);
       } else {
-        console.error('Invalid timesheet data:', data);
+        console.error('Invalid attendance data:', data);
         setEntries([]);
       }
     } catch (error) {
-      console.error('Failed to load timesheet:', error);
+      console.error('Failed to load attendance:', error);
       setEntries([]);
     }
   };
@@ -135,7 +135,7 @@ export default function TimesheetPage() {
       const promises = Array.from(pendingChanges.entries()).map(([date, { time_code, hours, notes }]) => {
         if (time_code === '') {
           // Delete entry
-          return fetch('/api/timesheet', {
+          return fetch('/api/attendance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -146,7 +146,7 @@ export default function TimesheetPage() {
           });
         } else {
           // Upsert entry
-          return fetch('/api/timesheet', {
+          return fetch('/api/attendance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -162,17 +162,17 @@ export default function TimesheetPage() {
 
       await Promise.all(promises);
       setPendingChanges(new Map());
-      await loadTimesheetData();
+      await loadAttendanceData();
 
       toast({
-        title: 'Timesheet Saved',
+        title: 'Attendance Saved',
         description: 'Your changes have been saved successfully.',
       });
     } catch (error) {
-      console.error('Failed to save timesheet:', error);
+      console.error('Failed to save attendance:', error);
       toast({
         title: 'Save Failed',
-        description: 'There was an error saving your timesheet. Please try again.',
+        description: 'There was an error saving your attendance. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -238,7 +238,7 @@ export default function TimesheetPage() {
     <div className="min-h-screen p-3">
       <div className="max-w-full mx-auto space-y-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Timesheet</h1>
+          <h1 className="text-xl font-bold">Attendance</h1>
           <Button onClick={() => setNewEmployeeOpen(true)} variant="outline" size="sm">
             New Employee
           </Button>
@@ -301,7 +301,7 @@ export default function TimesheetPage() {
                 </Button>
               </div>
 
-              <TimesheetGrid
+              <AttendanceGrid
                 year={year}
                 employeeId={selectedEmployeeId}
                 entries={entries}
@@ -331,7 +331,7 @@ export default function TimesheetPage() {
             <UserPlus className="w-16 h-16 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-1.5">No Employees Yet</h2>
             <p className="text-muted-foreground mb-3">
-              Create your first employee to get started with timesheets.
+              Create your first employee to get started with attendance tracking.
             </p>
             <Button onClick={() => setNewEmployeeOpen(true)}>
               Add First Employee

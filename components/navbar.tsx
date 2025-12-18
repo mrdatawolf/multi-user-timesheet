@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
 
 const NAV_ITEMS = [
-  { href: '/timesheet', label: 'Timesheet', enabled: true },
+  { href: '/attendance', label: 'Attendance', enabled: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard },
   { href: '/reports', label: 'Reports', enabled: config.features.enableReports },
 ];
@@ -19,8 +19,8 @@ export function Navbar() {
     <nav className="border-b">
       <div className="max-w-full mx-auto px-3">
         <div className="flex items-center justify-between h-12">
-          <Link href="/timesheet" className="font-bold text-lg">
-            Multi-User Timesheet
+          <Link href="/attendance" className="font-bold text-lg">
+            Multi-User Attendance
           </Link>
           <div className="flex items-center space-x-4">
             {enabledItems.map(item => (

@@ -18,7 +18,7 @@ export interface TimeCode {
   is_active: number;
 }
 
-export interface TimesheetEntry {
+export interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -57,35 +57,35 @@ export function getAllTimeCodes(): TimeCode[] {
   return db.time_codes.filter(tc => tc.is_active === 1);
 }
 
-// Timesheet entry queries
-export function getEntriesForYear(employeeId: number, year: number): TimesheetEntry[] {
+// Attendance entry queries
+export function getEntriesForYear(employeeId: number, year: number): AttendanceEntry[] {
   const db = readDb();
-  return db.timesheet_entries.filter(entry => {
+  return db.attendance_entries.filter(entry => {
     if (entry.employee_id !== employeeId) return false;
     const entryYear = new Date(entry.entry_date).getFullYear();
     return entryYear === year;
   });
 }
 
-export function upsertEntry(entry: Omit<TimesheetEntry, 'id'>): void {
+export function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): void {
   const db = readDb();
 
-  const existingIndex = db.timesheet_entries.findIndex(
+  const existingIndex = db.attendance_entries.findIndex(
     e => e.employee_id === entry.employee_id && e.entry_date === entry.entry_date
   );
 
   if (existingIndex >= 0) {
     // Update existing
-    db.timesheet_entries[existingIndex] = {
-      ...db.timesheet_entries[existingIndex],
+    db.attendance_entries[existingIndex] = {
+      ...db.attendance_entries[existingIndex],
       ...entry,
     };
   } else {
     // Insert new
-    const id = db.timesheet_entries.length > 0
-      ? Math.max(...db.timesheet_entries.map(e => e.id)) + 1
+    const id = db.attendance_entries.length > 0
+      ? Math.max(...db.attendance_entries.map(e => e.id)) + 1
       : 1;
-    db.timesheet_entries.push({ id, ...entry });
+    db.attendance_entries.push({ id, ...entry });
   }
 
   writeDb(db);
@@ -93,7 +93,7 @@ export function upsertEntry(entry: Omit<TimesheetEntry, 'id'>): void {
 
 export function deleteEntry(employeeId: number, entryDate: string): void {
   const db = readDb();
-  db.timesheet_entries = db.timesheet_entries.filter(
+  db.attendance_entries = db.attendance_entries.filter(
     e => !(e.employee_id === employeeId && e.entry_date === entryDate)
   );
   writeDb(db);

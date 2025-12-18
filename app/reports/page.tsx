@@ -112,7 +112,7 @@ export default function ReportsPage() {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', 'timesheet_report.csv');
+      link.setAttribute('download', 'attendance_report.csv');
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -131,8 +131,8 @@ export default function ReportsPage() {
             <code className="text-sm bg-muted px-2 py-1 rounded">features.enableReports</code> to{' '}
             <code className="text-sm bg-muted px-2 py-1 rounded">true</code>.
           </p>
-          <Link href="/timesheet" className="inline-block text-blue-600 hover:underline">
-            ← Go back to Timesheet
+          <Link href="/attendance" className="inline-block text-blue-600 hover:underline">
+            ← Go back to Attendance
           </Link>
         </div>
       </div>

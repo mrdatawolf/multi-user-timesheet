@@ -30,8 +30,8 @@ async function main() {
     console.log(`  ✓ ${emp.first} ${emp.last}`);
   }
 
-  // Create sample timesheet entries
-  console.log('\nCreating sample timesheet entries...');
+  // Create sample attendance entries
+  console.log('\nCreating sample attendance entries...');
   const year = new Date().getFullYear();
   const entries = [
     // Vacation days
@@ -80,12 +80,12 @@ async function main() {
   for (const entry of entries) {
     const date = `${year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
     await db.execute({
-      sql: 'INSERT INTO timesheet_entries (employee_id, entry_date, time_code, hours) VALUES (?, ?, ?, ?)',
+      sql: 'INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours) VALUES (?, ?, ?, ?)',
       args: [entry.emp_id, date, entry.code, 8],
     });
   }
 
-  console.log(`✓ Created ${entries.length} timesheet entries`);
+  console.log(`✓ Created ${entries.length} attendance entries`);
   console.log('\n✓ Database initialization complete!\n');
 }
 

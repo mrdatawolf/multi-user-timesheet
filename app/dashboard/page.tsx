@@ -13,7 +13,7 @@ interface Employee {
   employee_number?: string;
 }
 
-interface TimesheetEntry {
+interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -35,7 +35,7 @@ interface EmployeeSummary {
 
 export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+  const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function DashboardPage() {
     try {
       const [employeesRes, entriesRes] = await Promise.all([
         fetch('/api/employees'),
-        fetch('/api/timesheet'),
+        fetch('/api/attendance'),
       ]);
 
       const employeesData = await employeesRes.json();
@@ -116,8 +116,8 @@ export default function DashboardPage() {
             <code className="text-sm bg-muted px-2 py-1 rounded">features.enableDashboard</code> to{' '}
             <code className="text-sm bg-muted px-2 py-1 rounded">true</code>.
           </p>
-          <Link href="/timesheet" className="inline-block text-blue-600 hover:underline">
-            ← Go back to Timesheet
+          <Link href="/attendance" className="inline-block text-blue-600 hover:underline">
+            ← Go back to Attendance
           </Link>
         </div>
       </div>
@@ -137,8 +137,8 @@ export default function DashboardPage() {
       <div className="max-w-full mx-auto space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Dashboard</h1>
-          <Link href="/timesheet" className="text-sm text-blue-600 hover:underline">
-            Go to Timesheet →
+          <Link href="/attendance" className="text-sm text-blue-600 hover:underline">
+            Go to Attendance →
           </Link>
         </div>
 
@@ -161,7 +161,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{entries.length}</div>
-              <p className="text-xs text-muted-foreground">Timesheet entries</p>
+              <p className="text-xs text-muted-foreground">Attendance entries</p>
             </CardContent>
           </Card>
 

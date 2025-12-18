@@ -18,7 +18,7 @@ export interface TimeCode {
   is_active: number;
 }
 
-export interface TimesheetEntry {
+export interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -88,18 +88,18 @@ export function getAllTimeCodes(db: Database): TimeCode[] {
   });
 }
 
-// Timesheet entry queries
+// Attendance entry queries
 export function getEntriesForMonth(
   db: Database,
   employeeId: number,
   year: number,
   month: number
-): TimesheetEntry[] {
+): AttendanceEntry[] {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
   const result = db.exec(
-    `SELECT * FROM timesheet_entries
+    `SELECT * FROM attendance_entries
      WHERE employee_id = ? AND entry_date >= ? AND entry_date <= ?
      ORDER BY entry_date`,
     [employeeId, startDate, endDate]
@@ -113,17 +113,17 @@ export function getEntriesForMonth(
     columns.forEach((col, i) => {
       entry[col] = row[i];
     });
-    return entry as TimesheetEntry;
+    return entry as AttendanceEntry;
   });
 }
 
 export function upsertEntry(
   db: Database,
-  entry: Omit<TimesheetEntry, 'id' | 'created_at' | 'updated_at'>
+  entry: Omit<AttendanceEntry, 'id' | 'created_at' | 'updated_at'>
 ): void {
   // Check if entry exists
   const existing = db.exec(
-    `SELECT id FROM timesheet_entries
+    `SELECT id FROM attendance_entries
      WHERE employee_id = ? AND entry_date = ?`,
     [entry.employee_id, entry.entry_date]
   );
@@ -131,7 +131,7 @@ export function upsertEntry(
   if (existing.length && existing[0].values.length) {
     // Update existing entry
     db.run(
-      `UPDATE timesheet_entries
+      `UPDATE attendance_entries
        SET time_code = ?, hours = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
        WHERE employee_id = ? AND entry_date = ?`,
       [entry.time_code, entry.hours, entry.notes || null, entry.employee_id, entry.entry_date]
@@ -139,7 +139,7 @@ export function upsertEntry(
   } else {
     // Insert new entry
     db.run(
-      `INSERT INTO timesheet_entries (employee_id, entry_date, time_code, hours, notes)
+      `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
        VALUES (?, ?, ?, ?, ?)`,
       [entry.employee_id, entry.entry_date, entry.time_code, entry.hours, entry.notes || null]
     );
@@ -148,22 +148,22 @@ export function upsertEntry(
 
 export function deleteEntry(db: Database, employeeId: number, entryDate: string): void {
   db.run(
-    'DELETE FROM timesheet_entries WHERE employee_id = ? AND entry_date = ?',
+    'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
     [employeeId, entryDate]
   );
 }
 
-// Get all entries for employee in a year (for the full timesheet view)
+// Get all entries for employee in a year (for the full attendance view)
 export function getEntriesForYear(
   db: Database,
   employeeId: number,
   year: number
-): TimesheetEntry[] {
+): AttendanceEntry[] {
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
 
   const result = db.exec(
-    `SELECT * FROM timesheet_entries
+    `SELECT * FROM attendance_entries
      WHERE employee_id = ? AND entry_date >= ? AND entry_date <= ?
      ORDER BY entry_date`,
     [employeeId, startDate, endDate]
@@ -177,6 +177,6 @@ export function getEntriesForYear(
     columns.forEach((col, i) => {
       entry[col] = row[i];
     });
-    return entry as TimesheetEntry;
+    return entry as AttendanceEntry;
   });
 }

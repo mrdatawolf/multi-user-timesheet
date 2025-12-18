@@ -28,8 +28,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(entries);
   } catch (error) {
-    console.error('Error fetching timesheet:', error);
-    return NextResponse.json({ error: 'Failed to fetch timesheet' }, { status: 500 });
+    console.error('Error fetching attendance:', error);
+    return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
   }
 }
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating timesheet:', error);
-    return NextResponse.json({ error: 'Failed to update timesheet' }, { status: 500 });
+    console.error('Error updating attendance:', error);
+    return NextResponse.json({ error: 'Failed to update attendance' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 # Application Configuration
 
-This document describes how to configure the timesheet application.
+This document describes how to configure the attendance application.
 
 ## Configuration File
 
@@ -29,7 +29,7 @@ Controls whether the dashboard page is accessible.
 
 Controls whether the reports page is accessible.
 
-- When `true`: Users can access `/reports` to generate and export timesheet reports
+- When `true`: Users can access `/reports` to generate and export attendance reports
 - When `false`: The reports page shows a disabled message with instructions
 
 ## Example Configuration
@@ -45,7 +45,7 @@ export const config = {
   },
 
   app: {
-    name: 'Multi-User Timesheet',
+    name: 'Multi-User Attendance',
     version: '1.0.0',
   },
 } as const;

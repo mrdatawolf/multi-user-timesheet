@@ -7,16 +7,16 @@ export default function Home() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-4">Multi-User Timesheet</h1>
+        <h1 className="text-4xl font-bold mb-4">Multi-User Attendance</h1>
         <p className="text-muted-foreground mb-8">
-          Employee timesheet management system
+          Employee attendance management system
         </p>
 
         <div className="mb-8">
-          <Link href="/timesheet">
+          <Link href="/attendance">
             <Button size="lg" className="gap-2">
               <Calendar className="h-5 w-5" />
-              Open Timesheet
+              Open Attendance
             </Button>
           </Link>
         </div>
@@ -26,14 +26,14 @@ export default function Home() {
           <div className="border rounded-lg p-6 bg-primary/5 border-primary">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-6 w-6 text-primary" />
-              <h3 className="text-xl font-semibold">Timesheet</h3>
+              <h3 className="text-xl font-semibold">Attendance</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              Spreadsheet-style timesheet entry with enhanced UI components
+              Spreadsheet-style attendance entry with enhanced UI components
             </p>
-            <Link href="/timesheet">
+            <Link href="/attendance">
               <Button variant="outline" size="sm">
-                Open Timesheet
+                Open Attendance
               </Button>
             </Link>
           </div>
@@ -62,7 +62,7 @@ export default function Home() {
                 <h3 className="text-xl font-semibold">Reports</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                Generate and export timesheet reports
+                Generate and export attendance reports
               </p>
               <Link href="/reports">
                 <Button variant="outline" size="sm">
@@ -78,14 +78,14 @@ export default function Home() {
           <div className="border rounded-lg p-6 bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
             <h3 className="text-xl font-semibold mb-2">Phase 1 ✓</h3>
             <p className="text-sm text-muted-foreground">
-              Core timesheet functionality with dialog-based entry editing and balance tracking
+              Core attendance functionality with dialog-based entry editing and balance tracking
             </p>
           </div>
 
           <div className="border rounded-lg p-6 opacity-50">
             <h3 className="text-xl font-semibold mb-2">Phase 2</h3>
             <p className="text-sm text-muted-foreground">
-              Employee-filtered views and personalized timesheets
+              Employee-filtered views and personalized attendance tracking
             </p>
           </div>
 

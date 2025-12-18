@@ -9,17 +9,17 @@ interface TimeCode {
   description: string;
 }
 
-interface TimesheetEntry {
+interface AttendanceEntry {
   entry_date: string;
   time_code: string;
   hours: number;
   notes?: string;
 }
 
-interface TimesheetGridProps {
+interface AttendanceGridProps {
   year: number;
   employeeId: number;
-  entries: TimesheetEntry[];
+  entries: AttendanceEntry[];
   timeCodes: TimeCode[];
   onEntryChange: (date: string, timeCode: string, hours: number, notes: string) => void;
 }
@@ -39,13 +39,13 @@ const MONTHS = [
   { name: 'Dec', num: 12 },
 ];
 
-export function TimesheetGrid({
+export function AttendanceGrid({
   year,
   employeeId,
   entries,
   timeCodes,
   onEntryChange,
-}: TimesheetGridProps) {
+}: AttendanceGridProps) {
   const [localEntries, setLocalEntries] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(
     new Map(entries.map(e => [e.entry_date, { time_code: e.time_code, hours: e.hours, notes: e.notes || '' }]))
   );

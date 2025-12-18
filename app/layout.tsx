@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Multi-User Timesheet",
-  description: "Employee timesheet management system",
+  title: "Multi-User Attendance",
+  description: "Employee attendance management system",
 };
 
 export default function RootLayout({

@@ -1,13 +1,13 @@
 "use client";
 
-interface TimesheetEntry {
+interface AttendanceEntry {
   entry_date: string;
   time_code: string;
   hours: number;
 }
 
 interface BalanceCardsProps {
-  entries: TimesheetEntry[];
+  entries: AttendanceEntry[];
 }
 
 export function BalanceCards({ entries }: BalanceCardsProps) {

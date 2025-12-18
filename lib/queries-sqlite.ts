@@ -18,7 +18,7 @@ export interface TimeCode {
   is_active: number;
 }
 
-export interface TimesheetEntry {
+export interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -65,34 +65,34 @@ export async function getAllTimeCodes(): Promise<TimeCode[]> {
   return result.rows as TimeCode[];
 }
 
-// Timesheet entry queries
-export async function getAllEntries(): Promise<TimesheetEntry[]> {
-  const result = await db.execute('SELECT * FROM timesheet_entries ORDER BY entry_date DESC');
-  return result.rows as TimesheetEntry[];
+// Attendance entry queries
+export async function getAllEntries(): Promise<AttendanceEntry[]> {
+  const result = await db.execute('SELECT * FROM attendance_entries ORDER BY entry_date DESC');
+  return result.rows as AttendanceEntry[];
 }
 
-export async function getEntriesForDateRange(employeeId: number, startDate: string, endDate: string): Promise<TimesheetEntry[]> {
+export async function getEntriesForDateRange(employeeId: number, startDate: string, endDate: string): Promise<AttendanceEntry[]> {
   const result = await db.execute({
-    sql: `SELECT * FROM timesheet_entries
+    sql: `SELECT * FROM attendance_entries
           WHERE employee_id = ? AND entry_date >= ? AND entry_date <= ?
           ORDER BY entry_date`,
     args: [employeeId, startDate, endDate],
   });
 
-  return result.rows as TimesheetEntry[];
+  return result.rows as AttendanceEntry[];
 }
 
-export async function upsertEntry(entry: Omit<TimesheetEntry, 'id'>): Promise<void> {
+export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<void> {
   // Check if entry exists
   const existing = await db.execute({
-    sql: 'SELECT id FROM timesheet_entries WHERE employee_id = ? AND entry_date = ?',
+    sql: 'SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
     args: [entry.employee_id, entry.entry_date],
   });
 
   if (existing.rows.length > 0) {
     // Update
     await db.execute({
-      sql: `UPDATE timesheet_entries
+      sql: `UPDATE attendance_entries
             SET time_code = ?, hours = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
             WHERE employee_id = ? AND entry_date = ?`,
       args: [entry.time_code, entry.hours, entry.notes || null, entry.employee_id, entry.entry_date],
@@ -100,7 +100,7 @@ export async function upsertEntry(entry: Omit<TimesheetEntry, 'id'>): Promise<vo
   } else {
     // Insert
     await db.execute({
-      sql: `INSERT INTO timesheet_entries (employee_id, entry_date, time_code, hours, notes)
+      sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
             VALUES (?, ?, ?, ?, ?)`,
       args: [entry.employee_id, entry.entry_date, entry.time_code, entry.hours, entry.notes || null],
     });
@@ -109,7 +109,7 @@ export async function upsertEntry(entry: Omit<TimesheetEntry, 'id'>): Promise<vo
 
 export async function deleteEntry(employeeId: number, entryDate: string): Promise<void> {
   await db.execute({
-    sql: 'DELETE FROM timesheet_entries WHERE employee_id = ? AND entry_date = ?',
+    sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
     args: [employeeId, entryDate],
   });
 }
@@ -133,7 +133,7 @@ export async function getReportData({
       te.time_code,
       te.hours,
       te.notes
-    FROM timesheet_entries te
+    FROM attendance_entries te
     JOIN employees e ON te.employee_id = e.id
     WHERE te.entry_date >= ? AND te.entry_date <= ?
   `;

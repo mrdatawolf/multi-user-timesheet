@@ -1,11 +1,11 @@
-# Multi-User Timesheet Application
+# Multi-User Attendance Application
 
-A modern Next.js-based employee timesheet management system that replaces Excel templates with an enhanced, responsive UI.
+A modern Next.js-based employee Attendance management system that replaces Excel templates with an enhanced, responsive UI.
 
 ## Overview
 
-This application digitizes the traditional Excel-based timesheet process with:
-- **Calendar-based timesheet entry** - Interactive 31 days × 12 months grid
+This application digitizes the traditional Excel-based Attendance process with:
+- **Calendar-based attendance entry** - Interactive 31 days × 12 months grid
 - **Dialog-based editing** - Clean modal interface for entry management
 - **Balance tracking** - Real-time tracking of time code usage and limits
 - **Dashboard** - Statistics and summaries (optional feature)
@@ -34,7 +34,7 @@ The system tracks these time entry codes:
 
 ## Development Phases
 
-### Phase 1: Timesheet Entry UI ✅ COMPLETE
+### Phase 1: Attendance Entry UI ✅ COMPLETE
 - ✅ Replicate Excel layout with enhanced components
 - ✅ Calendar grid (days 1-31 across columns, months down rows)
 - ✅ Dialog-based entry editing with time code, hours, and notes
@@ -45,14 +45,14 @@ The system tracks these time entry codes:
 - ✅ Reports with filtering and CSV export (optional)
 
 ### Phase 2: Employee Views (Planned)
-- Filter timesheets by employee name
+- Filter Attendance by employee name
 - Filter by date ranges
 - Personalized employee dashboards
 - Employee-specific access controls
 
 ### Phase 3: Advanced Features (Planned)
 - Approval workflows
-- Timesheet lockouts
+- Attendance lockouts
 - Advanced analytics
 - Email notifications
 - Multi-tenant support
@@ -110,10 +110,10 @@ npm run db:seed
 │   │   ├── employees/           # Employee CRUD endpoints
 │   │   ├── reports/             # Report generation endpoint
 │   │   ├── time-codes/          # Time code endpoints
-│   │   └── timesheet/           # Timesheet entry endpoints
+│   │   └── attendance/          # Attendance entry endpoints
 │   ├── dashboard/               # Dashboard page (optional)
 │   ├── reports/                 # Reports page (optional)
-│   ├── timesheet/               # Main timesheet page
+│   ├── attendance/              # Main Attendance page
 │   ├── globals.css              # Global styles with Tailwind
 │   ├── layout.tsx               # Root layout with navbar
 │   └── page.tsx                 # Home/landing page
@@ -122,7 +122,7 @@ npm run db:seed
 │   ├── balance-cards.tsx        # Time code balance display
 │   ├── entry-edit-dialog.tsx   # Entry editing modal
 │   ├── navbar.tsx               # Navigation bar
-│   └── timesheet-grid.tsx       # Calendar grid component
+│   └── attendance-grid.tsx      # Calendar grid component
 ├── lib/
 │   ├── config.ts                # Feature flags and settings
 │   ├── db-sqlite.ts             # Database connection
@@ -143,8 +143,8 @@ npm run db:seed
 See [lib/schema.sql](lib/schema.sql) for the complete schema including:
 - `employees` - Employee records
 - `time_codes` - Time entry code definitions
-- `timesheet_entries` - Daily time entries
-- `timesheets` - Monthly timesheet grouping (for future approval workflows)
+- `attendance_entries` - Daily time entries
+- `attendances` - Monthly Attendance grouping (for future approval workflows)
 
 ## Configuration
 
@@ -157,7 +157,7 @@ export const config = {
     enableReports: true,     // Enable/disable reports page
   },
   app: {
-    name: 'Multi-User Timesheet',
+    name: 'Multi-User Attendance',
     version: '1.0.0',
   },
 };
@@ -182,7 +182,7 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
 ## Features
 
-### Timesheet Grid
+### Attendance Grid
 - Interactive 31-day × 12-month calendar
 - Click any cell to edit time entry
 - Visual indicators for entries with notes
@@ -217,7 +217,7 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 ## Current Status
 
 ✅ **Phase 1: COMPLETE**
-- Core timesheet functionality
+- Core Attendance functionality
 - Dialog-based editing
 - Balance tracking
 - Dashboard and reports (optional)

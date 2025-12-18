@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS employees (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Timesheet Entries
-CREATE TABLE IF NOT EXISTS timesheet_entries (
+-- Attendance Entries
+CREATE TABLE IF NOT EXISTS attendance_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   employee_id INTEGER NOT NULL,
   entry_date DATE NOT NULL,
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS timesheet_entries (
   FOREIGN KEY (time_code) REFERENCES time_codes(code) ON UPDATE CASCADE
 );
 
--- Monthly Timesheets (for grouping and potential approval workflows)
-CREATE TABLE IF NOT EXISTS timesheets (
+-- Monthly Attendances (for grouping and potential approval workflows)
+CREATE TABLE IF NOT EXISTS attendances (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   employee_id INTEGER NOT NULL,
   year INTEGER NOT NULL,
@@ -54,12 +54,12 @@ CREATE TABLE IF NOT EXISTS timesheets (
 );
 
 -- Indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_timesheet_entries_employee_date
-  ON timesheet_entries(employee_id, entry_date);
-CREATE INDEX IF NOT EXISTS idx_timesheet_entries_date
-  ON timesheet_entries(entry_date);
-CREATE INDEX IF NOT EXISTS idx_timesheets_employee_period
-  ON timesheets(employee_id, year, month);
+CREATE INDEX IF NOT EXISTS idx_attendance_entries_employee_date
+  ON attendance_entries(employee_id, entry_date);
+CREATE INDEX IF NOT EXISTS idx_attendance_entries_date
+  ON attendance_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_attendances_employee_period
+  ON attendances(employee_id, year, month);
 
 -- Insert default time codes
 INSERT OR IGNORE INTO time_codes (code, description, hours_limit) VALUES
