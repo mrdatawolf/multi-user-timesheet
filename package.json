@@ -9,7 +9,12 @@
     "lint": "next lint",
     "db:init": "tsx scripts/init-db.ts",
     "db:migrate": "node scripts/migrate.js",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "build:pkg": "pkg .next/standalone/server.js -t node18-win-x64 -o dist-server/attendance-server.exe --compress GZip",
+    "electron:start": "electron electron-app",
+    "electron:build": "electron-builder --config electron-builder.json",
+    "build:all": "npm run build && npm run build:pkg && npm run electron:build",
+    "db:reset": "node scripts/reset-database.js"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -41,11 +46,15 @@
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.9",
     "autoprefixer": "^10.4.17",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.0.10",
+    "pkg": "^5.8.1",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5.3.0"
-  }
+  },
+  "main": "electron-main.js"
 }

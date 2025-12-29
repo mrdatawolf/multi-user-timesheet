@@ -1,0 +1,30 @@
+{
+  "appId": "com.attendance.app",
+  "productName": "Attendance Management",
+  "directories": {
+    "app": "electron-app",
+    "output": "dist-electron"
+  },
+  "files": [
+    "**/*"
+  ],
+  "extraResources": [
+    {
+      "from": ".next/standalone",
+      "to": "server",
+      "filter": ["**/*"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

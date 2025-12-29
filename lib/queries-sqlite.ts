@@ -30,7 +30,7 @@ export interface AttendanceEntry {
 // Employee queries
 export async function getAllEmployees(): Promise<Employee[]> {
   const result = await db.execute('SELECT * FROM employees WHERE is_active = 1 ORDER BY last_name, first_name');
-  return result.rows as Employee[];
+  return result.rows as unknown as Employee[];
 }
 
 export async function getEmployeeById(id: number): Promise<Employee | null> {
@@ -38,7 +38,7 @@ export async function getEmployeeById(id: number): Promise<Employee | null> {
     sql: 'SELECT * FROM employees WHERE id = ?',
     args: [id],
   });
-  return (result.rows[0] as Employee) || null;
+  return (result.rows[0] as unknown as Employee) || null;
 }
 
 export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
@@ -62,13 +62,13 @@ export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Em
 // Time code queries
 export async function getAllTimeCodes(): Promise<TimeCode[]> {
   const result = await db.execute('SELECT * FROM time_codes WHERE is_active = 1 ORDER BY code');
-  return result.rows as TimeCode[];
+  return result.rows as unknown as TimeCode[];
 }
 
 // Attendance entry queries
 export async function getAllEntries(): Promise<AttendanceEntry[]> {
   const result = await db.execute('SELECT * FROM attendance_entries ORDER BY entry_date DESC');
-  return result.rows as AttendanceEntry[];
+  return result.rows as unknown as AttendanceEntry[];
 }
 
 export async function getEntriesForDateRange(employeeId: number, startDate: string, endDate: string): Promise<AttendanceEntry[]> {
@@ -79,7 +79,7 @@ export async function getEntriesForDateRange(employeeId: number, startDate: stri
     args: [employeeId, startDate, endDate],
   });
 
-  return result.rows as AttendanceEntry[];
+  return result.rows as unknown as AttendanceEntry[];
 }
 
 export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<void> {
