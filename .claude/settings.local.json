@@ -13,7 +13,12 @@
       "Bash(npm run db:init:*)",
       "Bash(dir \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\*.db\" /s /b)",
       "Bash(del \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\components\\\\timesheet-grid.tsx\")",
-      "Bash(del \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\components\\\\timesheet-header.tsx\")"
+      "Bash(del \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\components\\\\timesheet-header.tsx\")",
+      "Bash(npm run build:*)",
+      "Bash(node server.js:*)",
+      "Bash(npm pkg set:*)",
+      "Bash(npm run electron:start:*)",
+      "Bash(npm run electron:build:*)"
     ]
   }
 }
