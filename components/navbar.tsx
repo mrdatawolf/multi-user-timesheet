@@ -4,26 +4,39 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
+import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { User, LogOut, Shield } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true },
+  { href: '/users', label: 'Employees', enabled: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard },
   { href: '/reports', label: 'Reports', enabled: config.features.enableReports },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
   const enabledItems = NAV_ITEMS.filter(item => item.enabled);
 
   return (
     <nav className="border-b">
       <div className="max-w-full mx-auto px-3">
         <div className="flex items-center justify-between h-12">
-          <Link href="/attendance" className="font-bold text-lg">
+          <Link href="/" className="font-bold text-lg">
             Multi-User Attendance
           </Link>
           <div className="flex items-center space-x-4">
-            {enabledItems.map(item => (
+            {isAuthenticated && enabledItems.map(item => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -35,6 +48,45 @@ export function Navbar() {
                 {item.label}
               </Link>
             ))}
+
+            {!isLoading && (
+              <>
+                {isAuthenticated && user ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <User className="h-4 w-4" />
+                        <span className="hidden sm:inline">{user.full_name}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium">{user.full_name}</p>
+                          <p className="text-xs text-muted-foreground">@{user.username}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem disabled>
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>{user.group.name}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={logout} className="text-red-600">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Link href="/login">
+                    <Button variant="default" size="sm">
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

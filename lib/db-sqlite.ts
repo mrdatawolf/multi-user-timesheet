@@ -1,6 +1,7 @@
 import { createClient } from '@libsql/client';
 import path from 'path';
 
+// For Next.js runtime, process.cwd() is safe because Next.js always runs from project root
 const dbPath = path.join(process.cwd(), 'databases', 'attendance.db');
 
 export const db = createClient({
@@ -8,7 +9,8 @@ export const db = createClient({
 });
 
 export async function initializeDatabase() {
-  // Create tables
+  // Create employees table (with group_id reference to auth.db)
+  // Note: No foreign key constraint since groups table is in a separate database
   await db.execute(`
     CREATE TABLE IF NOT EXISTS employees (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,12 +19,22 @@ export async function initializeDatabase() {
       last_name TEXT NOT NULL,
       email TEXT UNIQUE,
       role TEXT DEFAULT 'employee',
+      group_id INTEGER,
+      date_of_hire DATE,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
+  // Add date_of_hire column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN date_of_hire DATE`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Create time_codes table
   await db.execute(`
     CREATE TABLE IF NOT EXISTS time_codes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +47,7 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Create attendance_entries table
   await db.execute(`
     CREATE TABLE IF NOT EXISTS attendance_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,4 +87,10 @@ export async function initializeDatabase() {
       args: [tc.code, tc.description, tc.hours_limit],
     });
   }
+
+  console.log('✓ Attendance database initialized');
+  console.log('  - Employees table created');
+  console.log('  - Time codes table created');
+  console.log('  - Attendance entries table created');
+  console.log('  - Default time codes inserted');
 }
