@@ -40,4 +40,11 @@ next-env.d.ts
 *.db-journal
 nul
 /databases
+
+# electron build outputs
 /dist-electron
+/dist-server
+
+# electron dependencies
+/electron-app/node_modules
+/electron-app/package-lock.json
