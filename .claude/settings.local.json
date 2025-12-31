@@ -18,7 +18,13 @@
       "Bash(node server.js:*)",
       "Bash(npm pkg set:*)",
       "Bash(npm run electron:start:*)",
-      "Bash(npm run electron:build:*)"
+      "Bash(npm run electron:build:*)",
+      "Bash(npm run db:reset:*)",
+      "Bash(npx tsx:*)",
+      "Bash(dir \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\databases\\\\*.db\" /b)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout /t 10 /nobreak)"
     ]
   }
 }

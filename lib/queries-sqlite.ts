@@ -7,6 +7,8 @@ export interface Employee {
   last_name: string;
   email?: string;
   role: string;
+  group_id?: number;
+  date_of_hire?: string;
   is_active: number;
 }
 
@@ -43,14 +45,16 @@ export async function getEmployeeById(id: number): Promise<Employee | null> {
 
 export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
   const result = await db.execute({
-    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, is_active)
-          VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       employee.employee_number || null,
       employee.first_name,
       employee.last_name,
       employee.email || null,
       employee.role,
+      employee.group_id || null,
+      employee.date_of_hire || null,
       employee.is_active,
     ],
   });

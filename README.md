@@ -62,10 +62,27 @@ The system tracks these time entry codes:
 - **Frontend**: Next.js 16.0.10 (App Router with Turbopack), React 19, TypeScript
 - **UI Components**: shadcn/ui (Radix UI primitives + Tailwind CSS)
 - **Database**: SQLite via @libsql/client (Turso/libSQL client)
+- **Authentication**: JWT tokens with bcrypt password hashing
 - **Styling**: Tailwind CSS 3.4+
 - **Icons**: Lucide React
 - **Data Export**: json2csv for CSV generation
 - **Excel Processing**: xlsx library
+
+## Authentication & Security
+
+The application includes a complete authentication and authorization system:
+
+- **User Management** - Create and manage user accounts
+- **Group-Based Permissions** - Master, Managers, HR, and Employee groups
+- **Audit Logging** - Complete tracking of all data changes
+- **Secure Authentication** - JWT tokens with bcrypt password hashing
+
+**Default Admin Account:**
+- Username: `admin`
+- Password: `admin123`
+- ⚠️ **IMPORTANT:** Change this password in production!
+
+See [AUTH-SYSTEM.md](AUTH-SYSTEM.md) for complete authentication documentation.
 
 ## Getting Started
 
@@ -87,20 +104,29 @@ npm run db:init
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Open [http://localhost:6029](http://localhost:6029) to view the application.
 
 ### Database Management
 
+> ⚠️ **IMPORTANT:** All databases are stored in the `databases/` folder at the project root. See [DATABASE-LOCATION.md](DATABASE-LOCATION.md) for details.
+
 ```bash
-# Initialize database (create tables and seed data)
+# Reset database (deletes all data and recreates with auth tables)
+npm run db:reset
+
+# Initialize database (create tables and seed data) - LEGACY
 npm run db:init
 
-# Run migrations only
+# Run migrations only - LEGACY
 npm run db:migrate
 
-# Seed sample data
+# Seed sample data - LEGACY
 npm run db:seed
 ```
+
+**Recommended:** Use `npm run db:reset` to initialize a fresh database with authentication tables and default admin user.
+
+See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database management documentation.
 
 ## Project Structure
 
@@ -140,11 +166,20 @@ npm run db:seed
 
 ## Database Schema
 
-See [lib/schema.sql](lib/schema.sql) for the complete schema including:
-- `employees` - Employee records
+The database includes the following tables:
+
+**Core Tables:**
+- `employees` - Employee records with group assignments
 - `time_codes` - Time entry code definitions
 - `attendance_entries` - Daily time entries
-- `attendances` - Monthly Attendance grouping (for future approval workflows)
+
+**Authentication & Security Tables:**
+- `users` - User accounts with encrypted passwords
+- `groups` - User groups with permission levels
+- `group_permissions` - Granular group-to-group permissions
+- `audit_log` - Complete change tracking for all modifications
+
+See [AUTH-SYSTEM.md](AUTH-SYSTEM.md) for detailed schema documentation.
 
 ## Configuration
 
@@ -172,13 +207,17 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
 ## Available Scripts
 
-- `npm run dev` - Start development server (with Turbopack)
+- `npm run dev` - Start development server on port 6029 (with Turbopack)
 - `npm run build` - Build for production
-- `npm run start` - Start production server
+- `npm run start` - Start production server on port 6029
+- `npm run start:standalone` - Run standalone server from .next/standalone
 - `npm run lint` - Run ESLint
-- `npm run db:init` - Initialize database with schema and seed data
-- `npm run db:migrate` - Run database migrations only
-- `npm run db:seed` - Seed sample data only
+- `npm run db:reset` - Reset database with authentication tables (recommended)
+- `npm run db:init` - Initialize database with schema and seed data (legacy)
+- `npm run db:migrate` - Run database migrations only (legacy)
+- `npm run db:seed` - Seed sample data only (legacy)
+
+**Default Port:** 6029 (can be changed in `.env` file)
 
 ## Features
 

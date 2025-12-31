@@ -1,5 +1,7 @@
 # Database Management Guide
 
+> ⚠️ **IMPORTANT:** All databases are stored in the `databases/` folder at the project root. See [DATABASE-LOCATION.md](DATABASE-LOCATION.md) for details on how paths are resolved.
+
 ## Resetting the Database
 
 ### Option 1: Using the Reset Script (Easiest)
