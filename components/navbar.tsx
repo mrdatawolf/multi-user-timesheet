@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/users', label: 'Employees', enabled: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard },
   { href: '/reports', label: 'Reports', enabled: config.features.enableReports },
+  { href: '/settings', label: 'Settings', enabled: true },
 ];
 
 export function Navbar() {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { EntryEditDialog } from './entry-edit-dialog';
+import { useTheme } from '@/lib/theme-context';
 
 interface TimeCode {
   code: string;
@@ -46,6 +47,7 @@ export function AttendanceGrid({
   timeCodes,
   onEntryChange,
 }: AttendanceGridProps) {
+  const { theme } = useTheme();
   const [localEntries, setLocalEntries] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(
     new Map(entries.map(e => [e.entry_date, { time_code: e.time_code, hours: e.hours, notes: e.notes || '' }]))
   );
@@ -106,37 +108,45 @@ export function AttendanceGrid({
           </tr>
         </thead>
         <tbody>
-          {MONTHS.map(month => (
-            <tr key={month.num} className="hover:bg-muted/50">
-              <td className="border p-0.5 text-xs font-medium sticky left-0 bg-background z-10">
-                {month.name}
-              </td>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
-                const daysInMonth = getDaysInMonth(month.num);
-                const isValidDay = day <= daysInMonth;
-                const { time_code, hours, notes } = getEntryForDate(month.num, day);
+          {MONTHS.map((month, index) => (
+            <Fragment key={`month-${month.num}`}>
+              <tr className="hover:bg-muted/50">
+                <td className="border p-0.5 text-xs font-medium sticky left-0 bg-background z-10">
+                  {month.name}
+                </td>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                  const daysInMonth = getDaysInMonth(month.num);
+                  const isValidDay = day <= daysInMonth;
+                  const { time_code, hours, notes } = getEntryForDate(month.num, day);
 
-                return (
-                  <td
-                    key={day}
-                    className={`border px-0.5 py-px ${
-                      !isValidDay ? 'bg-muted/30' : ''
-                    }`}
-                  >
-                    {isValidDay && (
-                      <Button
-                        variant="ghost"
-                        className="h-5 text-xs w-full px-1 relative"
-                        onClick={() => handleCellClick(month.num, day)}
-                      >
-                        {time_code !== '__NONE__' ? `${time_code} (${hours})` : '-'}
-                        {notes && <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>}
-                      </Button>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
+                  return (
+                    <td
+                      key={day}
+                      className={`border px-0.5 py-px ${
+                        !isValidDay ? 'bg-muted/30' : ''
+                      }`}
+                    >
+                      {isValidDay && (
+                        <Button
+                          variant="ghost"
+                          className="h-5 text-xs w-full px-1 relative"
+                          onClick={() => handleCellClick(month.num, day)}
+                        >
+                          {time_code !== '__NONE__' ? `${time_code} (${hours})` : '-'}
+                          {notes && <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>}
+                        </Button>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+              {/* Month separator for Default theme */}
+              {theme === 'default' && index < MONTHS.length - 1 && (
+                <tr className="h-2">
+                  <td colSpan={32} className="p-0"></td>
+                </tr>
+              )}
+            </Fragment>
           ))}
         </tbody>
       </table>
