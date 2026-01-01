@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/spinner';
 import { Label } from '@/components/ui/label';
 import { UserPlus } from 'lucide-react';
+import { useTheme } from '@/lib/theme-context';
 
 interface Employee {
   id: number;
@@ -48,6 +49,7 @@ export default function AttendancePage() {
   const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(new Map());
   const { toast } = useToast();
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadInitialData();
@@ -286,43 +288,89 @@ export default function AttendancePage() {
 
         {selectedEmployeeId && (
           <>
-            <BalanceCards entries={entries} />
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  Attendance Record: {year}
-                </h2>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || pendingChanges.size === 0}
-                >
-                  {saving ? 'Saving...' : `Save Changes${pendingChanges.size > 0 ? ` (${pendingChanges.size})` : ''}`}
-                </Button>
-              </div>
-
-              <AttendanceGrid
-                year={year}
-                employeeId={selectedEmployeeId}
-                entries={entries}
-                timeCodes={timeCodes}
-                onEntryChange={handleEntryChange}
-              />
-            </div>
-
-            <div className="mt-3 p-2 border rounded-lg bg-muted/50">
-              <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
-                {timeCodes.map(tc => (
-                  <div key={tc.code}>
-                    <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
-                    {tc.hours_limit && (
-                      <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
-                    )}
+            {theme === 'default' ? (
+              <>
+                {/* Default theme: Attendance Record first */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">
+                      Attendance Record: {year}
+                    </h2>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving || pendingChanges.size === 0}
+                    >
+                      {saving ? 'Saving...' : `Save Changes${pendingChanges.size > 0 ? ` (${pendingChanges.size})` : ''}`}
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  <AttendanceGrid
+                    year={year}
+                    employeeId={selectedEmployeeId}
+                    entries={entries}
+                    timeCodes={timeCodes}
+                    onEntryChange={handleEntryChange}
+                  />
+                </div>
+
+                <BalanceCards entries={entries} />
+
+                <div className="mt-3 p-2 border rounded-lg bg-muted/50">
+                  <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+                    {timeCodes.map(tc => (
+                      <div key={tc.code}>
+                        <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
+                        {tc.hours_limit && (
+                          <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Trinity theme: BalanceCards first (original layout) */}
+                <BalanceCards entries={entries} />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">
+                      Attendance Record: {year}
+                    </h2>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving || pendingChanges.size === 0}
+                    >
+                      {saving ? 'Saving...' : `Save Changes${pendingChanges.size > 0 ? ` (${pendingChanges.size})` : ''}`}
+                    </Button>
+                  </div>
+
+                  <AttendanceGrid
+                    year={year}
+                    employeeId={selectedEmployeeId}
+                    entries={entries}
+                    timeCodes={timeCodes}
+                    onEntryChange={handleEntryChange}
+                  />
+                </div>
+
+                <div className="mt-3 p-2 border rounded-lg bg-muted/50">
+                  <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+                    {timeCodes.map(tc => (
+                      <div key={tc.code}>
+                        <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
+                        {tc.hours_limit && (
+                          <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
 
