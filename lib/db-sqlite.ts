@@ -21,6 +21,7 @@ export async function initializeDatabase() {
       role TEXT DEFAULT 'employee',
       group_id INTEGER,
       date_of_hire DATE,
+      created_by INTEGER,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -30,6 +31,15 @@ export async function initializeDatabase() {
   // Add date_of_hire column if it doesn't exist (for existing databases)
   try {
     await db.execute(`ALTER TABLE employees ADD COLUMN date_of_hire DATE`);
+    console.log('  ✓ Added date_of_hire column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add created_by column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN created_by INTEGER`);
+    console.log('  ✓ Added created_by column to employees table');
   } catch (error) {
     // Column already exists, ignore error
   }
@@ -88,9 +98,81 @@ export async function initializeDatabase() {
     });
   }
 
+  // Validate schema after initialization
+  await validateSchema();
+
   console.log('✓ Attendance database initialized');
   console.log('  - Employees table created');
   console.log('  - Time codes table created');
   console.log('  - Attendance entries table created');
   console.log('  - Default time codes inserted');
+}
+
+async function validateSchema() {
+  try {
+    // Check if employees table has all required columns
+    const result = await db.execute('PRAGMA table_info(employees)');
+    const columns = result.rows.map((row: any) => row.name);
+
+    const requiredColumns = [
+      'id',
+      'employee_number',
+      'first_name',
+      'last_name',
+      'email',
+      'role',
+      'group_id',
+      'date_of_hire',
+      'created_by',
+      'is_active',
+      'created_at',
+      'updated_at'
+    ];
+
+    const missingColumns = requiredColumns.filter(col => !columns.includes(col));
+
+    if (missingColumns.length > 0) {
+      console.log('');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('⚠️  WARNING: Database schema is out of sync!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('');
+      console.log('Missing columns in employees table:');
+      missingColumns.forEach(col => {
+        console.log(`  ✗ ${col}`);
+      });
+      console.log('');
+      console.log('The automatic migration failed to add these columns.');
+      console.log('');
+      console.log('To fix this, run:');
+      console.log('  npm run db:reset');
+      console.log('');
+      console.log('This will:');
+      console.log('  1. Drop and recreate all tables');
+      console.log('  2. Add the missing columns');
+      console.log('  3. Restore default time codes');
+      console.log('');
+      console.log('⚠️  NOTE: This will DELETE all existing data!');
+      console.log('         Back up your database first if you want to keep it.');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('');
+    } else {
+      console.log('✓ Database schema validation passed - all columns present');
+    }
+  } catch (error) {
+    // Silently ignore validation errors (table might not exist yet)
+  }
+}
+
+// Singleton initialization - only run once per process
+let initPromise: Promise<void> | null = null;
+
+export function ensureInitialized() {
+  if (!initPromise && typeof window === 'undefined') {
+    // Only initialize at runtime, not during build
+    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
+      initPromise = initializeDatabase();
+    }
+  }
+  return initPromise;
 }
