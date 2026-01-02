@@ -48,3 +48,4 @@ nul
 # electron dependencies
 /electron-app/node_modules
 /electron-app/package-lock.json
+/.claude

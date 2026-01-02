@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { EntryEditDialog } from './entry-edit-dialog';
 import { useTheme } from '@/lib/theme-context';
+import { getTheme } from '@/lib/themes';
 
 interface TimeCode {
   code: string;
@@ -47,7 +48,8 @@ export function AttendanceGrid({
   timeCodes,
   onEntryChange,
 }: AttendanceGridProps) {
-  const { theme } = useTheme();
+  const { theme: themeId } = useTheme();
+  const themeConfig = getTheme(themeId);
   const [localEntries, setLocalEntries] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(
     new Map(entries.map(e => [e.entry_date, { time_code: e.time_code, hours: e.hours, notes: e.notes || '' }]))
   );
@@ -140,8 +142,8 @@ export function AttendanceGrid({
                   );
                 })}
               </tr>
-              {/* Month separator for Default theme */}
-              {theme === 'default' && index < MONTHS.length - 1 && (
+              {/* Month separator (if theme config enables it) */}
+              {themeConfig.layout.attendance.showMonthSeparators && index < MONTHS.length - 1 && (
                 <tr className="h-2">
                   <td colSpan={32} className="p-0"></td>
                 </tr>

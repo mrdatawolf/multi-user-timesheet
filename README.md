@@ -8,6 +8,8 @@ This application digitizes the traditional Excel-based Attendance process with:
 - **Calendar-based attendance entry** - Interactive 31 days × 12 months grid
 - **Dialog-based editing** - Clean modal interface for entry management
 - **Balance tracking** - Real-time tracking of time code usage and limits
+- **Theming system** - Trinity (light) and Default (dark) themes with layout customization
+- **Settings page** - Centralized application preferences and theme selection
 - **Dashboard** - Statistics and summaries (optional feature)
 - **Reports** - Filterable reports with CSV export (optional feature)
 - **SQLite database** - Fast, reliable data persistence
@@ -139,6 +141,7 @@ See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database manag
 │   │   └── attendance/          # Attendance entry endpoints
 │   ├── dashboard/               # Dashboard page (optional)
 │   ├── reports/                 # Reports page (optional)
+│   ├── settings/                # Settings page (theme selection, preferences)
 │   ├── attendance/              # Main Attendance page
 │   ├── globals.css              # Global styles with Tailwind
 │   ├── layout.tsx               # Root layout with navbar
@@ -148,12 +151,21 @@ See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database manag
 │   ├── balance-cards.tsx        # Time code balance display
 │   ├── entry-edit-dialog.tsx   # Entry editing modal
 │   ├── navbar.tsx               # Navigation bar
+│   ├── providers.tsx            # Context providers (Auth, Theme)
 │   └── attendance-grid.tsx      # Calendar grid component
 ├── lib/
 │   ├── config.ts                # Feature flags and settings
 │   ├── db-sqlite.ts             # Database connection
 │   ├── queries-sqlite.ts        # Database queries
 │   ├── schema.sql               # Database schema
+│   ├── auth-context.tsx         # Authentication context provider
+│   ├── theme-context.tsx        # Theme context provider
+│   ├── themes/                  # Theme system
+│   │   ├── types.ts            # Theme type definitions
+│   │   ├── index.ts            # Theme registry
+│   │   ├── trinity.ts          # Trinity theme (light)
+│   │   ├── default.ts          # Default theme (dark)
+│   │   └── README.md           # Theme creation guide
 │   └── utils.ts                 # Utility functions
 ├── scripts/
 │   ├── init-db.ts               # Database initialization
@@ -221,12 +233,29 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
 ## Features
 
+### Theming System
+- **Trinity Theme** - Light mode with original layout (Balance Cards → Attendance Record)
+- **Default Theme** - Dark mode with optimized layout (Attendance Record → Balance Cards)
+- Theme selection persists across sessions via localStorage
+- Visual month separators in Default theme for improved readability
+- Seamless theme switching without page reload
+- **Easy to customize**: All themes defined in `lib/themes/` folder
+- Create new themes by copying existing theme files and modifying colors/layout
+- See [lib/themes/README.md](lib/themes/README.md) for complete theme creation guide
+
+### Settings Page
+- Centralized application preferences
+- Theme selection (Trinity or Default)
+- Accessible via navbar "Settings" link
+- Clean, organized settings interface
+
 ### Attendance Grid
 - Interactive 31-day × 12-month calendar
 - Click any cell to edit time entry
 - Visual indicators for entries with notes
 - Invalid dates (e.g., Feb 31) automatically disabled
 - Compact, responsive design
+- Theme-dependent layout and styling
 
 ### Entry Editing
 - Modal dialog for clean editing experience

@@ -173,3 +173,172 @@ No action required. The fix is complete and tested.
 - Default port: **6029** (configured in `.env` and `package.json`)
 - Database location: **`<project-root>/databases/attendance.db`**
 - Authentication: **Enabled** (default admin:admin123)
+
+---
+
+# Theme System Implementation - Changes Summary
+
+## Feature Added
+
+**Enhancement:** Added a comprehensive theming system with two themes and a dedicated settings page for user preferences.
+
+## Changes Made
+
+### 1. Theme Context and Provider
+
+#### [lib/theme-context.tsx](lib/theme-context.tsx) - CREATED
+- Created React context for theme state management
+- Implemented localStorage persistence for theme preferences
+- Added SSR/SSG support with default fallback values
+- Applies dark mode CSS class to `<html>` element based on theme selection
+- Two themes available:
+  - **Trinity** - Light mode with original layout
+  - **Default** - Dark mode with optimized layout
+
+**Key Features:**
+- Theme persists across browser sessions
+- Prevents flash of wrong theme on page load
+- Works with Next.js server-side rendering
+- Provides `useTheme()` hook for components
+
+### 2. Settings Page
+
+#### [app/settings/page.tsx](app/settings/page.tsx) - CREATED
+- Created dedicated Settings page for user preferences
+- Theme selection dropdown with descriptions
+- Clean card-based interface using shadcn/ui components
+- Organized into "Appearance" section for future settings expansion
+
+**Features:**
+- Accessible via navbar "Settings" link
+- Clear theme descriptions (Trinity vs Default)
+- Immediate theme switching with visual feedback
+
+### 3. Navbar Updates
+
+#### [components/navbar.tsx](components/navbar.tsx) - MODIFIED
+- Added "Settings" link to main navigation
+- Removed theme toggle from user dropdown menu (moved to Settings page)
+- Settings link always visible to authenticated users
+
+### 4. Providers Setup
+
+#### [components/providers.tsx](components/providers.tsx) - MODIFIED
+- Wrapped AuthProvider with ThemeProvider
+- Ensures theme context available throughout app
+- Proper provider hierarchy for React context
+
+### 5. Conditional Layout Rendering
+
+#### [app/attendance/page.tsx](app/attendance/page.tsx) - MODIFIED
+- Theme-dependent layout rendering
+- **Trinity theme:** Balance Cards → Attendance Record (original layout)
+- **Default theme:** Attendance Record → Balance Cards (optimized layout)
+- Uses `useTheme()` hook to determine active theme
+
+### 6. Visual Enhancements
+
+#### [components/attendance-grid.tsx](components/attendance-grid.tsx) - MODIFIED
+- Added month separators for Default theme
+- Small gaps between months for improved readability
+- Used React Fragment with proper keys to fix React warnings
+- Theme-aware rendering using `useTheme()` hook
+
+## Why These Themes?
+
+### Trinity Theme (Light Mode)
+- Original layout preserved for users familiar with existing interface
+- Light background for traditional office environments
+- Balance Cards displayed first (original design)
+
+### Default Theme (Dark Mode)
+- Reduces eye strain for extended use
+- Modern dark UI aesthetic
+- Attendance Record prioritized (first position)
+- Enhanced visual separation between months
+
+## Technical Implementation
+
+### Theme Switching Flow:
+1. User navigates to Settings page
+2. Selects theme from dropdown
+3. `setTheme()` updates context state
+4. Theme saved to localStorage
+5. JavaScript directly sets CSS variables on `:root` element
+6. Components re-render with new theme
+7. Layout conditionally changes based on theme
+
+### Color System:
+- Colors defined directly in theme configuration files (lib/themes/)
+- Each theme has a complete `colors` object with all palette values
+- Colors stored as HSL values WITHOUT `hsl()` wrapper (e.g., `'222.2 84% 4.9%'`)
+- Tailwind CSS automatically wraps values with `hsl()` when applying classes
+- JavaScript applies colors via `root.style.setProperty()` for instant updates
+
+### SSR Compatibility:
+- Theme context returns default values during SSR
+- Prevents "useTheme must be used within a ThemeProvider" errors
+- Client-side hydration applies saved theme from localStorage
+
+## Files Created
+
+1. **lib/theme-context.tsx** - Theme context provider with CSS variable management
+2. **lib/themes/types.ts** - TypeScript interfaces for theme configuration
+3. **lib/themes/index.ts** - Theme registry and utility functions
+4. **lib/themes/trinity.ts** - Trinity (light) theme configuration
+5. **lib/themes/default.ts** - Default (dark) theme configuration
+6. **lib/themes/README.md** - Complete theme system documentation
+7. **app/settings/page.tsx** - Settings page with theme selection
+
+## Files Modified
+
+1. **components/navbar.tsx** - Added Settings link, removed theme from dropdown
+2. **components/providers.tsx** - Added ThemeProvider wrapper
+3. **app/attendance/page.tsx** - Conditional layout and authentication checks
+4. **components/attendance-grid.tsx** - Month separators based on theme config
+5. **app/globals.css** - Simplified CSS variables (no dark mode classes)
+6. **tailwind.config.ts** - Removed `darkMode` configuration (not needed)
+7. **README.md** - Updated with theme system documentation
+8. **CHANGES-SUMMARY.md** - This update
+
+## Configuration
+
+**Tailwind CSS:**
+- CSS variables defined in `:root` with default values
+- Theme system overrides variables via JavaScript
+- No `darkMode` configuration needed (colors set directly)
+
+**Next.js:**
+- Client components use `'use client'` directive
+- ThemeProvider handles client-side only operations
+- SSR-compatible with default fallback values
+
+**Theme Files:**
+- Each theme is a simple TypeScript configuration object
+- Colors use HSL format: `'hue saturation% lightness%'`
+- Easy to create new themes by copying existing files
+
+## Testing Done
+
+- ✅ Build succeeds without errors
+- ✅ Theme switching works correctly
+- ✅ localStorage persistence working
+- ✅ Layout changes based on theme
+- ✅ Month separators appear only in Default theme
+- ✅ No React key warnings
+- ✅ SSR/SSG pre-rendering works
+- ✅ Settings page accessible via navbar
+- ✅ Dark mode styles applied correctly
+
+## Next Steps
+
+Settings page is now ready for additional preferences:
+- Email notification settings
+- Date format preferences
+- Time zone selection
+- Display density options
+- Language preferences
+
+## Version
+
+**Current Version:** 0.8.0 (includes theme system)

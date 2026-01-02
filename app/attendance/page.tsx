@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AttendanceGrid } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
 import { NewEmployeeDialog } from '@/components/new-employee-dialog';
@@ -11,6 +12,8 @@ import { Spinner } from '@/components/spinner';
 import { Label } from '@/components/ui/label';
 import { UserPlus } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
+import { getTheme } from '@/lib/themes';
+import { useAuth } from '@/lib/auth-context';
 
 interface Employee {
   id: number;
@@ -39,6 +42,8 @@ interface AttendanceEntry {
 }
 
 export default function AttendancePage() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
@@ -49,11 +54,21 @@ export default function AttendancePage() {
   const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(new Map());
   const { toast } = useToast();
-  const { theme } = useTheme();
+  const { theme: themeId } = useTheme();
+  const themeConfig = getTheme(themeId);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (isAuthenticated) {
+      loadInitialData();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (selectedEmployeeId) {
@@ -228,12 +243,17 @@ export default function AttendancePage() {
     (_, i) => new Date().getFullYear() - 2 + i
   );
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner />
       </div>
     );
+  }
+
+  // Don't render if not authenticated (redirect will happen)
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -288,9 +308,9 @@ export default function AttendancePage() {
 
         {selectedEmployeeId && (
           <>
-            {theme === 'default' ? (
+            {themeConfig.layout.attendance.sectionOrder === 'recordFirst' ? (
               <>
-                {/* Default theme: Attendance Record first */}
+                {/* Attendance Record first layout */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">
@@ -331,7 +351,7 @@ export default function AttendancePage() {
               </>
             ) : (
               <>
-                {/* Trinity theme: BalanceCards first (original layout) */}
+                {/* Balance Cards first layout */}
                 <BalanceCards entries={entries} />
 
                 <div className="space-y-3">

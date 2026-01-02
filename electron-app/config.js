@@ -21,7 +21,7 @@ module.exports = {
   // Window settings
   window: {
     width: 1400,
-    height: 900,
+    height: 1024,
     title: 'Attendance Management'
   }
 };

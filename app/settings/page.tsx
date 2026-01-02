@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from '@/lib/theme-context';
+import { THEMES, ThemeId } from '@/lib/themes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,19 +29,21 @@ export default function SettingsPage() {
               <Label htmlFor="theme">Theme</Label>
               <Select
                 value={theme}
-                onValueChange={(value: 'trinity' | 'default') => setTheme(value)}
+                onValueChange={(value: ThemeId) => setTheme(value)}
               >
                 <SelectTrigger id="theme" className="w-full max-w-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="trinity">Trinity (Light Mode)</SelectItem>
-                  <SelectItem value="default">Default (Dark Mode)</SelectItem>
+                  {THEMES.map(themeConfig => (
+                    <SelectItem key={themeConfig.id} value={themeConfig.id}>
+                      {themeConfig.name} - {themeConfig.description}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Choose your preferred theme. Trinity is light mode with the original layout.
-                Default is dark mode with an optimized layout.
+                Choose your preferred theme. Each theme provides different appearance and layout options.
               </p>
             </div>
           </CardContent>
