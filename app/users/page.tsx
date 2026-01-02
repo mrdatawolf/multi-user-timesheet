@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff } from 'lucide-react';
 
 interface Employee {
   id: number;
@@ -40,6 +40,7 @@ interface Employee {
   role: string;
   group_id?: number;
   date_of_hire?: string;
+  created_by?: number;
   is_active: number;
 }
 
@@ -57,6 +58,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState({
     employee_number: '',
     first_name: '',
@@ -78,11 +80,12 @@ export default function UsersPage() {
       loadEmployees();
       loadGroups();
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, showInactive]);
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('/api/employees', {
+      const url = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -223,6 +226,60 @@ export default function UsersPage() {
     }
   };
 
+  // Check if current user can edit a given employee
+  const canEditEmployee = (employee: Employee): boolean => {
+    if (!user || !user.group) return false;
+
+    // Master group can edit all
+    if (user.group.is_master) return true;
+
+    // Users with can_edit_all permission can edit all
+    if (user.group.can_edit_all) return true;
+
+    // Users can edit employees in their own group
+    if (employee.group_id && employee.group_id === user.group_id) return true;
+
+    // Otherwise, no permission
+    return false;
+  };
+
+  // Check if current user can delete a given employee
+  const canDeleteEmployee = (employee: Employee): boolean => {
+    if (!user || !user.group) return false;
+
+    // Master users can delete any employee
+    if (user.group.is_master) return true;
+
+    // Creator can delete their own employees
+    if (employee.created_by && employee.created_by === user.id) return true;
+
+    // Users with can_edit_all permission can delete all
+    if (user.group.can_edit_all) return true;
+
+    // Users can delete employees in their own group (if they have edit permission)
+    if (employee.group_id && employee.group_id === user.group_id) return true;
+
+    return false;
+  };
+
+  // Check if current user can create new employees
+  const canCreateEmployee = (): boolean => {
+    if (!user || !user.group) return false;
+
+    // Master group can create employees
+    if (user.group.is_master) return true;
+
+    // Users with can_edit_all permission can create employees
+    if (user.group.can_edit_all) return true;
+
+    // Regular users can create employees in their own group
+    // This is a more permissive option - uncomment if desired:
+    // return true;
+
+    // By default, only Master and can_edit_all users can create
+    return false;
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -245,10 +302,33 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold">Employee Management</h1>
           <p className="text-muted-foreground">Manage employee records and information</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Employee
-        </Button>
+        <div className="flex gap-2">
+          {user?.group?.is_master && (
+            <Button
+              variant="outline"
+              onClick={() => setShowInactive(!showInactive)}
+              className="gap-2"
+            >
+              {showInactive ? (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  Hide Inactive
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Show Inactive
+                </>
+              )}
+            </Button>
+          )}
+          {canCreateEmployee() && (
+            <Button onClick={() => handleOpenDialog()} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Employee
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="border rounded-lg">
@@ -273,8 +353,16 @@ export default function UsersPage() {
               </TableRow>
             ) : (
               employees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell className="font-mono">{employee.employee_number || '-'}</TableCell>
+                <TableRow
+                  key={employee.id}
+                  className={employee.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}
+                >
+                  <TableCell className="font-mono">
+                    {employee.employee_number || '-'}
+                    {employee.is_active === 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground italic">(Inactive)</span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {employee.first_name} {employee.last_name}
                   </TableCell>
@@ -292,21 +380,31 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(employee)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(employee)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEditEmployee(employee) && employee.is_active === 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDialog(employee)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDeleteEmployee(employee) && employee.is_active === 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(employee)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {employee.is_active === 0 && (
+                        <span className="text-xs text-muted-foreground italic">Deleted</span>
+                      )}
+                      {employee.is_active === 1 && !canEditEmployee(employee) && !canDeleteEmployee(employee) && (
+                        <span className="text-xs text-muted-foreground italic">No access</span>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

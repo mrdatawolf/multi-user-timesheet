@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('id');
+    const includeInactive = searchParams.get('includeInactive') === 'true';
 
     if (employeeId) {
       const employee = await getEmployeeById(parseInt(employeeId));
@@ -39,6 +40,12 @@ export async function GET(request: NextRequest) {
     } else {
       // Get all employees (filter based on permissions)
       let employees = await getAllEmployees();
+
+      // Filter out inactive employees unless includeInactive is true
+      // Only Master users can see inactive employees
+      if (!includeInactive || !authUser.group?.is_master) {
+        employees = employees.filter(emp => emp.is_active === 1);
+      }
 
       // If user is not master or can't view all, filter employees by permissions
       if (!authUser.group?.is_master && !authUser.group?.can_view_all) {
@@ -96,6 +103,7 @@ export async function POST(request: NextRequest) {
       role: body.role || 'employee',
       group_id: body.group_id,
       date_of_hire: body.date_of_hire,
+      created_by: authUser.id,
       is_active: 1
     });
 
@@ -289,15 +297,41 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions
-    if (employee.group_id && !authUser.group?.is_master && !authUser.group?.can_edit_all) {
+    // Check permissions - can delete if:
+    // 1. User is Master
+    // 2. User created this employee
+    // 3. User has can_edit_all permission
+    // 4. User is HR/Manager of the employee's group (same group + has edit permission)
+    let canDelete = false;
+
+    if (authUser.group?.is_master) {
+      // Master can delete all
+      canDelete = true;
+    } else if (employee.created_by && employee.created_by === authUser.id) {
+      // Creator can delete
+      canDelete = true;
+    } else if (authUser.group?.can_edit_all) {
+      // Users with can_edit_all can delete all
+      canDelete = true;
+    } else if (employee.group_id && authUser.group_id === employee.group_id) {
+      // User is in the same group - check if they have edit permission for this group
       const canEdit = await canUserEditGroup(authUser.id, employee.group_id);
-      if (!canEdit && authUser.group_id !== employee.group_id) {
-        return NextResponse.json(
-          { error: 'Forbidden: You do not have permission to delete this employee' },
-          { status: 403 }
-        );
+      if (canEdit) {
+        canDelete = true;
       }
+    } else if (employee.group_id) {
+      // Check if user has specific permission to edit this employee's group
+      const canEdit = await canUserEditGroup(authUser.id, employee.group_id);
+      if (canEdit) {
+        canDelete = true;
+      }
+    }
+
+    if (!canDelete) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have permission to delete this employee' },
+        { status: 403 }
+      );
     }
 
     // Don't actually delete, just deactivate

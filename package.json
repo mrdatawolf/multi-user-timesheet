@@ -11,6 +11,7 @@
     "db:init": "tsx scripts/init-db.ts",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
+    "db:seed-employees": "tsx scripts/seed-employees.ts",
     "build:pkg": "pkg .next/standalone/server.js -t node18-win-x64 -o dist-server/attendance-server.exe --compress GZip",
     "electron:start": "electron electron-app",
     "electron:build": "electron-builder --config electron-builder.json",

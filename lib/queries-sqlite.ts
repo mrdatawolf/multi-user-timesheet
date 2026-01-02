@@ -9,6 +9,7 @@ export interface Employee {
   role: string;
   group_id?: number;
   date_of_hire?: string;
+  created_by?: number;
   is_active: number;
 }
 
@@ -31,7 +32,7 @@ export interface AttendanceEntry {
 
 // Employee queries
 export async function getAllEmployees(): Promise<Employee[]> {
-  const result = await db.execute('SELECT * FROM employees WHERE is_active = 1 ORDER BY last_name, first_name');
+  const result = await db.execute('SELECT * FROM employees ORDER BY last_name, first_name');
   return result.rows as unknown as Employee[];
 }
 
@@ -45,8 +46,8 @@ export async function getEmployeeById(id: number): Promise<Employee | null> {
 
 export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
   const result = await db.execute({
-    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, created_by, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       employee.employee_number || null,
       employee.first_name,
@@ -55,6 +56,7 @@ export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Em
       employee.role,
       employee.group_id || null,
       employee.date_of_hire || null,
+      employee.created_by || null,
       employee.is_active,
     ],
   });
