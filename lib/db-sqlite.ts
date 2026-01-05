@@ -51,11 +51,20 @@ export async function initializeDatabase() {
       code TEXT NOT NULL UNIQUE,
       description TEXT NOT NULL,
       hours_limit INTEGER,
+      default_allocation REAL,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add default_allocation column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE time_codes ADD COLUMN default_allocation REAL`);
+    console.log('  ✓ Added default_allocation column to time_codes table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
 
   // Create attendance_entries table
   await db.execute(`
@@ -73,30 +82,89 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Create employee_time_allocations table
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS employee_time_allocations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      time_code TEXT NOT NULL,
+      allocated_hours REAL NOT NULL DEFAULT 0,
+      year INTEGER NOT NULL,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      FOREIGN KEY (time_code) REFERENCES time_codes(code) ON UPDATE CASCADE,
+      UNIQUE(employee_id, time_code, year)
+    )
+  `);
+
   // Insert default time codes
   const timeCodes = [
-    { code: 'D', description: 'Discipline', hours_limit: null },
-    { code: 'B', description: 'Bereavement', hours_limit: 24 },
-    { code: 'FE', description: 'Family Emergency', hours_limit: null },
-    { code: 'FM', description: 'FMLA', hours_limit: null },
-    { code: 'H', description: 'Holiday', hours_limit: null },
-    { code: 'JD', description: 'Jury Duty', hours_limit: null },
-    { code: 'FH', description: 'Floating Holiday', hours_limit: 24 },
-    { code: 'DP', description: 'Designated Person', hours_limit: null },
-    { code: 'P', description: 'Personal', hours_limit: null },
-    { code: 'LOW', description: 'Lack of Work', hours_limit: null },
-    { code: 'PS', description: 'Personal Sick Day', hours_limit: 40 },
-    { code: 'T', description: 'Tardy', hours_limit: null },
-    { code: 'V', description: 'Vacation', hours_limit: null },
-    { code: 'WC', description: 'Workers Comp', hours_limit: null },
+    { code: 'D', description: 'Discipline', hours_limit: null, default_allocation: null },
+    { code: 'B', description: 'Bereavement', hours_limit: 24, default_allocation: 24 },
+    { code: 'FE', description: 'Family Emergency', hours_limit: null, default_allocation: null },
+    { code: 'FM', description: 'FMLA', hours_limit: null, default_allocation: null },
+    { code: 'H', description: 'Holiday', hours_limit: null, default_allocation: null },
+    { code: 'JD', description: 'Jury Duty', hours_limit: null, default_allocation: null },
+    { code: 'FH', description: 'Floating Holiday', hours_limit: 24, default_allocation: 24 },
+    { code: 'DP', description: 'Designated Person', hours_limit: null, default_allocation: null },
+    { code: 'P', description: 'Personal', hours_limit: null, default_allocation: 40 },
+    { code: 'LOW', description: 'Lack of Work', hours_limit: null, default_allocation: null },
+    { code: 'PS', description: 'Personal Sick Day', hours_limit: 40, default_allocation: 40 },
+    { code: 'T', description: 'Tardy', hours_limit: null, default_allocation: null },
+    { code: 'V', description: 'Vacation', hours_limit: null, default_allocation: 80 },
+    { code: 'WC', description: 'Workers Comp', hours_limit: null, default_allocation: null },
   ];
 
   for (const tc of timeCodes) {
     await db.execute({
-      sql: 'INSERT OR IGNORE INTO time_codes (code, description, hours_limit) VALUES (?, ?, ?)',
-      args: [tc.code, tc.description, tc.hours_limit],
+      sql: 'INSERT OR IGNORE INTO time_codes (code, description, hours_limit, default_allocation) VALUES (?, ?, ?, ?)',
+      args: [tc.code, tc.description, tc.hours_limit, tc.default_allocation],
     });
   }
+
+  // Update existing time codes with default allocations (for existing databases)
+  for (const tc of timeCodes) {
+    if (tc.default_allocation !== null) {
+      await db.execute({
+        sql: 'UPDATE time_codes SET default_allocation = ? WHERE code = ? AND default_allocation IS NULL',
+        args: [tc.default_allocation, tc.code],
+      });
+    }
+  }
+
+  // Migration: Add time_code_id column to attendance_entries
+  try {
+    await db.execute(`ALTER TABLE attendance_entries ADD COLUMN time_code_id INTEGER REFERENCES time_codes(id)`);
+    console.log('  ✓ Added time_code_id column to attendance_entries table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Migration: Add time_code_id column to employee_time_allocations
+  try {
+    await db.execute(`ALTER TABLE employee_time_allocations ADD COLUMN time_code_id INTEGER REFERENCES time_codes(id)`);
+    console.log('  ✓ Added time_code_id column to employee_time_allocations table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Migration: Populate time_code_id in attendance_entries from time_code (text)
+  await db.execute(`
+    UPDATE attendance_entries
+    SET time_code_id = (SELECT id FROM time_codes WHERE code = attendance_entries.time_code)
+    WHERE time_code_id IS NULL AND time_code IS NOT NULL
+  `);
+
+  // Migration: Populate time_code_id in employee_time_allocations from time_code (text)
+  await db.execute(`
+    UPDATE employee_time_allocations
+    SET time_code_id = (SELECT id FROM time_codes WHERE code = employee_time_allocations.time_code)
+    WHERE time_code_id IS NULL AND time_code IS NOT NULL
+  `);
+
+  console.log('  ✓ Migrated time codes to use IDs instead of text codes');
 
   // Validate schema after initialization
   await validateSchema();
@@ -105,6 +173,7 @@ export async function initializeDatabase() {
   console.log('  - Employees table created');
   console.log('  - Time codes table created');
   console.log('  - Attendance entries table created');
+  console.log('  - Employee time allocations table created');
   console.log('  - Default time codes inserted');
 }
 

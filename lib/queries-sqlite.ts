@@ -25,7 +25,8 @@ export interface AttendanceEntry {
   id: number;
   employee_id: number;
   entry_date: string;
-  time_code: string;
+  time_code: string; // Keep for backward compatibility
+  time_code_id: number; // New ID-based reference
   hours: number;
   notes?: string;
 }
@@ -89,6 +90,18 @@ export async function getEntriesForDateRange(employeeId: number, startDate: stri
 }
 
 export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<void> {
+  // Look up time_code_id from time_code
+  const timeCodeResult = await db.execute({
+    sql: 'SELECT id FROM time_codes WHERE code = ?',
+    args: [entry.time_code],
+  });
+
+  if (timeCodeResult.rows.length === 0) {
+    throw new Error(`Invalid time code: ${entry.time_code}`);
+  }
+
+  const timeCodeId = (timeCodeResult.rows[0] as any).id;
+
   // Check if entry exists
   const existing = await db.execute({
     sql: 'SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
@@ -99,16 +112,16 @@ export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<v
     // Update
     await db.execute({
       sql: `UPDATE attendance_entries
-            SET time_code = ?, hours = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+            SET time_code = ?, time_code_id = ?, hours = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
             WHERE employee_id = ? AND entry_date = ?`,
-      args: [entry.time_code, entry.hours, entry.notes || null, entry.employee_id, entry.entry_date],
+      args: [entry.time_code, timeCodeId, entry.hours, entry.notes || null, entry.employee_id, entry.entry_date],
     });
   } else {
     // Insert
     await db.execute({
-      sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [entry.employee_id, entry.entry_date, entry.time_code, entry.hours, entry.notes || null],
+      sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, time_code_id, hours, notes)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [entry.employee_id, entry.entry_date, entry.time_code, timeCodeId, entry.hours, entry.notes || null],
     });
   }
 }
@@ -136,11 +149,12 @@ export async function getReportData({
     SELECT
       e.first_name || ' ' || e.last_name AS employee_name,
       te.entry_date,
-      te.time_code,
+      tc.code AS time_code,
       te.hours,
       te.notes
     FROM attendance_entries te
     JOIN employees e ON te.employee_id = e.id
+    JOIN time_codes tc ON te.time_code_id = tc.id
     WHERE te.entry_date >= ? AND te.entry_date <= ?
   `;
 
@@ -152,7 +166,7 @@ export async function getReportData({
   }
 
   if (timeCode !== 'all') {
-    sql += ' AND te.time_code = ?';
+    sql += ' AND tc.code = ?';
     args.push(timeCode);
   }
 
