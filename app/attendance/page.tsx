@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AttendanceGrid } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
 import { NewEmployeeDialog } from '@/components/new-employee-dialog';
@@ -41,12 +41,22 @@ interface AttendanceEntry {
   notes?: string;
 }
 
+interface TimeAllocation {
+  time_code: string;
+  description: string;
+  default_allocation: number | null;
+  allocated_hours: number | null;
+  is_override: boolean;
+}
+
 export default function AttendancePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading: authLoading, token } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
+  const [allocations, setAllocations] = useState<TimeAllocation[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -71,10 +81,17 @@ export default function AttendancePage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (selectedEmployeeId) {
+    if (selectedEmployeeId && token) {
       loadAttendanceData();
     }
-  }, [selectedEmployeeId, year]);
+  }, [selectedEmployeeId, year, token]);
+
+  // Reload data when navigating to attendance page
+  useEffect(() => {
+    if (pathname === '/attendance' && selectedEmployeeId && token) {
+      loadAttendanceData();
+    }
+  }, [pathname]);
 
   const loadInitialData = async () => {
     try {
@@ -113,24 +130,40 @@ export default function AttendancePage() {
   };
 
   const loadAttendanceData = async () => {
-    if (!selectedEmployeeId) return;
+    if (!selectedEmployeeId || !token) return;
 
     try {
-      const res = await fetch(
-        `/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`
-      );
-      const data = await res.json();
+      const [attendanceRes, allocationsRes] = await Promise.all([
+        fetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
+        fetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      ]);
 
-      // Validate that we received an array
-      if (Array.isArray(data)) {
-        setEntries(data);
+      const attendanceData = await attendanceRes.json();
+      const allocationsData = await allocationsRes.json();
+
+      // Validate that we received an array for attendance
+      if (Array.isArray(attendanceData)) {
+        setEntries(attendanceData);
       } else {
-        console.error('Invalid attendance data:', data);
+        console.error('Invalid attendance data:', attendanceData);
         setEntries([]);
+      }
+
+      // Validate and set allocations
+      if (allocationsData && Array.isArray(allocationsData.allocations)) {
+        setAllocations(allocationsData.allocations);
+      } else {
+        console.error('Invalid allocations data:', allocationsData);
+        setAllocations([]);
       }
     } catch (error) {
       console.error('Failed to load attendance:', error);
       setEntries([]);
+      setAllocations([]);
     }
   };
 
@@ -333,7 +366,7 @@ export default function AttendancePage() {
                   />
                 </div>
 
-                <BalanceCards entries={entries} />
+                <BalanceCards entries={entries} allocations={allocations} />
 
                 <div className="mt-3 p-2 border rounded-lg bg-muted/50">
                   <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
@@ -352,7 +385,7 @@ export default function AttendancePage() {
             ) : (
               <>
                 {/* Balance Cards first layout */}
-                <BalanceCards entries={entries} />
+                <BalanceCards entries={entries} allocations={allocations} />
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">

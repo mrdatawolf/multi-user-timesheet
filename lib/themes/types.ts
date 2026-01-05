@@ -1,32 +1,89 @@
 /**
- * Theme Configuration System
+ * Theme Configuration System (Two-Layer Architecture)
  *
  * This file defines the structure for theme configurations.
- * Each theme is a configuration object that defines appearance and layout preferences.
+ *
+ * IMPORTANT: This is Layer 2 of the two-layer theme system:
+ * - Layer 1 (Color Mode): User controls light/dark/system - handles ONLY colors
+ * - Layer 2 (Theme): Admin controls layout, fonts, spacing - handles everything EXCEPT colors
+ *
+ * Colors are now managed separately via lib/color-modes.ts
  */
 
-export type ThemeId = 'trinity' | 'default';
+export type ThemeId = 'standard' | 'compact' | 'comfortable';
 
-export interface ThemeColors {
-  background: string;
-  foreground: string;
-  card: string;
-  cardForeground: string;
-  popover: string;
-  popoverForeground: string;
-  primary: string;
-  primaryForeground: string;
-  secondary: string;
-  secondaryForeground: string;
-  muted: string;
-  mutedForeground: string;
-  accent: string;
-  accentForeground: string;
-  destructive: string;
-  destructiveForeground: string;
-  border: string;
-  input: string;
-  ring: string;
+export type LayoutDensity = 'compact' | 'standard' | 'comfortable';
+
+export interface FontSettings {
+  /** Font family for body text */
+  family: string;
+
+  /** Base font size in rem */
+  baseSize: string;
+
+  /** Font weight for headings */
+  headingWeight: number;
+
+  /** Font weight for body text */
+  bodyWeight: number;
+
+  /** Line height multiplier */
+  lineHeight: number;
+}
+
+export interface SpacingScale {
+  /** Extra small spacing (0.25rem default) */
+  xs: string;
+
+  /** Small spacing (0.5rem default) */
+  sm: string;
+
+  /** Medium spacing (1rem default) */
+  md: string;
+
+  /** Large spacing (1.5rem default) */
+  lg: string;
+
+  /** Extra large spacing (2rem default) */
+  xl: string;
+
+  /** 2X extra large spacing (3rem default) */
+  '2xl': string;
+}
+
+export interface ComponentStyling {
+  /** Border radius values */
+  borderRadius: {
+    sm: string;
+    md: string;
+    lg: string;
+    xl: string;
+  };
+
+  /** Shadow depths */
+  shadows: {
+    sm: string;
+    md: string;
+    lg: string;
+  };
+
+  /** Input field styling */
+  input: {
+    height: string;
+    padding: string;
+  };
+
+  /** Button styling */
+  button: {
+    height: string;
+    padding: string;
+  };
+
+  /** Card styling */
+  card: {
+    padding: string;
+    gap: string;
+  };
 }
 
 export interface ThemeConfig {
@@ -39,14 +96,17 @@ export interface ThemeConfig {
   /** Brief description of the theme */
   description: string;
 
-  /** Appearance settings */
-  appearance: {
-    /** Color palette for this theme */
-    colors: ThemeColors;
+  /** Overall layout density */
+  density: LayoutDensity;
 
-    /** Optional CSS class to apply to the root element */
-    cssClass?: string;
-  };
+  /** Typography settings */
+  typography: FontSettings;
+
+  /** Spacing scale */
+  spacing: SpacingScale;
+
+  /** Component-specific styling */
+  components: ComponentStyling;
 
   /** Layout preferences for different pages */
   layout: {
@@ -59,6 +119,9 @@ export interface ThemeConfig {
       showMonthSeparators: boolean;
     };
   };
+
+  /** Optional CSS class to apply to the root element */
+  cssClass?: string;
 
   /** Optional custom styles or overrides */
   customization?: {

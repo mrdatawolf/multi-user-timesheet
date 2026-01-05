@@ -2,36 +2,81 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ThemeId, getTheme, isValidThemeId } from '@/lib/themes';
+import { ColorMode, getColorPalette, getResolvedMode, isValidColorMode } from '@/lib/color-modes';
 
+/**
+ * Two-Layer Theme System Context
+ *
+ * Layer 1 (Color Mode): User controls light/dark/system - handles ONLY colors
+ * Layer 2 (Theme): Admin controls layout, fonts, spacing - handles everything EXCEPT colors
+ */
 interface ThemeContextType {
+  /** Layer 2: Theme ID (admin setting) */
   theme: ThemeId;
+  /** Layer 2: Set theme (admin only) */
   setTheme: (theme: ThemeId) => void;
+
+  /** Layer 1: Color mode (user preference) */
+  colorMode: ColorMode;
+  /** Layer 1: Set color mode (user setting) */
+  setColorMode: (mode: ColorMode) => void;
+
+  /** Layer 1: Resolved color mode (light or dark) */
+  resolvedColorMode: 'light' | 'dark';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>('trinity');
+  const [theme, setThemeState] = useState<ThemeId>('standard');
+  const [colorMode, setColorModeState] = useState<ColorMode>('system');
+  const [resolvedColorMode, setResolvedColorMode] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
+
+  // Listen for system color scheme changes
+  useEffect(() => {
+    if (colorMode !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      const resolved = getResolvedMode('system');
+      setResolvedColorMode(resolved);
+      applyColorMode('system');
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [colorMode]);
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem('app_theme');
-    if (stored && isValidThemeId(stored)) {
-      setThemeState(stored);
-      applyTheme(stored);
-    } else {
-      // Apply default theme on first load
-      applyTheme('trinity');
+
+    // Load Layer 2 (Theme) - admin setting, defaults to 'standard'
+    const storedTheme = localStorage.getItem('app_theme');
+    if (storedTheme && isValidThemeId(storedTheme)) {
+      setThemeState(storedTheme);
     }
+
+    // Load Layer 1 (Color Mode) - user preference, defaults to 'system'
+    const storedColorMode = localStorage.getItem('app_color_mode');
+    if (storedColorMode && isValidColorMode(storedColorMode)) {
+      setColorModeState(storedColorMode);
+      setResolvedColorMode(getResolvedMode(storedColorMode));
+    } else {
+      setResolvedColorMode(getResolvedMode('system'));
+    }
+
+    // Apply both layers
+    applyTheme(storedTheme && isValidThemeId(storedTheme) ? storedTheme : 'standard');
+    applyColorMode(storedColorMode && isValidColorMode(storedColorMode) ? storedColorMode : 'system');
   }, []);
 
-  const applyTheme = (themeId: ThemeId) => {
+  const applyColorMode = (mode: ColorMode) => {
     const root = document.documentElement;
-    const themeConfig = getTheme(themeId);
-    const colors = themeConfig.appearance.colors;
+    const colors = getColorPalette(mode);
+    const resolved = getResolvedMode(mode);
 
-    // Apply colors directly to CSS variables
+    // Apply color palette to CSS variables
     root.style.setProperty('--background', colors.background);
     root.style.setProperty('--foreground', colors.foreground);
     root.style.setProperty('--card', colors.card);
@@ -52,15 +97,58 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--input', colors.input);
     root.style.setProperty('--ring', colors.ring);
 
-    // Apply optional custom CSS class
-    if (themeConfig.appearance.cssClass) {
+    // Apply dark/light class for CSS-based color adjustments
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolved);
+  };
+
+  const applyTheme = (themeId: ThemeId) => {
+    const root = document.documentElement;
+    const themeConfig = getTheme(themeId);
+
+    // Apply typography CSS variables
+    root.style.setProperty('--font-family', themeConfig.typography.family);
+    root.style.setProperty('--font-size-base', themeConfig.typography.baseSize);
+    root.style.setProperty('--font-weight-heading', themeConfig.typography.headingWeight.toString());
+    root.style.setProperty('--font-weight-body', themeConfig.typography.bodyWeight.toString());
+    root.style.setProperty('--line-height', themeConfig.typography.lineHeight.toString());
+
+    // Apply spacing CSS variables
+    root.style.setProperty('--spacing-xs', themeConfig.spacing.xs);
+    root.style.setProperty('--spacing-sm', themeConfig.spacing.sm);
+    root.style.setProperty('--spacing-md', themeConfig.spacing.md);
+    root.style.setProperty('--spacing-lg', themeConfig.spacing.lg);
+    root.style.setProperty('--spacing-xl', themeConfig.spacing.xl);
+    root.style.setProperty('--spacing-2xl', themeConfig.spacing['2xl']);
+
+    // Apply component styling CSS variables
+    root.style.setProperty('--radius-sm', themeConfig.components.borderRadius.sm);
+    root.style.setProperty('--radius-md', themeConfig.components.borderRadius.md);
+    root.style.setProperty('--radius-lg', themeConfig.components.borderRadius.lg);
+    root.style.setProperty('--radius-xl', themeConfig.components.borderRadius.xl);
+
+    root.style.setProperty('--shadow-sm', themeConfig.components.shadows.sm);
+    root.style.setProperty('--shadow-md', themeConfig.components.shadows.md);
+    root.style.setProperty('--shadow-lg', themeConfig.components.shadows.lg);
+
+    root.style.setProperty('--input-height', themeConfig.components.input.height);
+    root.style.setProperty('--input-padding', themeConfig.components.input.padding);
+
+    root.style.setProperty('--button-height', themeConfig.components.button.height);
+    root.style.setProperty('--button-padding', themeConfig.components.button.padding);
+
+    root.style.setProperty('--card-padding', themeConfig.components.card.padding);
+    root.style.setProperty('--card-gap', themeConfig.components.card.gap);
+
+    // Apply theme CSS class
+    if (themeConfig.cssClass) {
       // Remove all theme-specific classes first
       root.classList.forEach(className => {
         if (className.startsWith('theme-')) {
           root.classList.remove(className);
         }
       });
-      root.classList.add(themeConfig.appearance.cssClass);
+      root.classList.add(themeConfig.cssClass);
     }
   };
 
@@ -70,7 +158,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(newTheme);
   };
 
-  // Prevent flash of wrong theme
+  const setColorMode = (mode: ColorMode) => {
+    setColorModeState(mode);
+    const resolved = getResolvedMode(mode);
+    setResolvedColorMode(resolved);
+    localStorage.setItem('app_color_mode', mode);
+    applyColorMode(mode);
+  };
+
+  // Prevent flash of wrong theme/colors
   if (!mounted) {
     return <>{children}</>;
   }
@@ -78,6 +174,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const value: ThemeContextType = {
     theme,
     setTheme,
+    colorMode,
+    setColorMode,
+    resolvedColorMode,
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -88,8 +187,11 @@ export function useTheme() {
   if (context === undefined) {
     // Return default values for SSR/SSG
     return {
-      theme: 'trinity' as ThemeId,
+      theme: 'standard' as ThemeId,
       setTheme: () => {},
+      colorMode: 'system' as ColorMode,
+      setColorMode: () => {},
+      resolvedColorMode: 'light' as const,
     };
   }
   return context;

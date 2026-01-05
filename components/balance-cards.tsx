@@ -6,11 +6,20 @@ interface AttendanceEntry {
   hours: number;
 }
 
-interface BalanceCardsProps {
-  entries: AttendanceEntry[];
+interface TimeAllocation {
+  time_code: string;
+  description: string;
+  default_allocation: number | null;
+  allocated_hours: number | null;
+  is_override: boolean;
 }
 
-export function BalanceCards({ entries }: BalanceCardsProps) {
+interface BalanceCardsProps {
+  entries: AttendanceEntry[];
+  allocations: TimeAllocation[];
+}
+
+export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   const calculateUsage = (code: string): number => {
     const total = entries
       .filter(e => e.time_code === code)
@@ -18,12 +27,18 @@ export function BalanceCards({ entries }: BalanceCardsProps) {
     return total;
   };
 
+  const getAllocatedHours = (code: string): number => {
+    const allocation = allocations.find(a => a.time_code === code);
+    const hours = allocation?.allocated_hours ?? 0;
+    return hours;
+  };
+
   const floatingHolidayUsed = calculateUsage('FH');
-  const floatingHolidayLimit = 24;
+  const floatingHolidayLimit = getAllocatedHours('FH');
   const floatingHolidayRemaining = Math.max(0, floatingHolidayLimit - floatingHolidayUsed);
 
   const personalSickUsed = calculateUsage('PS');
-  const personalSickLimit = 40;
+  const personalSickLimit = getAllocatedHours('PS');
   const personalSickRemaining = Math.max(0, personalSickLimit - personalSickUsed);
 
   const vacationUsed = calculateUsage('V');
