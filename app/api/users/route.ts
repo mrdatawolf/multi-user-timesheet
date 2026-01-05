@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       email: body.email,
       group_id: body.group_id,
       is_active: body.is_active !== undefined ? body.is_active : 1,
+      color_mode: 'light'
     });
 
     // Log audit entry

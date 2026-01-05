@@ -133,7 +133,8 @@ export async function POST(request: NextRequest) {
         entry_date: body.entry_date,
         time_code: body.time_code,
         hours: body.hours || 0,
-        notes: body.notes
+        notes: body.notes,
+        time_code_id: 0
       });
 
       // Get the new entry
