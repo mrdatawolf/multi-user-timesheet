@@ -29,7 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock } from 'lucide-react';
+import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
 
 interface Employee {
   id: number;
@@ -59,6 +60,8 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [allocationsDialogOpen, setAllocationsDialogOpen] = useState(false);
+  const [selectedEmployeeForAllocations, setSelectedEmployeeForAllocations] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({
     employee_number: '',
     first_name: '',
@@ -117,6 +120,11 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Failed to load groups:', error);
     }
+  };
+
+  const handleOpenAllocationsDialog = (employee: Employee) => {
+    setSelectedEmployeeForAllocations(employee);
+    setAllocationsDialogOpen(true);
   };
 
   const handleOpenDialog = (employee?: Employee) => {
@@ -385,8 +393,19 @@ export default function UsersPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenDialog(employee)}
+                          title="Edit Employee"
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEditEmployee(employee) && employee.is_active === 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenAllocationsDialog(employee)}
+                          title="Manage Time Allocations"
+                        >
+                          <Clock className="h-4 w-4" />
                         </Button>
                       )}
                       {canDeleteEmployee(employee) && employee.is_active === 1 && (
@@ -538,6 +557,15 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {selectedEmployeeForAllocations && (
+        <EmployeeAllocationsDialog
+          open={allocationsDialogOpen}
+          onOpenChange={setAllocationsDialogOpen}
+          employeeId={selectedEmployeeForAllocations.id}
+          employeeName={`${selectedEmployeeForAllocations.first_name} ${selectedEmployeeForAllocations.last_name}`}
+        />
+      )}
     </div>
   );
 }
