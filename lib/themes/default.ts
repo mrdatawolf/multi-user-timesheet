@@ -1,40 +1,62 @@
 import { ThemeConfig } from './types';
 
 /**
- * Default Theme
+ * Compact Theme
  *
- * Modern dark mode theme with optimized layout.
+ * Space-efficient layout with tighter spacing and smaller components.
  * Features:
- * - Dark background for reduced eye strain
+ * - Compact density for displaying more information
  * - Attendance Record prioritized (shown first)
  * - Visual month separators for improved readability
+ * - Reduced padding and margins for efficient space usage
  */
-export const defaultTheme: ThemeConfig = {
-  id: 'default',
-  name: 'Default',
-  description: 'Dark mode with optimized layout',
+export const compactTheme: ThemeConfig = {
+  id: 'compact',
+  name: 'Compact',
+  description: 'Space-efficient layout with tighter spacing',
 
-  appearance: {
-    colors: {
-      background: '222.2 84% 4.9%',
-      foreground: '210 40% 98%',
-      card: '222.2 84% 4.9%',
-      cardForeground: '210 40% 98%',
-      popover: '222.2 84% 4.9%',
-      popoverForeground: '210 40% 98%',
-      primary: '210 40% 98%',
-      primaryForeground: '222.2 47.4% 11.2%',
-      secondary: '217.2 32.6% 17.5%',
-      secondaryForeground: '210 40% 98%',
-      muted: '217.2 32.6% 17.5%',
-      mutedForeground: '215 20.2% 65.1%',
-      accent: '217.2 32.6% 17.5%',
-      accentForeground: '210 40% 98%',
-      destructive: '0 62.8% 30.6%',
-      destructiveForeground: '210 40% 98%',
-      border: '217.2 32.6% 17.5%',
-      input: '217.2 32.6% 17.5%',
-      ring: '212.7 26.8% 83.9%',
+  density: 'compact',
+
+  typography: {
+    family: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    baseSize: '0.875rem',
+    headingWeight: 600,
+    bodyWeight: 400,
+    lineHeight: 1.4,
+  },
+
+  spacing: {
+    xs: '0.125rem',
+    sm: '0.25rem',
+    md: '0.5rem',
+    lg: '0.75rem',
+    xl: '1rem',
+    '2xl': '1.5rem',
+  },
+
+  components: {
+    borderRadius: {
+      sm: '0.125rem',
+      md: '0.25rem',
+      lg: '0.375rem',
+      xl: '0.5rem',
+    },
+    shadows: {
+      sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+      md: '0 2px 4px -1px rgb(0 0 0 / 0.1)',
+      lg: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+    },
+    input: {
+      height: '2rem',
+      padding: '0.25rem 0.5rem',
+    },
+    button: {
+      height: '2rem',
+      padding: '0.25rem 0.75rem',
+    },
+    card: {
+      padding: '0.75rem',
+      gap: '0.5rem',
     },
   },
 
@@ -44,4 +66,6 @@ export const defaultTheme: ThemeConfig = {
       showMonthSeparators: true,
     },
   },
+
+  cssClass: 'theme-compact',
 };

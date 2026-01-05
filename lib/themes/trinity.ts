@@ -1,40 +1,62 @@
 import { ThemeConfig } from './types';
 
 /**
- * Trinity Theme
+ * Standard Theme
  *
- * The original light mode theme with the classic layout.
+ * Balanced layout with comfortable spacing and standard component sizes.
  * Features:
- * - Light background
+ * - Standard density for general use
  * - Balance Cards displayed first
- * - Traditional office-friendly appearance
+ * - System font stack for broad compatibility
+ * - Moderate spacing and padding
  */
-export const trinityTheme: ThemeConfig = {
-  id: 'trinity',
-  name: 'Trinity',
-  description: 'Light mode with original layout',
+export const standardTheme: ThemeConfig = {
+  id: 'standard',
+  name: 'Standard',
+  description: 'Balanced layout with comfortable spacing',
 
-  appearance: {
-    colors: {
-      background: '0 0% 100%',
-      foreground: '222.2 84% 4.9%',
-      card: '0 0% 100%',
-      cardForeground: '222.2 84% 4.9%',
-      popover: '0 0% 100%',
-      popoverForeground: '222.2 84% 4.9%',
-      primary: '222.2 47.4% 11.2%',
-      primaryForeground: '210 40% 98%',
-      secondary: '210 40% 96.1%',
-      secondaryForeground: '222.2 47.4% 11.2%',
-      muted: '210 40% 96.1%',
-      mutedForeground: '215.4 16.3% 46.9%',
-      accent: '210 40% 96.1%',
-      accentForeground: '222.2 47.4% 11.2%',
-      destructive: '0 84.2% 60.2%',
-      destructiveForeground: '210 40% 98%',
-      border: '214.3 31.8% 91.4%',
-      input: '214.3 31.8% 91.4%',
-      ring: '222.2 84% 4.9%',
+  density: 'standard',
+
+  typography: {
+    family: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    baseSize: '1rem',
+    headingWeight: 600,
+    bodyWeight: 400,
+    lineHeight: 1.5,
+  },
+
+  spacing: {
+    xs: '0.25rem',
+    sm: '0.5rem',
+    md: '1rem',
+    lg: '1.5rem',
+    xl: '2rem',
+    '2xl': '3rem',
+  },
+
+  components: {
+    borderRadius: {
+      sm: '0.25rem',
+      md: '0.375rem',
+      lg: '0.5rem',
+      xl: '0.75rem',
+    },
+    shadows: {
+      sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+      md: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      lg: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+    },
+    input: {
+      height: '2.5rem',
+      padding: '0.5rem 0.75rem',
+    },
+    button: {
+      height: '2.5rem',
+      padding: '0.5rem 1rem',
+    },
+    card: {
+      padding: '1.5rem',
+      gap: '1rem',
     },
   },
 
@@ -44,4 +66,6 @@ export const trinityTheme: ThemeConfig = {
       showMonthSeparators: false,
     },
   },
+
+  cssClass: 'theme-standard',
 };

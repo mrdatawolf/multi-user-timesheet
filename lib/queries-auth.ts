@@ -8,6 +8,7 @@ export interface User {
   email?: string;
   group_id: number;
   is_active: number;
+  color_mode: 'light' | 'dark' | 'system';
   last_login?: string;
   created_at: string;
   updated_at: string;
@@ -238,4 +239,29 @@ export async function getAuditLogForUser(userId: number, limit = 50): Promise<Au
     args: [userId, limit],
   });
   return result.rows as unknown as AuditLogEntry[];
+}
+
+// App settings queries (for global admin settings like theme)
+export async function getAppSetting(key: string): Promise<string | null> {
+  const result = await db.execute({
+    sql: 'SELECT value FROM app_settings WHERE key = ?',
+    args: [key],
+  });
+  return result.rows[0] ? (result.rows[0] as any).value : null;
+}
+
+export async function setAppSetting(key: string, value: string, userId?: number): Promise<void> {
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO app_settings (key, value, updated_by, updated_at)
+          VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+    args: [key, value, userId || null],
+  });
+}
+
+// User preferences queries
+export async function updateUserColorMode(userId: number, colorMode: 'light' | 'dark' | 'system'): Promise<void> {
+  await db.execute({
+    sql: 'UPDATE users SET color_mode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [colorMode, userId],
+  });
 }

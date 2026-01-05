@@ -28,12 +28,21 @@ export async function initializeAuthTables() {
       email TEXT UNIQUE,
       group_id INTEGER NOT NULL,
       is_active INTEGER DEFAULT 1,
+      color_mode TEXT DEFAULT 'system' CHECK(color_mode IN ('light', 'dark', 'system')),
       last_login DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (group_id) REFERENCES groups(id)
     )
   `);
+
+  // Add color_mode column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN color_mode TEXT DEFAULT 'system' CHECK(color_mode IN ('light', 'dark', 'system'))`);
+    console.log('  ✓ Added color_mode column to users table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
 
   // Create audit_log table
   await db.execute(`
@@ -66,6 +75,25 @@ export async function initializeAuthTables() {
       UNIQUE(group_id, target_group_id)
     )
   `);
+
+  // Create app_settings table (for global admin settings)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      description TEXT,
+      updated_by INTEGER,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (updated_by) REFERENCES users(id)
+    )
+  `);
+
+  // Insert default theme setting
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO app_settings (key, value, description)
+          VALUES ('theme', 'standard', 'Application theme (controls layout, typography, spacing)')`,
+    args: [],
+  });
 
   // Insert default master group
   await db.execute({
