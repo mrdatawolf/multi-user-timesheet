@@ -342,3 +342,170 @@ Settings page is now ready for additional preferences:
 ## Version
 
 **Current Version:** 0.8.0 (includes theme system)
+
+---
+
+# Dynamic Employee Allocations - Changes Summary
+
+## Feature Added
+
+**Enhancement:** Employee time allocations now dynamically load in the Attendance tab, displaying custom allocation limits set in the Users tab.
+
+## Changes Made
+
+### 1. Attendance Page - Dynamic Allocations Loading
+
+#### [app/attendance/page.tsx](app/attendance/page.tsx) - MODIFIED
+- Added `TimeAllocation` interface for type safety
+- Added `allocations` state to store employee-specific time allocations
+- Added `pathname` tracking from `usePathname()` hook
+- Modified `loadAttendanceData()` to fetch allocations from API endpoint
+- Added parallel data fetching for attendance entries and allocations
+- Added pathname-based effect to reload data when navigating to Attendance tab
+- Passed `allocations` prop to `BalanceCards` component
+
+**Key Features:**
+- Allocations automatically reload when switching to Attendance tab
+- Uses authentication token for secure API access
+- Parallel data fetching for optimal performance
+- Real-time sync with Users tab allocation changes
+
+### 2. Balance Cards - Dynamic Display
+
+#### [components/balance-cards.tsx](components/balance-cards.tsx) - MODIFIED
+- Added `TimeAllocation` interface
+- Updated `BalanceCardsProps` to accept `allocations` array
+- Added `getAllocatedHours()` helper function to lookup allocation by time code
+- Replaced hardcoded limits (24h, 40h) with dynamic values from allocations
+- Updated all balance card displays to use dynamic allocation data
+
+**Previous Behavior:**
+- Floating Holiday limit: Hardcoded 24 hours
+- Personal Sick Days limit: Hardcoded 40 hours
+
+**New Behavior:**
+- Floating Holiday limit: Retrieved from employee allocations or default
+- Personal Sick Days limit: Retrieved from employee allocations or default
+- All time codes use database-driven allocation limits
+
+### 3. Data Flow
+
+**Complete Workflow:**
+1. Admin opens Users tab and clicks clock icon for employee
+2. `EmployeeAllocationsDialog` loads current allocations from API
+3. Admin modifies allocation (e.g., Personal Sick Days from 40h to 20h)
+4. POST request saves new allocation to `employee_time_allocations` table
+5. User switches to Attendance tab
+6. Pathname change triggers data reload
+7. GET request fetches updated allocations from API
+8. `BalanceCards` displays new limit (20h instead of 40h)
+
+### 4. API Integration
+
+**Endpoint Used:** `/api/employee-allocations`
+- **GET:** Retrieves all time codes with employee-specific overrides
+- Returns combined data: default allocations + custom overrides
+- Requires authentication (Bearer token)
+- Parameters: `employeeId`, `year`
+
+**Response Structure:**
+```json
+{
+  "employee_id": 2,
+  "year": 2026,
+  "allocations": [
+    {
+      "time_code": "PS",
+      "time_code_id": 11,
+      "description": "Personal Sick Day",
+      "default_allocation": 40,
+      "allocated_hours": 20,
+      "is_override": true,
+      "notes": null
+    }
+  ]
+}
+```
+
+## Why This Enhancement?
+
+### Benefits:
+1. **Flexibility:** Different employees can have different time allocations
+2. **Accuracy:** Balance cards reflect actual employee entitlements
+3. **Real-time Updates:** Changes in Users tab immediately visible in Attendance tab
+4. **Centralized Management:** All allocation changes managed through one interface
+5. **Database-Driven:** No hardcoded limits in frontend code
+
+### Use Cases:
+- Part-time employees with reduced PTO allocations
+- New employees with prorated time off
+- Custom arrangements per employment contract
+- Mid-year allocation adjustments
+
+## Technical Implementation
+
+### Navigation-Based Reload:
+```typescript
+useEffect(() => {
+  if (pathname === '/attendance' && selectedEmployeeId && token) {
+    loadAttendanceData();
+  }
+}, [pathname]);
+```
+
+### Parallel Data Fetching:
+```typescript
+const [attendanceRes, allocationsRes] = await Promise.all([
+  fetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
+  fetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+]);
+```
+
+### Dynamic Allocation Lookup:
+```typescript
+const getAllocatedHours = (code: string): number => {
+  const allocation = allocations.find(a => a.time_code === code);
+  return allocation?.allocated_hours ?? 0;
+};
+```
+
+## Files Modified
+
+1. **app/attendance/page.tsx** - Added allocations state and API fetching
+2. **components/balance-cards.tsx** - Dynamic allocation display
+
+## Testing Done
+
+- ✅ Allocations load correctly when opening Attendance tab
+- ✅ Changes made in Users tab reflect immediately after navigation
+- ✅ Authentication token properly included in API requests
+- ✅ Pathname change triggers data reload
+- ✅ Fallback to default allocations when no override exists
+- ✅ All time codes display correct limits
+
+## Known Behavior
+
+**Important:** The employee allocations are based on:
+1. Custom allocations set in Users tab (if exists)
+2. Default allocations from time_codes table (fallback)
+
+**Example:**
+- Personal Sick Days default: 40 hours
+- If custom allocation set to 20 hours → displays 20h
+- If custom allocation deleted → reverts to 40h
+
+## Next Steps
+
+No action required. The feature is complete and working correctly.
+
+**Usage:**
+1. Navigate to Users tab
+2. Click clock icon for any employee
+3. Adjust their time allocations as needed
+4. Switch to Attendance tab to see updated balance limits
+
+## Version
+
+**Current Version:** 0.8.1 (includes dynamic employee allocations)

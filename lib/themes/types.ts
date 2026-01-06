@@ -120,6 +120,18 @@ export interface ThemeConfig {
     };
   };
 
+  /** Branding configuration */
+  branding: {
+    /** Logo file path (relative to /public) */
+    logo?: string;
+
+    /** Logo alt text */
+    logoAlt?: string;
+
+    /** Application title */
+    appTitle: string;
+  };
+
   /** Optional CSS class to apply to the root element */
   cssClass?: string;
 

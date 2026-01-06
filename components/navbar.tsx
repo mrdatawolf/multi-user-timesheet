@@ -1,10 +1,13 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
+import { useTheme } from '@/lib/theme-context';
+import { getTheme } from '@/lib/themes';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,14 +30,27 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { theme: themeId } = useTheme();
+  const themeConfig = getTheme(themeId);
   const enabledItems = NAV_ITEMS.filter(item => item.enabled);
+
+  const logoSrc = themeConfig.branding.logo || '/default.png';
+  const logoAlt = themeConfig.branding.logoAlt || 'Logo';
+  const appTitle = themeConfig.branding.appTitle;
 
   return (
     <nav className="border-b">
       <div className="max-w-full mx-auto px-3">
         <div className="flex items-center justify-between h-12">
-          <Link href="/" className="font-bold text-lg">
-            Multi-User Attendance
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src={logoSrc}
+              alt={logoAlt}
+              width={32}
+              height={32}
+              className="object-contain"
+            />
+            <span className="font-bold text-lg hidden sm:inline">{appTitle}</span>
           </Link>
           <div className="flex items-center space-x-4">
             {isAuthenticated && enabledItems.map(item => (

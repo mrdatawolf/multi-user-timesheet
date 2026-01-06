@@ -49,3 +49,5 @@ nul
 /electron-app/node_modules
 /electron-app/package-lock.json
 /.claude
+/dist-server
+/examples

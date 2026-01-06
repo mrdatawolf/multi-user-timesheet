@@ -60,9 +60,7 @@ export default function AttendancePage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(new Map());
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -167,56 +165,42 @@ export default function AttendancePage() {
     }
   };
 
-  const handleEntryChange = (date: string, timeCode: string, hours: number, notes: string) => {
-    const newPendingChanges = new Map(pendingChanges);
-    if (timeCode) {
-      newPendingChanges.set(date, { time_code: timeCode, hours, notes });
-    } else {
-      newPendingChanges.set(date, { time_code: '', hours: 0, notes: '' }); // Mark for deletion
-    }
-    setPendingChanges(newPendingChanges);
-  };
+  const handleEntryChange = async (date: string, timeCode: string, hours: number, notes: string) => {
+    if (!selectedEmployeeId) return;
 
-  const handleSave = async () => {
-    if (!selectedEmployeeId || pendingChanges.size === 0) return;
-
-    setSaving(true);
     try {
-      const promises = Array.from(pendingChanges.entries()).map(([date, { time_code, hours, notes }]) => {
-        if (time_code === '') {
-          // Delete entry
-          return fetch('/api/attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'delete',
-              employee_id: selectedEmployeeId,
-              entry_date: date,
-            }),
-          });
-        } else {
-          // Upsert entry
-          return fetch('/api/attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              employee_id: selectedEmployeeId,
-              entry_date: date,
-              time_code: time_code,
-              hours: hours,
-              notes: notes,
-            }),
-          });
-        }
-      });
+      if (timeCode === '__NONE__' || !timeCode) {
+        // Delete entry
+        await fetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            employee_id: selectedEmployeeId,
+            entry_date: date,
+          }),
+        });
+      } else {
+        // Upsert entry
+        await fetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employee_id: selectedEmployeeId,
+            entry_date: date,
+            time_code: timeCode,
+            hours: hours,
+            notes: notes,
+          }),
+        });
+      }
 
-      await Promise.all(promises);
-      setPendingChanges(new Map());
+      // Reload attendance data to show updated entries
       await loadAttendanceData();
 
       toast({
         title: 'Attendance Saved',
-        description: 'Your changes have been saved successfully.',
+        description: 'Entry saved successfully.',
       });
     } catch (error) {
       console.error('Failed to save attendance:', error);
@@ -225,8 +209,6 @@ export default function AttendancePage() {
         description: 'There was an error saving your attendance. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -345,17 +327,9 @@ export default function AttendancePage() {
               <>
                 {/* Attendance Record first layout */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
-                      Attendance Record: {year}
-                    </h2>
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || pendingChanges.size === 0}
-                    >
-                      {saving ? 'Saving...' : `Save Changes${pendingChanges.size > 0 ? ` (${pendingChanges.size})` : ''}`}
-                    </Button>
-                  </div>
+                  <h2 className="text-lg font-semibold">
+                    Attendance Record: {year}
+                  </h2>
 
                   <AttendanceGrid
                     year={year}
@@ -388,17 +362,9 @@ export default function AttendancePage() {
                 <BalanceCards entries={entries} allocations={allocations} />
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
-                      Attendance Record: {year}
-                    </h2>
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || pendingChanges.size === 0}
-                    >
-                      {saving ? 'Saving...' : `Save Changes${pendingChanges.size > 0 ? ` (${pendingChanges.size})` : ''}`}
-                    </Button>
-                  </div>
+                  <h2 className="text-lg font-semibold">
+                    Attendance Record: {year}
+                  </h2>
 
                   <AttendanceGrid
                     year={year}

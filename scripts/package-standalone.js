@@ -1,0 +1,195 @@
+const fs = require('fs');
+const path = require('path');
+
+console.log('Packaging standalone server for distribution...');
+
+const distDir = path.join(__dirname, '..', 'dist-server');
+const standaloneDir = path.join(__dirname, '..', '.next', 'standalone');
+const publicDir = path.join(__dirname, '..', 'public');
+const staticDir = path.join(__dirname, '..', '.next', 'static');
+
+// Create dist-server directory if it doesn't exist
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir, { recursive: true });
+} else {
+  // Clean existing dist-server
+  console.log('Cleaning existing dist-server...');
+  fs.rmSync(distDir, { recursive: true, force: true });
+  fs.mkdirSync(distDir, { recursive: true });
+}
+
+// Copy entire standalone directory
+console.log('Copying standalone server...');
+copyDir(standaloneDir, distDir);
+
+// Copy static files
+console.log('Copying static files...');
+const distStaticDir = path.join(distDir, '.next', 'static');
+if (!fs.existsSync(distStaticDir)) {
+  fs.mkdirSync(distStaticDir, { recursive: true });
+}
+copyDir(staticDir, distStaticDir);
+
+// Copy public folder
+console.log('Copying public folder...');
+if (fs.existsSync(publicDir)) {
+  const distPublicDir = path.join(distDir, 'public');
+  if (fs.existsSync(distPublicDir)) {
+    fs.rmSync(distPublicDir, { recursive: true, force: true });
+  }
+  copyDir(publicDir, distPublicDir);
+}
+
+// Create databases directory
+console.log('Creating databases directory...');
+const distDatabasesDir = path.join(distDir, 'databases');
+if (!fs.existsSync(distDatabasesDir)) {
+  fs.mkdirSync(distDatabasesDir, { recursive: true });
+}
+
+// Create start script
+console.log('Creating start script...');
+const startScript = `@echo off
+title Attendance Server
+echo.
+echo ========================================
+echo   Attendance Management Server
+echo ========================================
+echo.
+echo Starting server on port 6029...
+echo Open your browser to: http://localhost:6029
+echo.
+echo Default login:
+echo   Username: admin
+echo   Password: admin123
+echo.
+echo Press Ctrl+C to stop the server
+echo ========================================
+echo.
+
+node server.js
+
+pause
+`;
+
+fs.writeFileSync(path.join(distDir, 'start-server.bat'), startScript);
+
+// Create README
+console.log('Creating README...');
+const readmeContent = `# Attendance Server - Standalone Distribution
+
+## Prerequisites
+
+This standalone server requires **Node.js 18 or later** to be installed on your system.
+
+Download Node.js from: https://nodejs.org/
+
+## Contents
+
+This directory contains a standalone version of the Attendance application.
+
+### Files and Folders:
+- \`start-server.bat\` - Easy start script (recommended)
+- \`server.js\` - Main server file
+- \`.next/\` - Next.js build output
+- \`public/\` - Static assets
+- \`databases/\` - Database files (created automatically on first run)
+- \`node_modules/\` - Required dependencies
+
+## How to Run
+
+### Quick Start
+1. Double-click \`start-server.bat\`
+2. The server will start and show connection information
+3. Open your browser and navigate to http://localhost:6029
+
+### Command Line
+\`\`\`
+node server.js
+\`\`\`
+
+## Default Login
+
+- Username: admin
+- Password: admin123
+
+**IMPORTANT:** Change the default password after first login!
+
+## Database
+
+The database will be created automatically in the \`databases/\` folder on first run.
+
+To reset the database:
+1. Stop the server (Ctrl+C)
+2. Delete the files in \`databases/\` folder
+3. Restart the server
+
+## Port Configuration
+
+To change the port, set the PORT environment variable:
+
+Windows:
+\`\`\`
+set PORT=8080
+node server.js
+\`\`\`
+
+## Troubleshooting
+
+### Server won't start
+- Make sure Node.js is installed: \`node --version\`
+- Make sure no other application is using port 6029
+- Check that all files and folders are present
+
+### Can't connect
+- Make sure the server is running (check the console window)
+- Try accessing http://localhost:6029 directly
+- Check your firewall settings
+
+## System Requirements
+
+- **Node.js:** Version 18 or later
+- **Operating System:** Windows 10/11, macOS, or Linux
+- **RAM:** Minimum 2GB
+- **Disk Space:** 500MB minimum
+
+## Support
+
+For issues and support, please contact your system administrator.
+`;
+
+fs.writeFileSync(path.join(distDir, 'README.txt'), readmeContent);
+
+console.log('');
+console.log('✓ Server package created successfully in dist-server/');
+console.log('');
+console.log('IMPORTANT: This package requires Node.js to run.');
+console.log('Users need to install Node.js 18+ from https://nodejs.org/');
+console.log('');
+console.log('To test: cd dist-server && start-server.bat');
+console.log('');
+
+// Helper function to recursively copy directory
+function copyDir(src, dest) {
+  if (!fs.existsSync(src)) {
+    console.warn(`Warning: Source directory not found: ${src}`);
+    return;
+  }
+
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (let entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}

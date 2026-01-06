@@ -1,6 +1,6 @@
 {
   "name": "multi-user-attendance",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 6029",
@@ -12,10 +12,11 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "db:seed-employees": "tsx scripts/seed-employees.ts",
-    "build:pkg": "pkg .next/standalone/server.js -t node18-win-x64 -o dist-server/attendance-server.exe --compress GZip",
+    "build:standalone": "node scripts/package-standalone.js",
+    "sync-version": "node scripts/sync-version.js",
     "electron:start": "electron electron-app",
-    "electron:build": "electron-builder --config electron-builder.json",
-    "build:all": "npm run build && npm run build:pkg && npm run electron:build",
+    "electron:build": "node scripts/sync-version.js && electron-builder --config electron-builder.json",
+    "build:all": "npm run build && npm run build:standalone && npm run electron:build",
     "db:reset": "tsx scripts/reset-database.ts",
     "auth:init": "tsx scripts/init-auth-db.ts"
   },
@@ -57,11 +58,14 @@
     "electron-builder": "^26.0.12",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.0.10",
-    "pkg": "^5.8.1",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5.3.0"
   },
-  "main": "electron-main.js"
+  "main": "electron-main.js",
+  "config": {
+    "defaultTheme": "standard",
+    "defaultColorMode": "system"
+  }
 }

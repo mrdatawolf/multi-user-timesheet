@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
+import { useTheme } from '@/lib/theme-context';
+import { getTheme } from '@/lib/themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Calendar, Clock, TrendingUp, LogIn } from 'lucide-react';
@@ -36,6 +39,8 @@ interface EmployeeSummary {
 
 export default function Home() {
   const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { theme: themeId } = useTheme();
+  const themeConfig = getTheme(themeId);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,12 +136,24 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
+    const logoSrc = themeConfig.branding.logo || '/default.png';
+    const logoAlt = themeConfig.branding.logoAlt || 'Logo';
+    const appTitle = themeConfig.branding.appTitle;
+
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="max-w-md text-center space-y-6">
           <div className="border-2 border-dashed rounded-lg p-8">
-            <LogIn className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-3xl font-bold mb-2">Multi-User Attendance</h1>
+            <div className="flex justify-center mb-4">
+              <Image
+                src={logoSrc}
+                alt={logoAlt}
+                width={80}
+                height={80}
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">{appTitle}</h1>
             <p className="text-muted-foreground mb-6">
               Employee attendance management system
             </p>

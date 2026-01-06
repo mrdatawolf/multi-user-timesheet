@@ -67,5 +67,11 @@ export const standardTheme: ThemeConfig = {
     },
   },
 
+  branding: {
+    logo: '/TRLC_logo_smaller.png',
+    logoAlt: 'TRLC Logo',
+    appTitle: 'Multi-User Attendance',
+  },
+
   cssClass: 'theme-standard',
 };
