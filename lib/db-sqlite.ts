@@ -28,6 +28,14 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Add group_id column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN group_id INTEGER`);
+    console.log('  ✓ Added group_id column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Add date_of_hire column if it doesn't exist (for existing databases)
   try {
     await db.execute(`ALTER TABLE employees ADD COLUMN date_of_hire DATE`);

@@ -187,14 +187,20 @@ The database includes these tables:
 
 1. **employees**
    - id, employee_number, first_name, last_name
-   - email, role, is_active
+   - email, role, is_active, group_id, date_of_hire
    - created_at, updated_at
 
 2. **time_codes**
-   - id, code, description, hours_limit
+   - id, code, description, hours_limit, default_allocation
    - is_active, created_at, updated_at
 
 3. **attendance_entries**
-   - id, employee_id, entry_date, time_code
+   - id, employee_id, entry_date, time_code, time_code_id
    - hours, notes
    - created_at, updated_at
+
+4. **employee_time_allocations**
+   - id, employee_id, time_code, time_code_id
+   - allocated_hours, year, notes
+   - created_at, updated_at
+   - Stores custom time off allocations per employee per year

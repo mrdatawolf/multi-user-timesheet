@@ -67,5 +67,9 @@ export const comfortableTheme: ThemeConfig = {
     },
   },
 
+  branding: {
+    appTitle: 'Multi-User Attendance',
+  },
+
   cssClass: 'theme-comfortable',
 };

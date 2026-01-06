@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ThemeId, getTheme, isValidThemeId } from '@/lib/themes';
 import { ColorMode, getColorPalette, getResolvedMode, isValidColorMode } from '@/lib/color-modes';
+import { appConfig } from '@/lib/app-config';
 
 /**
  * Two-Layer Theme System Context
@@ -28,8 +29,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>('standard');
-  const [colorMode, setColorModeState] = useState<ColorMode>('system');
+  const [theme, setThemeState] = useState<ThemeId>(appConfig.defaultTheme);
+  const [colorMode, setColorModeState] = useState<ColorMode>(appConfig.defaultColorMode);
   const [resolvedColorMode, setResolvedColorMode] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -51,24 +52,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
 
-    // Load Layer 2 (Theme) - admin setting, defaults to 'standard'
+    // Load Layer 2 (Theme) - admin setting, defaults from appConfig
     const storedTheme = localStorage.getItem('app_theme');
     if (storedTheme && isValidThemeId(storedTheme)) {
       setThemeState(storedTheme);
     }
 
-    // Load Layer 1 (Color Mode) - user preference, defaults to 'system'
+    // Load Layer 1 (Color Mode) - user preference, defaults from appConfig
     const storedColorMode = localStorage.getItem('app_color_mode');
     if (storedColorMode && isValidColorMode(storedColorMode)) {
       setColorModeState(storedColorMode);
       setResolvedColorMode(getResolvedMode(storedColorMode));
     } else {
-      setResolvedColorMode(getResolvedMode('system'));
+      setResolvedColorMode(getResolvedMode(appConfig.defaultColorMode));
     }
 
     // Apply both layers
-    applyTheme(storedTheme && isValidThemeId(storedTheme) ? storedTheme : 'standard');
-    applyColorMode(storedColorMode && isValidColorMode(storedColorMode) ? storedColorMode : 'system');
+    applyTheme(storedTheme && isValidThemeId(storedTheme) ? storedTheme : appConfig.defaultTheme);
+    applyColorMode(storedColorMode && isValidColorMode(storedColorMode) ? storedColorMode : appConfig.defaultColorMode);
   }, []);
 
   const applyColorMode = (mode: ColorMode) => {
@@ -187,9 +188,9 @@ export function useTheme() {
   if (context === undefined) {
     // Return default values for SSR/SSG
     return {
-      theme: 'standard' as ThemeId,
+      theme: appConfig.defaultTheme,
       setTheme: () => {},
-      colorMode: 'system' as ColorMode,
+      colorMode: appConfig.defaultColorMode,
       setColorMode: () => {},
       resolvedColorMode: 'light' as const,
     };

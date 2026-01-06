@@ -67,5 +67,11 @@ export const compactTheme: ThemeConfig = {
     },
   },
 
+  branding: {
+    logo: '/biztech.png',
+    logoAlt: 'TRLC Logo',
+    appTitle: 'Multi-User Attendance',
+  },
+
   cssClass: 'theme-compact',
 };

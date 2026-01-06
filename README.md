@@ -13,8 +13,9 @@ This application digitizes the traditional Excel-based Attendance process with:
 - **Dashboard** - Statistics and summaries (optional feature)
 - **Reports** - Filterable reports with CSV export (optional feature)
 - **SQLite database** - Fast, reliable data persistence
-- **Employee management** - Add and manage employee records
+- **Employee management** - Add and manage employee records with custom time allocations
 - **Time code tracking** - Vacation, Holiday, Personal, and more
+- **Custom allocations** - Set employee-specific time off limits per year
 
 ## Time Codes
 
@@ -136,6 +137,7 @@ See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database manag
 ├── app/                          # Next.js app directory
 │   ├── api/                      # API routes
 │   │   ├── employees/           # Employee CRUD endpoints
+│   │   ├── employee-allocations/ # Employee time allocation endpoints
 │   │   ├── reports/             # Report generation endpoint
 │   │   ├── time-codes/          # Time code endpoints
 │   │   └── attendance/          # Attendance entry endpoints
@@ -150,6 +152,7 @@ See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database manag
 │   ├── ui/                      # shadcn/ui base components
 │   ├── balance-cards.tsx        # Time code balance display
 │   ├── entry-edit-dialog.tsx   # Entry editing modal
+│   ├── employee-allocations-dialog.tsx  # Employee time allocation management
 │   ├── navbar.tsx               # Navigation bar
 │   ├── providers.tsx            # Context providers (Auth, Theme)
 │   └── attendance-grid.tsx      # Calendar grid component
@@ -182,8 +185,9 @@ The database includes the following tables:
 
 **Core Tables:**
 - `employees` - Employee records with group assignments
-- `time_codes` - Time entry code definitions
+- `time_codes` - Time entry code definitions with default allocations
 - `attendance_entries` - Daily time entries
+- `employee_time_allocations` - Custom time off allocations per employee per year
 
 **Authentication & Security Tables:**
 - `users` - User accounts with encrypted passwords
@@ -266,9 +270,19 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
 ### Balance Tracking
 - Real-time calculation of time code usage
-- Progress bars for limited codes (Floating Holiday, Personal Sick)
+- Dynamic allocation limits per employee (customizable in Users tab)
+- Progress bars for limited codes (Floating Holiday, Personal Sick, etc.)
 - Color-coded remaining hours
 - Separate cards for each time code type
+- Automatic sync between Users tab (allocation management) and Attendance tab (balance display)
+
+### Employee Time Allocations
+- Customize time off allocations per employee per year
+- Override default allocations (e.g., part-time employees with reduced PTO)
+- Manage allocations via clock icon in Users tab
+- Changes immediately reflected in Attendance tab balance cards
+- Revert to defaults option for any allocation
+- Support for mid-year adjustments and custom arrangements
 
 ### Dashboard (Optional)
 - Total employees, entries, hours statistics
