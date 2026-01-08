@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AttendanceGrid } from '@/components/attendance-grid';
+import { AttendanceGrid, type AttendanceEntry } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,15 +30,6 @@ interface TimeCode {
   code: string;
   description: string;
   hours_limit?: number;
-}
-
-interface AttendanceEntry {
-  id: number;
-  employee_id: number;
-  entry_date: string;
-  time_code: string;
-  hours: number;
-  notes?: string;
 }
 
 interface TimeAllocation {
@@ -164,42 +155,30 @@ export default function AttendancePage() {
     }
   };
 
-  const handleEntryChange = async (date: string, timeCode: string, hours: number, notes: string) => {
+  const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[]) => {
     if (!selectedEmployeeId) return;
 
     try {
-      if (timeCode === '__NONE__' || !timeCode) {
-        // Delete entry
-        await fetch('/api/attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'delete',
-            employee_id: selectedEmployeeId,
-            entry_date: date,
-          }),
-        });
-      } else {
-        // Upsert entry
-        await fetch('/api/attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employee_id: selectedEmployeeId,
-            entry_date: date,
-            time_code: timeCode,
-            hours: hours,
-            notes: notes,
-          }),
-        });
-      }
+      // Send batch update to API
+      await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_day',
+          employee_id: selectedEmployeeId,
+          entry_date: date,
+          entries: updatedEntries,
+        }),
+      });
 
       // Reload attendance data to show updated entries
       await loadAttendanceData();
 
       toast({
         title: 'Attendance Saved',
-        description: 'Entry saved successfully.',
+        description: updatedEntries.length === 0
+          ? 'Entries deleted successfully.'
+          : `${updatedEntries.length} ${updatedEntries.length === 1 ? 'entry' : 'entries'} saved successfully.`,
       });
     } catch (error) {
       console.error('Failed to save attendance:', error);
