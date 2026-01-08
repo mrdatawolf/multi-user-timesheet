@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllEmployees, createEmployee, getEmployeeById } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
-import { canUserViewGroup, canUserEditGroup, logAudit } from '@/lib/queries-auth';
+import {
+  canUserViewGroup,
+  canUserEditGroup,
+  logAudit,
+  getUserReadableGroups,
+  canUserReadGroup,
+  canUserCreateInGroup,
+  canUserUpdateInGroup,
+  canUserDeleteInGroup,
+  isSuperuser,
+} from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 
 export async function GET(request: NextRequest) {
@@ -25,10 +35,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
       }
 
-      // Check permissions
-      if (employee.group_id && !authUser.group?.is_master && !authUser.group?.can_view_all) {
-        const canView = await canUserViewGroup(authUser.id, employee.group_id);
-        if (!canView && authUser.group_id !== employee.group_id) {
+      // Check permissions using Phase 2 CRUD permissions
+      if (employee.group_id) {
+        const canView = await canUserReadGroup(authUser.id, employee.group_id);
+        if (!canView) {
           return NextResponse.json(
             { error: 'Forbidden: You do not have permission to view this employee' },
             { status: 403 }
@@ -41,26 +51,21 @@ export async function GET(request: NextRequest) {
       // Get all employees (filter based on permissions)
       let employees = await getAllEmployees();
 
+      // Check if user is superuser
+      const userIsSuperuser = await isSuperuser(authUser.id);
+
       // Filter out inactive employees unless includeInactive is true
-      // Only Master users can see inactive employees
-      if (!includeInactive || !authUser.group?.is_master) {
+      // Only superusers can see inactive employees
+      if (!includeInactive || !userIsSuperuser) {
         employees = employees.filter(emp => emp.is_active === 1);
       }
 
-      // If user is not master or can't view all, filter employees by permissions
-      if (!authUser.group?.is_master && !authUser.group?.can_view_all) {
-        const filteredEmployees = [];
-        for (const employee of employees) {
-          if (!employee.group_id || employee.group_id === authUser.group_id) {
-            filteredEmployees.push(employee);
-          } else {
-            const canView = await canUserViewGroup(authUser.id, employee.group_id);
-            if (canView) {
-              filteredEmployees.push(employee);
-            }
-          }
-        }
-        employees = filteredEmployees;
+      // Filter employees based on user's readable groups (Phase 2 permissions)
+      if (!userIsSuperuser) {
+        const readableGroupIds = await getUserReadableGroups(authUser.id);
+        employees = employees.filter(emp =>
+          !emp.group_id || readableGroupIds.includes(emp.group_id)
+        );
       }
 
       return NextResponse.json(employees);
@@ -84,10 +89,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Check if user can create employees in the specified group
-    if (body.group_id && !authUser.group?.is_master && !authUser.group?.can_edit_all) {
-      const canEdit = await canUserEditGroup(authUser.id, body.group_id);
-      if (!canEdit && authUser.group_id !== body.group_id) {
+    // Check if user can create employees in the specified group (Phase 2 CRUD permissions)
+    if (body.group_id) {
+      const canCreate = await canUserCreateInGroup(authUser.id, body.group_id);
+      if (!canCreate) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to create employees in this group' },
           { status: 403 }
@@ -160,10 +165,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions for the old group
-    if (oldEmployee.group_id && !authUser.group?.is_master && !authUser.group?.can_edit_all) {
-      const canEdit = await canUserEditGroup(authUser.id, oldEmployee.group_id);
-      if (!canEdit && authUser.group_id !== oldEmployee.group_id) {
+    // Check permissions for the old group (Phase 2 CRUD permissions)
+    if (oldEmployee.group_id) {
+      const canUpdate = await canUserUpdateInGroup(authUser.id, oldEmployee.group_id);
+      if (!canUpdate) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to edit this employee' },
           { status: 403 }
@@ -297,41 +302,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions - can delete if:
-    // 1. User is Master
-    // 2. User created this employee
-    // 3. User has can_edit_all permission
-    // 4. User is HR/Manager of the employee's group (same group + has edit permission)
-    let canDelete = false;
-
-    if (authUser.group?.is_master) {
-      // Master can delete all
-      canDelete = true;
-    } else if (employee.created_by && employee.created_by === authUser.id) {
-      // Creator can delete
-      canDelete = true;
-    } else if (authUser.group?.can_edit_all) {
-      // Users with can_edit_all can delete all
-      canDelete = true;
-    } else if (employee.group_id && authUser.group_id === employee.group_id) {
-      // User is in the same group - check if they have edit permission for this group
-      const canEdit = await canUserEditGroup(authUser.id, employee.group_id);
-      if (canEdit) {
-        canDelete = true;
+    // Check permissions using Phase 2 CRUD permissions
+    if (employee.group_id) {
+      const hasDeletePermission = await canUserDeleteInGroup(authUser.id, employee.group_id);
+      if (!hasDeletePermission) {
+        return NextResponse.json(
+          { error: 'Forbidden: You do not have permission to delete this employee' },
+          { status: 403 }
+        );
       }
-    } else if (employee.group_id) {
-      // Check if user has specific permission to edit this employee's group
-      const canEdit = await canUserEditGroup(authUser.id, employee.group_id);
-      if (canEdit) {
-        canDelete = true;
-      }
-    }
-
-    if (!canDelete) {
-      return NextResponse.json(
-        { error: 'Forbidden: You do not have permission to delete this employee' },
-        { status: 403 }
-      );
     }
 
     // Don't actually delete, just deactivate

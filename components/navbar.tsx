@@ -20,11 +20,12 @@ import {
 import { User, LogOut, Shield } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/attendance', label: 'Attendance', enabled: true },
-  { href: '/users', label: 'Employees', enabled: true },
-  { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard },
-  { href: '/reports', label: 'Reports', enabled: config.features.enableReports },
-  { href: '/settings', label: 'Settings', enabled: true },
+  { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
+  { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false },
+  { href: '/users', label: 'Users', enabled: true, superuserOnly: true },
+  { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false },
+  { href: '/reports', label: 'Reports', enabled: config.features.enableReports, superuserOnly: false },
+  { href: '/settings', label: 'Settings', enabled: true, superuserOnly: false },
 ];
 
 export function Navbar() {
@@ -32,7 +33,11 @@ export function Navbar() {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
-  const enabledItems = NAV_ITEMS.filter(item => item.enabled);
+  const enabledItems = NAV_ITEMS.filter(item => {
+    if (!item.enabled) return false;
+    if (item.superuserOnly && (!user || !user.is_superuser)) return false;
+    return true;
+  });
 
   const logoSrc = themeConfig.branding.logo || '/default.png';
   const logoAlt = themeConfig.branding.logoAlt || 'Logo';

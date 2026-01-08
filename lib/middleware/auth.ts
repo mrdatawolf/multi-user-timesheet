@@ -13,6 +13,7 @@ export interface AuthUser {
   full_name: string;
   email?: string;
   group_id: number;
+  is_superuser?: number;
   group?: Group;
 }
 
@@ -83,6 +84,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     full_name: user.full_name,
     email: user.email,
     group_id: user.group_id,
+    is_superuser: user.is_superuser,
     group: group || undefined,
   };
 }
