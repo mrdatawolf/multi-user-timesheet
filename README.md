@@ -85,7 +85,7 @@ The application includes a complete authentication and authorization system:
 - Password: `admin123`
 - ⚠️ **IMPORTANT:** Change this password in production!
 
-See [AUTH-SYSTEM.md](AUTH-SYSTEM.md) for complete authentication documentation.
+See [AUTH-SYSTEM.md](info/AUTH-SYSTEM.md) for complete authentication documentation.
 
 ## Getting Started
 
@@ -111,7 +111,7 @@ Open [http://localhost:6029](http://localhost:6029) to view the application.
 
 ### Database Management
 
-> ⚠️ **IMPORTANT:** All databases are stored in the `databases/` folder at the project root. See [DATABASE-LOCATION.md](DATABASE-LOCATION.md) for details.
+> ⚠️ **IMPORTANT:** All databases are stored in the `databases/` folder at the project root. See [DATABASE-LOCATION.md](info/DATABASE-LOCATION.md) for details.
 
 ```bash
 # Reset database (deletes all data and recreates with auth tables)
@@ -129,7 +129,7 @@ npm run db:seed
 
 **Recommended:** Use `npm run db:reset` to initialize a fresh database with authentication tables and default admin user.
 
-See [DATABASE-MANAGEMENT.md](DATABASE-MANAGEMENT.md) for complete database management documentation.
+See [DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md) for complete database management documentation.
 
 ## Project Structure
 
@@ -195,7 +195,7 @@ The database includes the following tables:
 - `group_permissions` - Granular group-to-group permissions
 - `audit_log` - Complete change tracking for all modifications
 
-See [AUTH-SYSTEM.md](AUTH-SYSTEM.md) for detailed schema documentation.
+See [AUTH-SYSTEM.md](info/AUTH-SYSTEM.md) for detailed schema documentation.
 
 ## Configuration
 
@@ -313,3 +313,79 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - Approval workflows
 - Advanced analytics
 - Notifications
+
+## Documentation
+
+All detailed documentation is located in the [`info/`](info/) folder:
+
+### Core Documentation
+- **[AUTH-SYSTEM.md](info/AUTH-SYSTEM.md)** - Complete authentication and authorization system documentation
+  - User management and groups
+  - Permission model and access controls
+  - Audit logging
+  - Security best practices
+
+- **[DATABASE-LOCATION.md](info/DATABASE-LOCATION.md)** - Database file locations and structure
+  - Where databases are stored
+  - Why the `databases/` folder approach
+  - Migration considerations
+
+- **[DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md)** - Database operations guide
+  - Initialization and reset procedures
+  - Migration scripts
+  - Seeding data
+  - Backup and restore
+
+- **[DEPLOYMENT.md](info/DEPLOYMENT.md)** - Deployment and build instructions
+  - Electron desktop application builds
+  - Standalone Node.js server distribution
+  - Custom theme and icon configuration
+  - Build troubleshooting
+
+### Development Documentation
+- **[CHANGES-SUMMARY.md](info/CHANGES-SUMMARY.md)** - Detailed changelog of all features and fixes
+  - Phase 1 implementation history
+  - Bug fixes and improvements
+  - Architecture decisions
+
+### Phase 2 Planning
+- **[PHASE-2-PLAN.md](info/PHASE-2-PLAN.md)** - Comprehensive Phase 2 implementation plan
+  - Employee-filtered views
+  - Personalized dashboards
+  - Enhanced access controls
+  - UX improvements
+  - 4-sprint roadmap (6-8 weeks)
+
+- **[PHASE-2-CHECKLIST.md](info/PHASE-2-CHECKLIST.md)** - Phase 2 task checklist
+  - Sprint-by-sprint task breakdown
+  - Testing requirements
+  - Deployment steps
+  - Success criteria
+
+### Component Documentation
+- **[lib/themes/README.md](lib/themes/README.md)** - Theme system creation guide
+  - How to create custom themes
+  - Theme configuration options
+  - Color mode vs theme explained
+
+- **[lib/CONFIG.md](lib/CONFIG.md)** - Feature flags and configuration
+  - Enabling/disabling features
+  - Configuration options
+  - Environment variables
+
+## Contributing
+
+When adding new features or making changes:
+1. Update relevant documentation in the `info/` folder
+2. Update this README if the change affects core functionality
+3. Follow the existing code structure and patterns
+4. Add tests for new features
+5. Update CHANGES-SUMMARY.md with your changes
+
+## Support
+
+For questions or issues:
+1. Check the documentation in the [`info/`](info/) folder first
+2. Review the relevant `.md` files for your use case
+3. Check existing issues or create a new one
+

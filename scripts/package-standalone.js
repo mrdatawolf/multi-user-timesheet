@@ -67,6 +67,9 @@ echo Press Ctrl+C to stop the server
 echo ========================================
 echo.
 
+set PORT=6029
+set HOSTNAME=0.0.0.0
+
 node server.js
 
 pause

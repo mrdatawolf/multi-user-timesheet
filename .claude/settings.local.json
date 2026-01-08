@@ -26,7 +26,8 @@
       "Bash(findstr:*)",
       "Bash(timeout /t 10 /nobreak)",
       "Bash(dir:*)",
-      "Bash(timeout /t 3 /nobreak)"
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(ls:*)"
     ]
   }
 }
