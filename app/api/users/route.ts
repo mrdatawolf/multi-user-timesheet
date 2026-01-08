@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       email: body.email,
       group_id: body.group_id,
       is_active: body.is_active !== undefined ? body.is_active : 1,
-      color_mode: 'light'
+      is_superuser: body.is_superuser !== undefined ? body.is_superuser : 0,
+      color_mode: 'system'
     });
 
     // Log audit entry
@@ -177,6 +178,11 @@ export async function PUT(request: NextRequest) {
       args.push(body.is_active);
     }
 
+    if (body.is_superuser !== undefined) {
+      updates.push('is_superuser = ?');
+      args.push(body.is_superuser);
+    }
+
     if (body.password) {
       updates.push('password_hash = ?');
       args.push(await hashPassword(body.password));
@@ -192,8 +198,8 @@ export async function PUT(request: NextRequest) {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     args.push(userId);
 
-    const { db } = await import('@/lib/db-sqlite');
-    await db.execute({
+    const { authDb } = await import('@/lib/db-auth');
+    await authDb.execute({
       sql: `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
       args,
     });
@@ -271,8 +277,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Don't actually delete, just deactivate
-    const { db } = await import('@/lib/db-sqlite');
-    await db.execute({
+    const { authDb } = await import('@/lib/db-auth');
+    await authDb.execute({
       sql: 'UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       args: [userId],
     });

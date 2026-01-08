@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AttendanceGrid } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
-import { NewEmployeeDialog } from '@/components/new-employee-dialog';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/spinner';
@@ -14,6 +12,8 @@ import { UserPlus } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 import { useAuth } from '@/lib/auth-context';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface Employee {
   id: number;
@@ -60,7 +60,6 @@ export default function AttendancePage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
-  const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -212,47 +211,6 @@ export default function AttendancePage() {
     }
   };
 
-  const handleNewEmployee = async (employeeData: {
-    first_name: string;
-    last_name: string;
-    employee_number: string;
-    email: string;
-  }) => {
-    try {
-      const res = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(employeeData),
-      });
-
-      const newEmployee = await res.json();
-
-      // Validate response has an id
-      if (newEmployee && newEmployee.id) {
-        setEmployees([...employees, newEmployee]);
-        setSelectedEmployeeId(newEmployee.id);
-        toast({
-          title: 'Employee Created',
-          description: `Welcome, ${newEmployee.first_name}!`,
-        });
-      } else {
-        console.error('Invalid response from create employee:', newEmployee);
-        toast({
-          title: 'Creation Failed',
-          description: 'There was an error creating the employee.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to create employee:', error);
-      toast({
-        title: 'Creation Failed',
-        description: 'There was an error creating the employee.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const years = Array.from(
     { length: 5 },
     (_, i) => new Date().getFullYear() - 2 + i
@@ -276,9 +234,6 @@ export default function AttendancePage() {
       <div className="max-w-full mx-auto space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Attendance</h1>
-          <Button onClick={() => setNewEmployeeOpen(true)} variant="outline" size="sm">
-            New Employee
-          </Button>
         </div>
         <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
           <div className="flex-1 min-w-[200px] space-y-1">
@@ -398,19 +353,15 @@ export default function AttendancePage() {
             <UserPlus className="w-16 h-16 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-1.5">No Employees Yet</h2>
             <p className="text-muted-foreground mb-3">
-              Create your first employee to get started with attendance tracking.
+              Go to the Employees tab to add employees and get started with attendance tracking.
             </p>
-            <Button onClick={() => setNewEmployeeOpen(true)}>
-              Add First Employee
-            </Button>
+            <Link href="/employees">
+              <Button>
+                Go to Employees
+              </Button>
+            </Link>
           </div>
         )}
-
-        <NewEmployeeDialog
-          open={newEmployeeOpen}
-          onOpenChange={setNewEmployeeOpen}
-          onSubmit={handleNewEmployee}
-        />
       </div>
     </div>
   );

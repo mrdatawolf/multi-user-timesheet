@@ -1,6 +1,8 @@
 import { createClient } from '@libsql/client';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { runMigrations } from './migrations';
+import { authMigrations } from './migrations/auth/migrations';
 
 // SEPARATE DATABASE FOR AUTHENTICATION
 // For Next.js runtime, process.cwd() is safe because Next.js always runs from project root
@@ -111,4 +113,8 @@ export async function initializeAuthDatabase() {
   console.log('  - Audit log table created');
   console.log('  - Group permissions table created');
   console.log('  - Default admin user created (username: admin, password: admin123)');
+
+  // Run migrations
+  console.log('\n🔄 Running auth database migrations...');
+  await runMigrations(authDb, authMigrations, 'auth.db');
 }

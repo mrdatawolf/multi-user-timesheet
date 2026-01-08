@@ -8,7 +8,8 @@ export interface User {
   email?: string;
   group_id: number;
   is_active: number;
-  color_mode: 'light' | 'dark' | 'system';
+  is_superuser?: number;
+  color_mode?: 'light' | 'dark' | 'system';
   last_login?: string;
   created_at: string;
   updated_at: string;
@@ -70,8 +71,8 @@ export async function getAllUsers(): Promise<User[]> {
 
 export async function createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at' | 'last_login'>): Promise<User> {
   const result = await db.execute({
-    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, is_active)
-          VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, is_active, is_superuser, color_mode)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       user.username,
       user.password_hash,
@@ -79,6 +80,8 @@ export async function createUser(user: Omit<User, 'id' | 'created_at' | 'updated
       user.email || null,
       user.group_id,
       user.is_active,
+      user.is_superuser || 0,
+      user.color_mode || 'system',
     ],
   });
 
@@ -264,4 +267,155 @@ export async function updateUserColorMode(userId: number, colorMode: 'light' | '
     sql: 'UPDATE users SET color_mode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     args: [colorMode, userId],
   });
+}
+
+// ============================================================================
+// PHASE 2: User-specific CRUD permissions
+// ============================================================================
+
+export interface UserGroupPermission {
+  id: number;
+  user_id: number;
+  group_id: number;
+  can_create: number;
+  can_read: number;
+  can_update: number;
+  can_delete: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get all group permissions for a user
+ */
+export async function getUserGroupPermissions(userId: number): Promise<UserGroupPermission[]> {
+  const result = await db.execute({
+    sql: 'SELECT * FROM user_group_permissions WHERE user_id = ?',
+    args: [userId],
+  });
+  return result.rows as unknown as UserGroupPermission[];
+}
+
+/**
+ * Get permission for a specific user and group
+ */
+export async function getUserGroupPermission(userId: number, groupId: number): Promise<UserGroupPermission | null> {
+  const result = await db.execute({
+    sql: 'SELECT * FROM user_group_permissions WHERE user_id = ? AND group_id = ?',
+    args: [userId, groupId],
+  });
+  return (result.rows[0] as unknown as UserGroupPermission) || null;
+}
+
+/**
+ * Set CRUD permissions for a user on a specific group
+ */
+export async function setUserGroupPermission(
+  userId: number,
+  groupId: number,
+  permissions: { can_create: boolean; can_read: boolean; can_update: boolean; can_delete: boolean }
+): Promise<void> {
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO user_group_permissions
+          (user_id, group_id, can_create, can_read, can_update, can_delete, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    args: [
+      userId,
+      groupId,
+      permissions.can_create ? 1 : 0,
+      permissions.can_read ? 1 : 0,
+      permissions.can_update ? 1 : 0,
+      permissions.can_delete ? 1 : 0,
+    ],
+  });
+}
+
+/**
+ * Remove all permissions for a user on a specific group
+ */
+export async function removeUserGroupPermission(userId: number, groupId: number): Promise<void> {
+  await db.execute({
+    sql: 'DELETE FROM user_group_permissions WHERE user_id = ? AND group_id = ?',
+    args: [userId, groupId],
+  });
+}
+
+/**
+ * Check if user is a superuser
+ */
+export async function isSuperuser(userId: number): Promise<boolean> {
+  const user = await getUserById(userId);
+  return user?.is_superuser === 1;
+}
+
+/**
+ * Check if user can create employees in a group
+ */
+export async function canUserCreateInGroup(userId: number, groupId: number): Promise<boolean> {
+  // Superuser can do anything
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_create === 1;
+}
+
+/**
+ * Check if user can read/view employees in a group
+ */
+export async function canUserReadGroup(userId: number, groupId: number): Promise<boolean> {
+  // Superuser can do anything
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_read === 1;
+}
+
+/**
+ * Check if user can update employees in a group
+ */
+export async function canUserUpdateInGroup(userId: number, groupId: number): Promise<boolean> {
+  // Superuser can do anything
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_update === 1;
+}
+
+/**
+ * Check if user can delete employees in a group
+ */
+export async function canUserDeleteInGroup(userId: number, groupId: number): Promise<boolean> {
+  // Superuser can do anything
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_delete === 1;
+}
+
+/**
+ * Get all groups a user can read (view)
+ */
+export async function getUserReadableGroups(userId: number): Promise<number[]> {
+  // Superuser can read all groups
+  if (await isSuperuser(userId)) {
+    const allGroups = await getAllGroups();
+    return allGroups.map(g => g.id);
+  }
+
+  const permissions = await getUserGroupPermissions(userId);
+  return permissions.filter(p => p.can_read === 1).map(p => p.group_id);
+}
+
+/**
+ * Get all groups a user can create employees in
+ */
+export async function getUserCreatableGroups(userId: number): Promise<number[]> {
+  // Superuser can create in all groups
+  if (await isSuperuser(userId)) {
+    const allGroups = await getAllGroups();
+    return allGroups.map(g => g.id);
+  }
+
+  const permissions = await getUserGroupPermissions(userId);
+  return permissions.filter(p => p.can_create === 1).map(p => p.group_id);
 }

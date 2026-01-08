@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -20,7 +21,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -29,47 +29,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock } from 'lucide-react';
-import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
+import { Plus, Pencil, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
+import { UserPermissionsDialog } from '@/components/user-permissions-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
-interface Employee {
+interface User {
   id: number;
-  employee_number?: string;
-  first_name: string;
-  last_name: string;
+  username: string;
+  full_name: string;
   email?: string;
-  role: string;
-  group_id?: number;
-  date_of_hire?: string;
-  created_by?: number;
+  group_id: number;
   is_active: number;
+  is_superuser?: number;
+  last_login?: string;
 }
 
 interface Group {
   id: number;
   name: string;
-  description: string;
+  description?: string;
+  is_master: number;
 }
 
 export default function UsersPage() {
-  const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading: authLoading, token } = useAuth();
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-  const [allocationsDialogOpen, setAllocationsDialogOpen] = useState(false);
-  const [selectedEmployeeForAllocations, setSelectedEmployeeForAllocations] = useState<Employee | null>(null);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<User | null>(null);
   const [formData, setFormData] = useState({
-    employee_number: '',
-    first_name: '',
-    last_name: '',
+    username: '',
+    password: '',
+    full_name: '',
     email: '',
-    role: 'employee',
     group_id: '',
-    date_of_hire: '',
+    is_superuser: false,
   });
 
   useEffect(() => {
@@ -80,15 +79,19 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      loadEmployees();
+      // Only superusers can access this page
+      if (currentUser && !currentUser.is_superuser) {
+        router.push('/');
+        return;
+      }
+      loadUsers();
       loadGroups();
     }
-  }, [isAuthenticated, token, showInactive]);
+  }, [isAuthenticated, token, showInactive, currentUser]);
 
-  const loadEmployees = async () => {
+  const loadUsers = async () => {
     try {
-      const url = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
-      const response = await fetch(url, {
+      const response = await fetch('/api/users', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -96,10 +99,11 @@ export default function UsersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setEmployees(data);
+        const filteredUsers = showInactive ? data : data.filter((u: User) => u.is_active === 1);
+        setUsers(filteredUsers);
       }
     } catch (error) {
-      console.error('Failed to load employees:', error);
+      console.error('Failed to load users:', error);
     } finally {
       setIsLoading(false);
     }
@@ -122,33 +126,31 @@ export default function UsersPage() {
     }
   };
 
-  const handleOpenAllocationsDialog = (employee: Employee) => {
-    setSelectedEmployeeForAllocations(employee);
-    setAllocationsDialogOpen(true);
+  const handleOpenPermissionsDialog = (user: User) => {
+    setSelectedUserForPermissions(user);
+    setPermissionsDialogOpen(true);
   };
 
-  const handleOpenDialog = (employee?: Employee) => {
-    if (employee) {
-      setEditingEmployee(employee);
+  const handleOpenDialog = (user?: User) => {
+    if (user) {
+      setEditingUser(user);
       setFormData({
-        employee_number: employee.employee_number || '',
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        email: employee.email || '',
-        role: employee.role,
-        group_id: employee.group_id?.toString() || '',
-        date_of_hire: employee.date_of_hire || '',
+        username: user.username,
+        password: '',
+        full_name: user.full_name,
+        email: user.email || '',
+        group_id: user.group_id.toString(),
+        is_superuser: user.is_superuser === 1,
       });
     } else {
-      setEditingEmployee(null);
+      setEditingUser(null);
       setFormData({
-        employee_number: '',
-        first_name: '',
-        last_name: '',
+        username: '',
+        password: '',
+        full_name: '',
         email: '',
-        role: 'employee',
         group_id: '',
-        date_of_hire: '',
+        is_superuser: false,
       });
     }
     setIsDialogOpen(true);
@@ -156,7 +158,7 @@ export default function UsersPage() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingEmployee(null);
+    setEditingUser(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,31 +166,47 @@ export default function UsersPage() {
 
     const payload = {
       ...formData,
-      group_id: formData.group_id ? parseInt(formData.group_id) : null,
-      date_of_hire: formData.date_of_hire || null,
+      group_id: parseInt(formData.group_id),
+      is_superuser: formData.is_superuser ? 1 : 0,
     };
 
     try {
-      if (editingEmployee) {
-        // Update employee
-        const response = await fetch('/api/employees', {
+      if (editingUser) {
+        // Update user
+        const updatePayload: any = {
+          id: editingUser.id,
+          full_name: formData.full_name,
+          email: formData.email || undefined,
+          group_id: parseInt(formData.group_id),
+          is_superuser: formData.is_superuser ? 1 : 0,
+        };
+
+        // Only include password if it's been changed
+        if (formData.password) {
+          updatePayload.password = formData.password;
+        }
+
+        const response = await fetch('/api/users', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            id: editingEmployee.id,
-            ...payload,
-          }),
+          body: JSON.stringify(updatePayload),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to update employee');
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update user');
         }
       } else {
-        // Create employee
-        const response = await fetch('/api/employees', {
+        // Create user
+        if (!formData.password) {
+          alert('Password is required for new users');
+          return;
+        }
+
+        const response = await fetch('/api/users', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -198,25 +216,31 @@ export default function UsersPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create employee');
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create user');
         }
       }
 
       handleCloseDialog();
-      loadEmployees();
+      loadUsers();
     } catch (error) {
-      console.error('Failed to save employee:', error);
-      alert('Failed to save employee');
+      console.error('Failed to save user:', error);
+      alert(error instanceof Error ? error.message : 'Failed to save user');
     }
   };
 
-  const handleDelete = async (employee: Employee) => {
-    if (!confirm(`Are you sure you want to deactivate ${employee.first_name} ${employee.last_name}?`)) {
+  const handleDelete = async (user: User) => {
+    if (user.id === currentUser?.id) {
+      alert('You cannot deactivate your own account');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to deactivate ${user.full_name}?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/employees?id=${employee.id}`, {
+      const response = await fetch(`/api/users?id=${user.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -224,68 +248,18 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete employee');
+        throw new Error('Failed to delete user');
       }
 
-      loadEmployees();
+      loadUsers();
     } catch (error) {
-      console.error('Failed to delete employee:', error);
-      alert('Failed to delete employee');
+      console.error('Failed to delete user:', error);
+      alert('Failed to delete user');
     }
   };
 
-  // Check if current user can edit a given employee
-  const canEditEmployee = (employee: Employee): boolean => {
-    if (!user || !user.group) return false;
-
-    // Master group can edit all
-    if (user.group.is_master) return true;
-
-    // Users with can_edit_all permission can edit all
-    if (user.group.can_edit_all) return true;
-
-    // Users can edit employees in their own group
-    if (employee.group_id && employee.group_id === user.group_id) return true;
-
-    // Otherwise, no permission
-    return false;
-  };
-
-  // Check if current user can delete a given employee
-  const canDeleteEmployee = (employee: Employee): boolean => {
-    if (!user || !user.group) return false;
-
-    // Master users can delete any employee
-    if (user.group.is_master) return true;
-
-    // Creator can delete their own employees
-    if (employee.created_by && employee.created_by === user.id) return true;
-
-    // Users with can_edit_all permission can delete all
-    if (user.group.can_edit_all) return true;
-
-    // Users can delete employees in their own group (if they have edit permission)
-    if (employee.group_id && employee.group_id === user.group_id) return true;
-
-    return false;
-  };
-
-  // Check if current user can create new employees
-  const canCreateEmployee = (): boolean => {
-    if (!user || !user.group) return false;
-
-    // Master group can create employees
-    if (user.group.is_master) return true;
-
-    // Users with can_edit_all permission can create employees
-    if (user.group.can_edit_all) return true;
-
-    // Regular users can create employees in their own group
-    // This is a more permissive option - uncomment if desired:
-    // return true;
-
-    // By default, only Master and can_edit_all users can create
-    return false;
+  const getGroupName = (groupId: number) => {
+    return groups.find((g) => g.id === groupId)?.name || 'Unknown';
   };
 
   if (authLoading || isLoading) {
@@ -299,7 +273,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !currentUser?.is_superuser) {
     return null;
   }
 
@@ -307,35 +281,31 @@ export default function UsersPage() {
     <div className="container mx-auto p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Employee Management</h1>
-          <p className="text-muted-foreground">Manage employee records and information</p>
+          <h1 className="text-3xl font-bold">System Users Management</h1>
+          <p className="text-muted-foreground">Manage user accounts and permissions</p>
         </div>
         <div className="flex gap-2">
-          {user?.group?.is_master && (
-            <Button
-              variant="outline"
-              onClick={() => setShowInactive(!showInactive)}
-              className="gap-2"
-            >
-              {showInactive ? (
-                <>
-                  <EyeOff className="h-4 w-4" />
-                  Hide Inactive
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4" />
-                  Show Inactive
-                </>
-              )}
-            </Button>
-          )}
-          {canCreateEmployee() && (
-            <Button onClick={() => handleOpenDialog()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Employee
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            onClick={() => setShowInactive(!showInactive)}
+            className="gap-2"
+          >
+            {showInactive ? (
+              <>
+                <EyeOff className="h-4 w-4" />
+                Hide Inactive
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4" />
+                Show Inactive
+              </>
+            )}
+          </Button>
+          <Button onClick={() => handleOpenDialog()} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add User
+          </Button>
         </div>
       </div>
 
@@ -343,86 +313,85 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Employee #</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead>Username</TableHead>
+              <TableHead>Full Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
               <TableHead>Group</TableHead>
-              <TableHead>Date of Hire</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Last Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.length === 0 ? (
+            {users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  No employees found
+                  No users found
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => (
+              users.map((user) => (
                 <TableRow
-                  key={employee.id}
-                  className={employee.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}
+                  key={user.id}
+                  className={user.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}
                 >
-                  <TableCell className="font-mono">
-                    {employee.employee_number || '-'}
-                    {employee.is_active === 0 && (
-                      <span className="ml-2 text-xs text-muted-foreground italic">(Inactive)</span>
+                  <TableCell className="font-mono">{user.username}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {user.full_name}
+                      {user.is_superuser === 1 && (
+                        <Badge variant="default" className="bg-purple-600">
+                          Superuser
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>{user.email || '-'}</TableCell>
+                  <TableCell>{getGroupName(user.group_id)}</TableCell>
+                  <TableCell>
+                    {user.is_active === 1 ? (
+                      <Badge variant="default" className="bg-green-600">Active</Badge>
+                    ) : (
+                      <Badge variant="secondary">Inactive</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {employee.first_name} {employee.last_name}
-                  </TableCell>
-                  <TableCell>{employee.email || '-'}</TableCell>
-                  <TableCell className="capitalize">{employee.role}</TableCell>
                   <TableCell>
-                    {employee.group_id
-                      ? groups.find((g) => g.id === employee.group_id)?.name || '-'
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {employee.date_of_hire
-                      ? new Date(employee.date_of_hire).toLocaleDateString()
-                      : '-'}
+                    {user.last_login
+                      ? new Date(user.last_login).toLocaleDateString()
+                      : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {canEditEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(employee)}
-                          title="Edit Employee"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canEditEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenAllocationsDialog(employee)}
-                          title="Manage Time Allocations"
-                        >
-                          <Clock className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDeleteEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(employee)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {employee.is_active === 0 && (
-                        <span className="text-xs text-muted-foreground italic">Deleted</span>
-                      )}
-                      {employee.is_active === 1 && !canEditEmployee(employee) && !canDeleteEmployee(employee) && (
-                        <span className="text-xs text-muted-foreground italic">No access</span>
+                      {user.is_active === 1 && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenDialog(user)}
+                            title="Edit User"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {user.is_superuser !== 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenPermissionsDialog(user)}
+                              title="Manage Permissions"
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(user)}
+                            className="text-red-600 hover:text-red-700"
+                            disabled={user.id === currentUser?.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -436,113 +405,119 @@ export default function UsersPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {editingEmployee ? 'Edit Employee' : 'Add Employee'}
-            </DialogTitle>
+            <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
             <DialogDescription>
-              {editingEmployee
-                ? 'Update employee information below.'
-                : 'Enter employee information below.'}
+              {editingUser
+                ? 'Update user information below.'
+                : 'Create a new system user account.'}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="employee_number">Employee Number</Label>
+                <Label htmlFor="username">
+                  Username <span className="text-red-500">*</span>
+                </Label>
                 <Input
-                  id="employee_number"
-                  value={formData.employee_number}
+                  id="username"
+                  value={formData.username}
                   onChange={(e) =>
-                    setFormData({ ...formData, employee_number: e.target.value })
+                    setFormData({ ...formData, username: e.target.value })
                   }
-                  placeholder="Optional"
+                  required
+                  disabled={!!editingUser}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="group_id">Group</Label>
-                <Select
-                  value={formData.group_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, group_id: value })
+                <Label htmlFor="password">
+                  Password {editingUser && <span className="text-xs text-muted-foreground">(leave blank to keep current)</span>}
+                  {!editingUser && <span className="text-red-500">*</span>}
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.id.toString()}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  required={!editingUser}
+                  autoComplete="new-password"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-red-500">*</span>
+                <Label htmlFor="full_name">
+                  Full Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="first_name"
-                  value={formData.first_name}
+                  id="full_name"
+                  value={formData.full_name}
                   onChange={(e) =>
-                    setFormData({ ...formData, first_name: e.target.value })
+                    setFormData({ ...formData, full_name: e.target.value })
                   }
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, last_name: e.target.value })
-                  }
-                  required
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="Optional"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Optional"
-              />
+              <Label htmlFor="group_id">
+                Group <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={formData.group_id}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, group_id: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()}>
+                      {group.name}
+                      {group.description && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          - {group.description}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date_of_hire">Date of Hire</Label>
-                <Input
-                  id="date_of_hire"
-                  type="date"
-                  value={formData.date_of_hire}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date_of_hire: e.target.value })
-                  }
-                />
+            <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
+              <Checkbox
+                id="is_superuser"
+                checked={formData.is_superuser}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, is_superuser: checked as boolean })
+                }
+              />
+              <div className="flex-1">
+                <Label htmlFor="is_superuser" className="cursor-pointer">
+                  Superuser
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Superusers have full access to all features and can manage permissions
+                </p>
               </div>
             </div>
 
@@ -551,19 +526,20 @@ export default function UsersPage() {
                 Cancel
               </Button>
               <Button type="submit">
-                {editingEmployee ? 'Update' : 'Create'} Employee
+                {editingUser ? 'Update' : 'Create'} User
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {selectedEmployeeForAllocations && (
-        <EmployeeAllocationsDialog
-          open={allocationsDialogOpen}
-          onOpenChange={setAllocationsDialogOpen}
-          employeeId={selectedEmployeeForAllocations.id}
-          employeeName={`${selectedEmployeeForAllocations.first_name} ${selectedEmployeeForAllocations.last_name}`}
+      {selectedUserForPermissions && (
+        <UserPermissionsDialog
+          open={permissionsDialogOpen}
+          onOpenChange={setPermissionsDialogOpen}
+          userId={selectedUserForPermissions.id}
+          userName={selectedUserForPermissions.full_name}
+          isSuperuser={selectedUserForPermissions.is_superuser === 1}
         />
       )}
     </div>

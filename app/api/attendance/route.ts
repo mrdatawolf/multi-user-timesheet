@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
-import { canUserViewGroup, canUserEditGroup, logAudit } from '@/lib/queries-auth';
+import {
+  canUserViewGroup,
+  canUserEditGroup,
+  logAudit,
+  canUserReadGroup,
+  canUserUpdateInGroup,
+  canUserDeleteInGroup,
+  isSuperuser,
+} from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 
 export async function GET(request: NextRequest) {
@@ -21,9 +29,10 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
 
-    // If no employeeId is provided, return all entries (only for users who can view all)
+    // If no employeeId is provided, return all entries (only for superusers)
     if (!employeeIdParam) {
-      if (!authUser.group?.is_master && !authUser.group?.can_view_all) {
+      const userIsSuperuser = await isSuperuser(authUser.id);
+      if (!userIsSuperuser) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to view all attendance entries' },
           { status: 403 }
@@ -41,10 +50,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions
-    if (employee.group_id && !authUser.group?.is_master && !authUser.group?.can_view_all) {
-      const canView = await canUserViewGroup(authUser.id, employee.group_id);
-      if (!canView && authUser.group_id !== employee.group_id) {
+    // Check permissions using Phase 2 CRUD permissions
+    if (employee.group_id) {
+      const canView = await canUserReadGroup(authUser.id, employee.group_id);
+      if (!canView) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to view this employee\'s attendance' },
           { status: 403 }
@@ -87,14 +96,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions
-    if (employee.group_id && !authUser.group?.is_master && !authUser.group?.can_edit_all) {
-      const canEdit = await canUserEditGroup(authUser.id, employee.group_id);
-      if (!canEdit && authUser.group_id !== employee.group_id) {
-        return NextResponse.json(
-          { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },
-          { status: 403 }
-        );
+    // Check permissions using Phase 2 CRUD permissions
+    if (body.action === 'delete') {
+      // Check delete permission for delete action
+      if (employee.group_id) {
+        const canDelete = await canUserDeleteInGroup(authUser.id, employee.group_id);
+        if (!canDelete) {
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have permission to delete this employee\'s attendance' },
+            { status: 403 }
+          );
+        }
+      }
+    } else {
+      // Check update permission for create/update actions
+      if (employee.group_id) {
+        const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
+        if (!canUpdate) {
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },
+            { status: 403 }
+          );
+        }
       }
     }
 

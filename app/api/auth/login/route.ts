@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         full_name: user.full_name,
         email: user.email,
         group_id: user.group_id,
+        is_superuser: user.is_superuser,
         group: group,
       },
       token,

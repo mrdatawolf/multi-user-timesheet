@@ -9,6 +9,7 @@ interface User {
   full_name: string;
   email: string | null;
   group_id: number;
+  is_superuser?: number;
   group: {
     id: number;
     name: string;
