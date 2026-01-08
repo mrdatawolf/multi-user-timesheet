@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
-import { EntryEditDialog } from './entry-edit-dialog';
+import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 
@@ -11,7 +11,8 @@ interface TimeCode {
   description: string;
 }
 
-interface AttendanceEntry {
+export interface AttendanceEntry {
+  id?: number;
   entry_date: string;
   time_code: string;
   hours: number;
@@ -23,7 +24,7 @@ interface AttendanceGridProps {
   employeeId: number;
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
-  onEntryChange: (date: string, timeCode: string, hours: number, notes: string) => void;
+  onEntryChange: (date: string, entries: AttendanceEntry[]) => void;
 }
 
 const MONTHS = [
@@ -50,48 +51,70 @@ export function AttendanceGrid({
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
-  const [localEntries, setLocalEntries] = useState<Map<string, { time_code: string; hours: number; notes: string }>>(
-    new Map(entries.map(e => [e.entry_date, { time_code: e.time_code, hours: e.hours, notes: e.notes || '' }]))
-  );
+
+  // Store entries as Map<date, AttendanceEntry[]> to support multiple entries per day
+  const [localEntries, setLocalEntries] = useState<Map<string, AttendanceEntry[]>>(new Map());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTimeCode, setSelectedTimeCode] = useState('');
-  const [selectedHours, setSelectedHours] = useState(0);
-  const [selectedNotes, setSelectedNotes] = useState('');
+  const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
 
   useEffect(() => {
-    setLocalEntries(new Map(entries.map(e => [e.entry_date, { time_code: e.time_code, hours: e.hours, notes: e.notes || '' }])));
+    // Group entries by date
+    const entriesByDate = new Map<string, AttendanceEntry[]>();
+    entries.forEach(entry => {
+      const existing = entriesByDate.get(entry.entry_date) || [];
+      existing.push(entry);
+      entriesByDate.set(entry.entry_date, existing);
+    });
+    setLocalEntries(entriesByDate);
   }, [entries, year]);
 
-  const getEntryForDate = (month: number, day: number): { time_code: string; hours: number; notes: string } => {
+  const getEntriesForDate = (month: number, day: number): AttendanceEntry[] => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return localEntries.get(dateStr) || { time_code: '__NONE__', hours: 0, notes: '' };
+    return localEntries.get(dateStr) || [];
   };
 
   const handleCellClick = (month: number, day: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const entry = getEntryForDate(month, day);
+    const entriesForDate = getEntriesForDate(month, day);
     setSelectedDate(dateStr);
-    setSelectedTimeCode(entry.time_code);
-    setSelectedHours(entry.hours);
-    setSelectedNotes(entry.notes);
+    setSelectedEntries(entriesForDate);
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, timeCode: string, hours: number, notes: string) => {
+  const handleSave = (date: string, updatedEntries: AttendanceEntry[]) => {
     const newEntries = new Map(localEntries);
-    if (timeCode && timeCode !== '__NONE__') {
-      newEntries.set(date, { time_code: timeCode, hours, notes });
+    if (updatedEntries.length > 0) {
+      newEntries.set(date, updatedEntries);
     } else {
       newEntries.delete(date);
     }
     setLocalEntries(newEntries);
 
-    onEntryChange(date, timeCode === '__NONE__' ? '' : timeCode, hours, notes);
+    onEntryChange(date, updatedEntries);
   };
 
   const getDaysInMonth = (month: number): number => {
     return new Date(year, month, 0).getDate();
+  };
+
+  const getCellDisplay = (entriesForDate: AttendanceEntry[]) => {
+    if (entriesForDate.length === 0) {
+      return '-';
+    }
+
+    if (entriesForDate.length === 1) {
+      const entry = entriesForDate[0];
+      return `${entry.time_code} (${entry.hours})`;
+    }
+
+    // Multiple entries: show *totalHours
+    const totalHours = entriesForDate.reduce((sum, e) => sum + e.hours, 0);
+    return `*${totalHours.toFixed(1)}`;
+  };
+
+  const hasNotes = (entriesForDate: AttendanceEntry[]) => {
+    return entriesForDate.some(e => e.notes && e.notes.trim().length > 0);
   };
 
   return (
@@ -119,7 +142,7 @@ export function AttendanceGrid({
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
                   const daysInMonth = getDaysInMonth(month.num);
                   const isValidDay = day <= daysInMonth;
-                  const { time_code, hours, notes } = getEntryForDate(month.num, day);
+                  const entriesForDate = getEntriesForDate(month.num, day);
 
                   return (
                     <td
@@ -134,8 +157,10 @@ export function AttendanceGrid({
                           className="h-5 text-xs w-full px-1 relative"
                           onClick={() => handleCellClick(month.num, day)}
                         >
-                          {time_code !== '__NONE__' ? `${time_code} (${hours})` : '-'}
-                          {notes && <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>}
+                          {getCellDisplay(entriesForDate)}
+                          {hasNotes(entriesForDate) && (
+                            <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>
+                          )}
                         </Button>
                       )}
                     </td>
@@ -152,13 +177,11 @@ export function AttendanceGrid({
           ))}
         </tbody>
       </table>
-      <EntryEditDialog
+      <MultiEntryDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         date={selectedDate}
-        timeCode={selectedTimeCode}
-        hours={selectedHours}
-        notes={selectedNotes}
+        entries={selectedEntries}
         timeCodes={timeCodes}
         onSave={handleSave}
       />

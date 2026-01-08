@@ -47,18 +47,54 @@ The system tracks these time entry codes:
 - ✅ Dashboard with statistics and summaries (optional)
 - ✅ Reports with filtering and CSV export (optional)
 
-### Phase 2: Employee Views (Planned)
-- Filter Attendance by employee name
-- Filter by date ranges
-- Personalized employee dashboards
-- Employee-specific access controls
+### Phase 2: User-Centric Permission System ✅ COMPLETE
+- ✅ System users (managers/admins) manage employee data
+- ✅ Granular CRUD permissions per user per group
+- ✅ Superuser role with full access
+- ✅ User management UI for creating users and assigning permissions
+- ✅ Automatic database migrations for schema updates
+- ✅ Employee filtering based on user permissions
+- ✅ Audit logging for all permission changes
 
-### Phase 3: Advanced Features (Planned)
-- Approval workflows
-- Attendance lockouts
-- Advanced analytics
+### Phase 3: Multiple Attendance Entries Per Day ✅ COMPLETE
+- ✅ Support multiple time entries for the same employee on the same day
+- ✅ Grid display shows `*totalHours` for multi-entry days
+- ✅ Enhanced dialog for managing multiple entries
+- ✅ Validation to prevent >24 hours per day
+- ✅ Backward compatible with single-entry operations
+- See [PHASE-3-PLAN.md](info/PHASE-3-PLAN.md) for detailed specification
+
+### Phase 4: Automated Database Backup System (In Progress)
+- Automated backup rotation with 7-day, 4-week, 12-month retention
+- Daily backups kept for 7 days
+- Weekly backups kept for 4 weeks
+- Monthly backups kept for 12 months
+- Manual backup and restore functionality
+- See [PHASE-4-PLAN.md](info/PHASE-4-PLAN.md) for detailed specification
+
+### Phase 5: Advanced Features (Planned)
+- Approval workflows and submission system
+- Attendance period lockouts
+- Advanced analytics and reporting
 - Email notifications
 - Multi-tenant support
+- See [PHASE-5-PLAN.md](info/PHASE-5-PLAN.md) for detailed roadmap
+
+### Phase 6: Interactive Contextual Help System (Planned)
+- Modal help overlays for each screen
+- Interactive help bubbles on hover/mouseover
+- Three-part help: What it is, How to use, How to update
+- Welcome tour for new users
+- Progress tracking per user
+- See [PHASE-6-PLAN.md](info/PHASE-6-PLAN.md) for detailed specification
+
+### Phase 7: Employee Self-Service & Enhanced Views (Planned)
+- Employee portal for viewing own attendance (read-only)
+- Personalized dashboards for employees, managers, and admins
+- Calendar visualization (month/week views) with color-coded time codes
+- Manager-employee relationship tracking and "My Team" views
+- Enhanced date range filtering with quick filters
+- See [PHASE-7-PLAN.md](info/PHASE-7-PLAN.md) for detailed specification
 
 ## Tech Stack
 
@@ -304,15 +340,26 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - Balance tracking
 - Dashboard and reports (optional)
 
-⏳ **Phase 2: Planned**
-- Employee-filtered views
-- Personalized dashboards
-- Access controls
+✅ **Phase 2: COMPLETE**
+- User-centric permission system
+- Granular CRUD permissions
+- Superuser role
+- User management UI
+- Automatic database migrations
 
-⏳ **Phase 3: Planned**
-- Approval workflows
-- Advanced analytics
-- Notifications
+✅ **Phase 3: COMPLETE**
+- Multiple entries per day
+- Enhanced multi-entry dialog
+- Validation and balance tracking
+
+⏳ **Phase 4: IN PROGRESS**
+- Automated backup system
+- 7-day, 4-week, 12-month rotation
+
+⏳ **Phase 5-7: PLANNED**
+- Phase 5: Advanced features (approval workflows, analytics, notifications)
+- Phase 6: Interactive contextual help system
+- Phase 7: Employee self-service portal and enhanced views
 
 ## Documentation
 
@@ -348,19 +395,44 @@ All detailed documentation is located in the [`info/`](info/) folder:
   - Bug fixes and improvements
   - Architecture decisions
 
-### Phase 2 Planning
-- **[PHASE-2-PLAN.md](info/PHASE-2-PLAN.md)** - Comprehensive Phase 2 implementation plan
-  - Employee-filtered views
-  - Personalized dashboards
-  - Enhanced access controls
-  - UX improvements
-  - 4-sprint roadmap (6-8 weeks)
+### Phase Planning Documentation
+- **[PHASE-2-PLAN.md](info/PHASE-2-PLAN.md)** - User-Centric Permission System (COMPLETE)
+  - Manager/admin permission system
+  - Granular CRUD permissions per user per group
+  - Superuser role and user management
+  - Automatic database migrations
+  - Complete audit trail
 
-- **[PHASE-2-CHECKLIST.md](info/PHASE-2-CHECKLIST.md)** - Phase 2 task checklist
-  - Sprint-by-sprint task breakdown
-  - Testing requirements
-  - Deployment steps
-  - Success criteria
+- **[PHASE-3-PLAN.md](info/PHASE-3-PLAN.md)** - Multiple Entries Per Day (COMPLETE)
+  - Support multiple time entries for same day
+  - Enhanced multi-entry dialog
+  - Batch update with validation
+  - Grid display with *totalHours
+
+- **[PHASE-4-PLAN.md](info/PHASE-4-PLAN.md)** - Automated Backup System (In Progress)
+  - 7-day, 4-week, 12-month rotation strategy
+  - Manual backup and restore
+  - Storage-efficient retention policy
+
+- **[PHASE-5-PLAN.md](info/PHASE-5-PLAN.md)** - Advanced Features (Planned)
+  - Approval workflows and submission system
+  - Attendance period lockouts
+  - Advanced analytics and reporting
+  - Email notifications
+  - Multi-tenant support
+
+- **[PHASE-6-PLAN.md](info/PHASE-6-PLAN.md)** - Interactive Help System (Planned)
+  - Modal help overlays
+  - Contextual hover tooltips
+  - Welcome tour for new users
+  - Progress tracking
+
+- **[PHASE-7-PLAN.md](info/PHASE-7-PLAN.md)** - Employee Self-Service (Planned)
+  - Employee portal with read-only attendance
+  - Personalized dashboards by role
+  - Calendar visualization (month/week views)
+  - Manager-employee relationships
+  - Enhanced date range filtering
 
 ### Component Documentation
 - **[lib/themes/README.md](lib/themes/README.md)** - Theme system creation guide

@@ -108,6 +108,17 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    } else if (body.action === 'update_day') {
+      // Check update permission for batch update action
+      if (employee.group_id) {
+        const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
+        if (!canUpdate) {
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },
+            { status: 403 }
+          );
+        }
+      }
     } else {
       // Check update permission for create/update actions
       if (employee.group_id) {
@@ -121,7 +132,61 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (body.action === 'delete') {
+    if (body.action === 'update_day') {
+      // Batch update: replace all entries for a specific date
+      // Validate total hours
+      const entries = body.entries || [];
+      const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
+      if (totalHours > 24) {
+        return NextResponse.json(
+          { error: 'Total hours cannot exceed 24 hours per day' },
+          { status: 400 }
+        );
+      }
+
+      // Get old entries for audit log
+      const oldEntries = await db.execute({
+        sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        args: [body.employee_id, body.entry_date],
+      });
+
+      // Delete all existing entries for this date
+      await db.execute({
+        sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        args: [body.employee_id, body.entry_date],
+      });
+
+      // Insert all new entries
+      const newEntries = [];
+      for (const entry of entries) {
+        const result = await db.execute({
+          sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
+                VALUES (?, ?, ?, ?, ?)`,
+          args: [
+            body.employee_id,
+            body.entry_date,
+            entry.time_code,
+            entry.hours || 0,
+            entry.notes || null,
+          ],
+        });
+        newEntries.push({ id: result.lastInsertRowid, ...entry });
+      }
+
+      // Log audit entry
+      await logAudit({
+        user_id: authUser.id,
+        action: 'UPDATE',
+        table_name: 'attendance_entries',
+        record_id: undefined,
+        old_values: oldEntries.rows.length > 0 ? JSON.stringify(oldEntries.rows) : undefined,
+        new_values: newEntries.length > 0 ? JSON.stringify(newEntries) : undefined,
+        ip_address: getClientIP(request),
+        user_agent: getUserAgent(request),
+      });
+
+      return NextResponse.json({ success: true, entries: newEntries });
+    } else if (body.action === 'delete') {
       // Get old entry for audit log
       const oldEntry = await db.execute({
         sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
