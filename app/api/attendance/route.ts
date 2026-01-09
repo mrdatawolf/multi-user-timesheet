@@ -170,20 +170,25 @@ export async function POST(request: NextRequest) {
             entry.notes || null,
           ],
         });
-        newEntries.push({ id: result.lastInsertRowid, ...entry });
+        // Convert BigInt to Number for JSON serialization
+        newEntries.push({ id: Number(result.lastInsertRowid), ...entry });
       }
 
-      // Log audit entry
-      await logAudit({
-        user_id: authUser.id,
-        action: 'UPDATE',
-        table_name: 'attendance_entries',
-        record_id: undefined,
-        old_values: oldEntries.rows.length > 0 ? JSON.stringify(oldEntries.rows) : undefined,
-        new_values: newEntries.length > 0 ? JSON.stringify(newEntries) : undefined,
-        ip_address: getClientIP(request),
-        user_agent: getUserAgent(request),
-      });
+      // Log audit entry (non-critical - don't fail the operation if this fails)
+      try {
+        await logAudit({
+          user_id: authUser.id,
+          action: 'UPDATE',
+          table_name: 'attendance_entries',
+          record_id: undefined,
+          old_values: oldEntries.rows.length > 0 ? JSON.stringify(oldEntries.rows) : undefined,
+          new_values: newEntries.length > 0 ? JSON.stringify(newEntries) : undefined,
+          ip_address: getClientIP(request),
+          user_agent: getUserAgent(request),
+        });
+      } catch (auditError) {
+        console.error('Failed to log audit entry (non-critical):', auditError);
+      }
 
       return NextResponse.json({ success: true, entries: newEntries });
     } else if (body.action === 'delete') {
@@ -195,17 +200,21 @@ export async function POST(request: NextRequest) {
 
       await deleteEntry(body.employee_id, body.entry_date);
 
-      // Log audit entry
+      // Log audit entry (non-critical - don't fail the operation if this fails)
       if (oldEntry.rows.length > 0) {
-        await logAudit({
-          user_id: authUser.id,
-          action: 'DELETE',
-          table_name: 'attendance_entries',
-          record_id: (oldEntry.rows[0] as any).id,
-          old_values: JSON.stringify(oldEntry.rows[0]),
-          ip_address: getClientIP(request),
-          user_agent: getUserAgent(request),
-        });
+        try {
+          await logAudit({
+            user_id: authUser.id,
+            action: 'DELETE',
+            table_name: 'attendance_entries',
+            record_id: (oldEntry.rows[0] as any).id,
+            old_values: JSON.stringify(oldEntry.rows[0]),
+            ip_address: getClientIP(request),
+            user_agent: getUserAgent(request),
+          });
+        } catch (auditError) {
+          console.error('Failed to log audit entry (non-critical):', auditError);
+        }
       }
     } else {
       // Check if entry exists for audit log
@@ -231,22 +240,33 @@ export async function POST(request: NextRequest) {
         args: [body.employee_id, body.entry_date],
       });
 
-      // Log audit entry
-      await logAudit({
-        user_id: authUser.id,
-        action: isUpdate ? 'UPDATE' : 'CREATE',
-        table_name: 'attendance_entries',
-        record_id: (newEntry.rows[0] as any)?.id,
-        old_values: isUpdate ? JSON.stringify(existing.rows[0]) : undefined,
-        new_values: JSON.stringify(newEntry.rows[0]),
-        ip_address: getClientIP(request),
-        user_agent: getUserAgent(request),
-      });
+      // Log audit entry (non-critical - don't fail the operation if this fails)
+      try {
+        await logAudit({
+          user_id: authUser.id,
+          action: isUpdate ? 'UPDATE' : 'CREATE',
+          table_name: 'attendance_entries',
+          record_id: (newEntry.rows[0] as any)?.id,
+          old_values: isUpdate ? JSON.stringify(existing.rows[0]) : undefined,
+          new_values: JSON.stringify(newEntry.rows[0]),
+          ip_address: getClientIP(request),
+          user_agent: getUserAgent(request),
+        });
+      } catch (auditError) {
+        console.error('Failed to log audit entry (non-critical):', auditError);
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating attendance:', error);
-    return NextResponse.json({ error: 'Failed to update attendance' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update attendance';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Full error details:', { errorMessage, errorStack });
+    return NextResponse.json({
+      error: 'Failed to update attendance',
+      details: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
+    }, { status: 500 });
   }
 }

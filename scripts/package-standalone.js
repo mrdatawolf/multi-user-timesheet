@@ -40,12 +40,37 @@ if (fs.existsSync(publicDir)) {
   copyDir(publicDir, distPublicDir);
 }
 
+// Copy info folder (for roadmap and other docs)
+console.log('Copying info folder...');
+const infoDir = path.join(__dirname, '..', 'info');
+if (fs.existsSync(infoDir)) {
+  const distInfoDir = path.join(distDir, 'info');
+  if (fs.existsSync(distInfoDir)) {
+    fs.rmSync(distInfoDir, { recursive: true, force: true });
+  }
+  copyDir(infoDir, distInfoDir);
+}
+
 // Create databases directory
 console.log('Creating databases directory...');
 const distDatabasesDir = path.join(distDir, 'databases');
 if (!fs.existsSync(distDatabasesDir)) {
   fs.mkdirSync(distDatabasesDir, { recursive: true });
 }
+
+// Create .env file with production settings
+console.log('Creating .env file...');
+const envContent = `# Server Configuration
+PORT=6029
+HOSTNAME=0.0.0.0
+
+# JWT Secret - CHANGE THIS IN PRODUCTION!
+JWT_SECRET=your-secret-key-change-in-production
+
+# Node Environment
+NODE_ENV=production
+`;
+fs.writeFileSync(path.join(distDir, '.env'), envContent);
 
 // Create start script
 console.log('Creating start script...');

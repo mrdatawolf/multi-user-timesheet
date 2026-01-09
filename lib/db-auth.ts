@@ -118,3 +118,21 @@ export async function initializeAuthDatabase() {
   console.log('\n🔄 Running auth database migrations...');
   await runMigrations(authDb, authMigrations, 'auth.db');
 }
+
+// Singleton initialization - only run once per process
+let initPromise: Promise<void> | null = null;
+
+export function ensureAuthInitialized() {
+  if (!initPromise && typeof window === 'undefined') {
+    // Only initialize at runtime, not during build
+    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
+      initPromise = initializeAuthDatabase();
+    }
+  }
+  return initPromise;
+}
+
+// Auto-initialize on module load (server-side only)
+if (typeof window === 'undefined') {
+  ensureAuthInitialized();
+}

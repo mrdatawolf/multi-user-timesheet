@@ -63,10 +63,10 @@ export default function AttendancePage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
       loadInitialData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   useEffect(() => {
     if (selectedEmployeeId && token) {
@@ -82,10 +82,23 @@ export default function AttendancePage() {
   }, [pathname]);
 
   const loadInitialData = async () => {
+    if (!token) {
+      console.warn('Cannot load initial data: token is not available');
+      return;
+    }
+
     try {
       const [employeesRes, timeCodesRes] = await Promise.all([
-        fetch('/api/employees'),
-        fetch('/api/time-codes'),
+        fetch('/api/employees', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch('/api/time-codes', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
       ]);
 
       const employeesData = await employeesRes.json();
@@ -122,7 +135,11 @@ export default function AttendancePage() {
 
     try {
       const [attendanceRes, allocationsRes] = await Promise.all([
-        fetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
+        fetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
         fetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`, {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -96,6 +96,14 @@ The system tracks these time entry codes:
 - Enhanced date range filtering with quick filters
 - See [PHASE-7-PLAN.md](info/PHASE-7-PLAN.md) for detailed specification
 
+### Phase 8: External System Integrations (Planned)
+- ADP Workforce Now integration (OAuth 2.0, employee sync, timecard export)
+- Pluggable integration framework for Paychex, Gusto, BambooHR
+- Bidirectional data sync with conflict resolution
+- Field mapping UI and automated sync scheduling
+- Complete audit trail of all sync operations
+- See [PHASE-8-PLAN.md](info/PHASE-8-PLAN.md) for detailed specification
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16.0.10 (App Router with Turbopack), React 19, TypeScript
@@ -356,10 +364,11 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - Automated backup system
 - 7-day, 4-week, 12-month rotation
 
-⏳ **Phase 5-7: PLANNED**
+⏳ **Phase 5-8: PLANNED**
 - Phase 5: Advanced features (approval workflows, analytics, notifications)
 - Phase 6: Interactive contextual help system
 - Phase 7: Employee self-service portal and enhanced views
+- Phase 8: External system integrations (ADP, Paychex, etc.)
 
 ## Documentation
 
@@ -433,6 +442,13 @@ All detailed documentation is located in the [`info/`](info/) folder:
   - Calendar visualization (month/week views)
   - Manager-employee relationships
   - Enhanced date range filtering
+
+- **[PHASE-8-PLAN.md](info/PHASE-8-PLAN.md)** - External System Integrations (Planned)
+  - ADP Workforce Now OAuth 2.0 integration
+  - Employee roster sync and timecard export
+  - Pluggable integration framework
+  - Field mapping and conflict resolution
+  - Automated sync scheduling
 
 ### Component Documentation
 - **[lib/themes/README.md](lib/themes/README.md)** - Theme system creation guide

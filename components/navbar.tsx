@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
@@ -17,12 +17,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Shield } from 'lucide-react';
+import { User, LogOut, Shield, Map } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
   { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false },
   { href: '/users', label: 'Users', enabled: true, superuserOnly: true },
+  { href: '/tests', label: 'Tests', enabled: true, superuserOnly: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false },
   { href: '/reports', label: 'Reports', enabled: config.features.enableReports, superuserOnly: false },
   { href: '/settings', label: 'Settings', enabled: true, superuserOnly: false },
@@ -30,12 +31,13 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, logout, isLoading, isMaster } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
-    if (item.superuserOnly && (!user || !user.is_superuser)) return false;
+    if (item.superuserOnly && !isMaster) return false;
     return true;
   });
 
@@ -93,6 +95,15 @@ export function Navbar() {
                         <Shield className="mr-2 h-4 w-4" />
                         <span>{user.group.name}</span>
                       </DropdownMenuItem>
+                      {isMaster && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => router.push('/roadmap')} className="cursor-pointer">
+                            <Map className="mr-2 h-4 w-4" />
+                            <span>Roadmap</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout} className="text-red-600">
                         <LogOut className="mr-2 h-4 w-4" />
