@@ -27,7 +27,10 @@
       "Bash(timeout /t 10 /nobreak)",
       "Bash(dir:*)",
       "Bash(timeout /t 3 /nobreak)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(kill:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run build:standalone:*)"
     ]
   }
 }
