@@ -173,13 +173,16 @@ export default function AttendancePage() {
   };
 
   const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[]) => {
-    if (!selectedEmployeeId) return;
+    if (!selectedEmployeeId || !token) return;
 
     try {
       // Send batch update to API
-      await fetch('/api/attendance', {
+      const response = await fetch('/api/attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           action: 'update_day',
           employee_id: selectedEmployeeId,
@@ -187,6 +190,11 @@ export default function AttendancePage() {
           entries: updatedEntries,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+      }
 
       // Reload attendance data to show updated entries
       await loadAttendanceData();
@@ -201,7 +209,7 @@ export default function AttendancePage() {
       console.error('Failed to save attendance:', error);
       toast({
         title: 'Save Failed',
-        description: 'There was an error saving your attendance. Please try again.',
+        description: error instanceof Error ? error.message : 'There was an error saving your attendance. Please try again.',
         variant: 'destructive',
       });
     }
