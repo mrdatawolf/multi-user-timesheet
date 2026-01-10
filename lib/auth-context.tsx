@@ -9,7 +9,19 @@ interface User {
   full_name: string;
   email: string | null;
   group_id: number;
-  is_superuser?: number;
+  is_superuser?: number; // Deprecated, use role instead
+  role_id?: number;
+  role?: {
+    id: number;
+    name: string;
+    description?: string;
+    can_create: number;
+    can_read: number;
+    can_update: number;
+    can_delete: number;
+    can_manage_users: number;
+    can_access_all_groups: number;
+  };
   group: {
     id: number;
     name: string;
@@ -27,9 +39,21 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
-  isMaster: boolean;
-  canViewAll: boolean;
-  canEditAll: boolean;
+
+  // GROUP-BASED DATA VISIBILITY: Which employees/data the user can see
+  isMaster: boolean;              // User is in the master group (sees all data)
+  canViewAll: boolean;            // Group has permission to view all groups
+  canEditAll: boolean;            // Group has permission to edit all groups (legacy - consider removing)
+
+  // ROLE-BASED ACTION PERMISSIONS: What operations the user can perform
+  isAdministrator: boolean;       // Has Administrator role
+  isManager: boolean;             // Has Manager role
+  canCreate: boolean;             // Can create new records
+  canRead: boolean;               // Can read/view records
+  canUpdate: boolean;             // Can update existing records
+  canDelete: boolean;             // Can delete records
+  canManageUsers: boolean;        // Can create/edit user accounts
+  canAccessAllGroups: boolean;    // Role grants access to all groups (overrides group restrictions)
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -164,9 +188,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAuthenticated: !!user && !!token,
+    // Group-based data visibility (which employees/groups you can see)
     isMaster: user?.group?.is_master === 1,
     canViewAll: user?.group?.can_view_all === 1 || user?.group?.is_master === 1,
     canEditAll: user?.group?.can_edit_all === 1 || user?.group?.is_master === 1,
+    // Role-based action permissions (what operations you can perform)
+    isAdministrator: user?.role_id === 1,
+    isManager: user?.role_id === 2,
+    canCreate: user?.role?.can_create === 1,
+    canRead: user?.role?.can_read === 1,
+    canUpdate: user?.role?.can_update === 1,
+    canDelete: user?.role?.can_delete === 1,
+    canManageUsers: user?.role?.can_manage_users === 1,
+    canAccessAllGroups: user?.role?.can_access_all_groups === 1,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

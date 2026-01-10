@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
       full_name: body.full_name,
       email: body.email,
       group_id: body.group_id,
+      role_id: body.role_id,
       is_active: body.is_active !== undefined ? body.is_active : 1,
-      is_superuser: body.is_superuser !== undefined ? body.is_superuser : 0,
+      is_superuser: body.is_superuser !== undefined ? body.is_superuser : 0, // Deprecated but keep for compatibility
       color_mode: 'system'
     });
 
@@ -171,6 +172,11 @@ export async function PUT(request: NextRequest) {
     if (body.group_id !== undefined) {
       updates.push('group_id = ?');
       args.push(body.group_id);
+    }
+
+    if (body.role_id !== undefined) {
+      updates.push('role_id = ?');
+      args.push(body.role_id);
     }
 
     if (body.is_active !== undefined) {

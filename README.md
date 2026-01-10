@@ -117,10 +117,26 @@ The system tracks these time entry codes:
 
 ## Authentication & Security
 
-The application includes a complete authentication and authorization system:
+The application includes a complete authentication and authorization system with separate concepts for data visibility and action permissions:
 
-- **User Management** - Create and manage user accounts
-- **Group-Based Permissions** - Master, Managers, HR, and Employee groups
+### Groups (Data Visibility)
+Groups control **which employees/data** a user can see:
+- **Master** - Full visibility to all groups and employees
+- **Managers** - View all groups (read-only by default)
+- **HR** - View and edit all groups
+- **Employees** - Limited to own group only
+
+### Roles (Action Permissions)
+Roles control **what operations** a user can perform on the data they can see:
+- **Administrator** - Full CRUD + user management + access to all groups
+- **Manager** - Full CRUD on assigned groups
+- **Editor** - Create, read, and update (no delete)
+- **Contributor** - Create and read only
+- **Viewer** - Read-only access
+- **Self-Service** - View and edit own records only
+
+**Key Principle:** Group and Role are independent. A user in the "Employees" group (limited visibility) could have a "Manager" role (full CRUD permissions on what they can see).
+
 - **Audit Logging** - Complete tracking of all data changes
 - **Secure Authentication** - JWT tokens with bcrypt password hashing
 
@@ -234,9 +250,11 @@ The database includes the following tables:
 - `employee_time_allocations` - Custom time off allocations per employee per year
 
 **Authentication & Security Tables:**
-- `users` - User accounts with encrypted passwords
-- `groups` - User groups with permission levels
+- `users` - User accounts with encrypted passwords and role assignments
+- `roles` - Role definitions with action permissions (Administrator, Manager, Editor, etc.)
+- `groups` - User groups controlling data visibility (Master, Managers, HR, Employees)
 - `group_permissions` - Granular group-to-group permissions
+- `user_group_permissions` - Per-user permissions to specific groups
 - `audit_log` - Complete change tracking for all modifications
 
 See [AUTH-SYSTEM.md](info/AUTH-SYSTEM.md) for detailed schema documentation.

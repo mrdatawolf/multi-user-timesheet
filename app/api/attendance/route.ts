@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
-  canUserViewGroup,
-  canUserEditGroup,
   logAudit,
   canUserReadGroup,
   canUserUpdateInGroup,
@@ -11,6 +9,7 @@ import {
   isSuperuser,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
+import { serializeBigInt } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
         );
       }
       const entries = await getAllEntries();
-      return NextResponse.json(entries);
+      return NextResponse.json(serializeBigInt(entries));
     }
 
     const employeeId = parseInt(employeeIdParam);
@@ -70,7 +69,7 @@ export async function GET(request: NextRequest) {
       entries = await getEntriesForDateRange(employeeId, yearStartDate, yearEndDate);
     }
 
-    return NextResponse.json(entries);
+    return NextResponse.json(serializeBigInt(entries));
   } catch (error) {
     console.error('Error fetching attendance:', error);
     return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
@@ -190,7 +189,7 @@ export async function POST(request: NextRequest) {
         console.error('Failed to log audit entry (non-critical):', auditError);
       }
 
-      return NextResponse.json({ success: true, entries: newEntries });
+      return NextResponse.json({ success: true, entries: serializeBigInt(newEntries) });
     } else if (body.action === 'delete') {
       // Get old entry for audit log
       const oldEntry = await db.execute({

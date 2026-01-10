@@ -30,7 +30,9 @@
       "Bash(ls:*)",
       "Bash(kill:*)",
       "Bash(pkill:*)",
-      "Bash(npm run build:standalone:*)"
+      "Bash(npm run build:standalone:*)",
+      "Bash(node check-migrations.js:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

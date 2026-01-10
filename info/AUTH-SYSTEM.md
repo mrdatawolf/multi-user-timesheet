@@ -6,11 +6,33 @@ This document describes the complete authentication and authorization system imp
 
 The system provides:
 - User authentication with username/password
-- Group-based role permissions
+- **Dual permission model**: Groups (data visibility) + Roles (action permissions)
 - Hierarchical access control
 - Complete audit logging of all changes
 - Secure password hashing with bcrypt
 - JWT-based session management
+
+### Key Concepts
+
+The authorization system separates two independent concerns:
+
+1. **Groups (Data Visibility)** - Control which employees/data a user can see
+   - Master group sees all data
+   - HR group sees all data
+   - Managers group can view all groups
+   - Employees group sees only their own group
+
+2. **Roles (Action Permissions)** - Control what operations a user can perform
+   - Administrator: Full CRUD + user management
+   - Manager: Full CRUD on accessible data
+   - Editor: Create, read, update (no delete)
+   - Contributor: Create and read only
+   - Viewer: Read-only access
+   - Self-Service: View and edit own records only
+
+**Important:** A user's Group and Role are independent. For example:
+- An "Employees" group member with "Manager" role can fully manage the employees they can see
+- A "Master" group member with "Viewer" role can see all data but only read, not modify
 
 ## Database Schema
 
@@ -26,14 +48,39 @@ Stores user accounts and credentials.
 - password_hash: Bcrypt hashed password
 - full_name: User's display name
 - email: Email address (optional, unique)
-- group_id: Reference to groups table
+- group_id: Reference to groups table (controls data visibility)
+- role_id: Reference to roles table (controls action permissions)
+- is_superuser: DEPRECATED - use role_id instead
 - is_active: 1 for active, 0 for deactivated
 - last_login: Timestamp of last successful login
 - created_at, updated_at: Timestamps
 ```
 
+#### `roles`
+Defines role-based action permissions.
+```sql
+- id: Unique role identifier
+- name: Role name (Administrator, Manager, Editor, etc.)
+- description: Role description
+- can_create: 1 if role can create new records
+- can_read: 1 if role can read/view records
+- can_update: 1 if role can update existing records
+- can_delete: 1 if role can delete records
+- can_manage_users: 1 if role can create/edit user accounts
+- can_access_all_groups: 1 if role grants access to all groups (overrides group restrictions)
+- created_at, updated_at: Timestamps
+```
+
+**Default Roles:**
+1. Administrator (ID: 1) - All permissions enabled
+2. Manager (ID: 2) - Full CRUD, no user management, group-restricted
+3. Editor (ID: 3) - Create, read, update (no delete)
+4. Contributor (ID: 4) - Create and read only
+5. Viewer (ID: 5) - Read-only access
+6. Self-Service (ID: 6) - Limited to own records
+
 #### `groups`
-Defines user groups and their permission levels.
+Defines user groups controlling data visibility.
 ```sql
 - id: Unique group identifier
 - name: Group name (unique)
@@ -70,30 +117,33 @@ Tracks all data changes in the system.
 - created_at: Timestamp
 ```
 
-## Default Groups
+## Default Groups (Data Visibility)
 
-The system creates four default groups:
+The system creates four default groups that control which data users can see:
 
 ### 1. Master (ID: 1)
-- Full access to all functionality
-- Can view and edit all data
-- Can manage users and groups
+- **Data Visibility:** All employees and all groups
+- Special administrative group
+- `is_master = 1`, `can_view_all = 1`, `can_edit_all = 1`
 - Default admin user belongs to this group
 
 ### 2. Managers (ID: 2)
-- Can view all groups' data
-- Cannot edit other groups' data by default
-- Can be granted specific edit permissions
+- **Data Visibility:** Can view all groups' data
+- `can_view_all = 1`, `can_edit_all = 0`
+- Intended for supervisors who need visibility across departments
+- Actual edit permissions depend on user's role
 
 ### 3. HR (ID: 3)
-- Can view all groups' data
-- Can edit all groups' data
-- Can manage users
+- **Data Visibility:** Can view and modify all groups' data
+- `can_view_all = 1`, `can_edit_all = 1`
+- Intended for HR personnel managing all employees
+- Note: `can_edit_all` is a legacy flag; actual permissions now controlled by role
 
 ### 4. Employees (ID: 4)
-- Limited access
-- Can only view/edit their own group's data
-- Cannot manage users or groups
+- **Data Visibility:** Limited to own group only
+- `can_view_all = 0`, `can_edit_all = 0`
+- Most restrictive data visibility
+- What they can do with visible data depends on their role
 
 ## Default Admin Account
 
@@ -126,12 +176,24 @@ Authenticate a user and receive a JWT token.
     "full_name": "System Administrator",
     "email": "admin@attendance.local",
     "group_id": 1,
+    "role_id": 1,
     "group": {
       "id": 1,
       "name": "Master",
       "is_master": 1,
       "can_view_all": 1,
       "can_edit_all": 1
+    },
+    "role": {
+      "id": 1,
+      "name": "Administrator",
+      "description": "Full system access with all permissions",
+      "can_create": 1,
+      "can_read": 1,
+      "can_update": 1,
+      "can_delete": 1,
+      "can_manage_users": 1,
+      "can_access_all_groups": 1
     }
   },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
