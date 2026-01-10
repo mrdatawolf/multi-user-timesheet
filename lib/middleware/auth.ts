@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { getUserById, getUserByUsername, type User, type Group, getGroupById } from '../queries-auth';
+import { getUserById, getUserByUsername, type User, type Group, type Role, getGroupById, getUserRole } from '../queries-auth';
 
 // JWT secret - In production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -13,8 +13,10 @@ export interface AuthUser {
   full_name: string;
   email?: string;
   group_id: number;
-  is_superuser?: number;
+  is_superuser?: number; // Deprecated, use role instead
+  role_id?: number;
   group?: Group;
+  role?: Role;
 }
 
 export interface JWTPayload {
@@ -77,6 +79,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   if (!user || !user.is_active) return null;
 
   const group = await getGroupById(user.group_id);
+  const role = await getUserRole(user.id);
 
   return {
     id: user.id,
@@ -85,7 +88,9 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     email: user.email,
     group_id: user.group_id,
     is_superuser: user.is_superuser,
+    role_id: user.role_id,
     group: group || undefined,
+    role: role || undefined,
   };
 }
 

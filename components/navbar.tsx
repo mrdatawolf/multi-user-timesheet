@@ -17,27 +17,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Shield, Map } from 'lucide-react';
+import { User, LogOut, Shield, Map, FlaskConical, Settings } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
   { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false },
   { href: '/users', label: 'Users', enabled: true, superuserOnly: true },
-  { href: '/tests', label: 'Tests', enabled: true, superuserOnly: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false },
   { href: '/reports', label: 'Reports', enabled: config.features.enableReports, superuserOnly: false },
-  { href: '/settings', label: 'Settings', enabled: true, superuserOnly: false },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, logout, isLoading, isMaster } = useAuth();
+  const { user, isAuthenticated, logout, isLoading, isMaster, isAdministrator } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
+  const showAdminMenu = isMaster || isAdministrator;
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
-    if (item.superuserOnly && !isMaster) return false;
+    if (item.superuserOnly && !showAdminMenu) return false;
     return true;
   });
 
@@ -93,11 +92,19 @@ export function Navbar() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem disabled>
                         <Shield className="mr-2 h-4 w-4" />
-                        <span>{user.group.name}</span>
+                        <span>{user.role?.name || user.group.name}</span>
                       </DropdownMenuItem>
-                      {isMaster && (
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                      {showAdminMenu && (
                         <>
-                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => router.push('/tests')} className="cursor-pointer">
+                            <FlaskConical className="mr-2 h-4 w-4" />
+                            <span>Tests</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push('/roadmap')} className="cursor-pointer">
                             <Map className="mr-2 h-4 w-4" />
                             <span>Roadmap</span>

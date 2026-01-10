@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, generateToken, getClientIP, getUserAgent } from '@/lib/middleware/auth';
-import { updateUserLastLogin, getGroupById } from '@/lib/queries-auth';
+import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-auth';
 import { logAudit } from '@/lib/queries-auth';
 
 export async function POST(request: NextRequest) {
@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
     // Update last login
     await updateUserLastLogin(user.id);
 
-    // Get user's group
+    // Get user's group and role
     const group = await getGroupById(user.group_id);
+    const role = await getUserRole(user.id);
 
     // Log audit entry
     await logAudit({
@@ -52,8 +53,10 @@ export async function POST(request: NextRequest) {
         full_name: user.full_name,
         email: user.email,
         group_id: user.group_id,
-        is_superuser: user.is_superuser,
+        role_id: user.role_id,
+        is_superuser: user.is_superuser, // Deprecated
         group: group,
+        role: role,
       },
       token,
     });

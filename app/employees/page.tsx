@@ -346,7 +346,7 @@ export default function UsersPage() {
               <TableHead>Employee #</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Job Title</TableHead>
               <TableHead>Group</TableHead>
               <TableHead>Date of Hire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -525,12 +525,36 @@ export default function UsersPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Input
-                  id="role"
+                <Label htmlFor="role">Job Title</Label>
+                <Select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                />
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, role: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job title" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Employee</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="director">Director</SelectItem>
+                    <SelectItem value="administrator">Administrator</SelectItem>
+                    <SelectItem value="hr">HR Specialist</SelectItem>
+                    <SelectItem value="accountant">Accountant</SelectItem>
+                    <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="engineer">Engineer</SelectItem>
+                    <SelectItem value="analyst">Analyst</SelectItem>
+                    <SelectItem value="coordinator">Coordinator</SelectItem>
+                    <SelectItem value="assistant">Assistant</SelectItem>
+                    <SelectItem value="consultant">Consultant</SelectItem>
+                    <SelectItem value="specialist">Specialist</SelectItem>
+                    <SelectItem value="contractor">Contractor</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

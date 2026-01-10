@@ -31,7 +31,12 @@ import {
 } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
 import { UserPermissionsDialog } from '@/components/user-permissions-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+
+interface Role {
+  id: number;
+  name: string;
+  description?: string;
+}
 
 interface User {
   id: number;
@@ -39,9 +44,12 @@ interface User {
   full_name: string;
   email?: string;
   group_id: number;
+  role_id?: number;
   is_active: number;
-  is_superuser?: number;
+  is_superuser?: number; // Deprecated
   last_login?: string;
+  group?: Group;
+  role?: Role;
 }
 
 interface Group {
@@ -56,6 +64,7 @@ export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -68,7 +77,7 @@ export default function UsersPage() {
     full_name: '',
     email: '',
     group_id: '',
-    is_superuser: false,
+    role_id: '',
   });
 
   useEffect(() => {
@@ -86,6 +95,7 @@ export default function UsersPage() {
       }
       loadUsers();
       loadGroups();
+      loadRoles();
     }
   }, [isAuthenticated, token, showInactive, currentUser]);
 
@@ -126,6 +136,23 @@ export default function UsersPage() {
     }
   };
 
+  const loadRoles = async () => {
+    try {
+      const response = await fetch('/api/roles', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRoles(data);
+      }
+    } catch (error) {
+      console.error('Failed to load roles:', error);
+    }
+  };
+
   const handleOpenPermissionsDialog = (user: User) => {
     setSelectedUserForPermissions(user);
     setPermissionsDialogOpen(true);
@@ -140,7 +167,7 @@ export default function UsersPage() {
         full_name: user.full_name,
         email: user.email || '',
         group_id: user.group_id.toString(),
-        is_superuser: user.is_superuser === 1,
+        role_id: user.role_id?.toString() || '',
       });
     } else {
       setEditingUser(null);
@@ -150,7 +177,7 @@ export default function UsersPage() {
         full_name: '',
         email: '',
         group_id: '',
-        is_superuser: false,
+        role_id: '',
       });
     }
     setIsDialogOpen(true);
@@ -167,7 +194,7 @@ export default function UsersPage() {
     const payload = {
       ...formData,
       group_id: parseInt(formData.group_id),
-      is_superuser: formData.is_superuser ? 1 : 0,
+      role_id: formData.role_id ? parseInt(formData.role_id) : undefined,
     };
 
     try {
@@ -178,7 +205,7 @@ export default function UsersPage() {
           full_name: formData.full_name,
           email: formData.email || undefined,
           group_id: parseInt(formData.group_id),
-          is_superuser: formData.is_superuser ? 1 : 0,
+          role_id: formData.role_id ? parseInt(formData.role_id) : undefined,
         };
 
         // Only include password if it's been changed
@@ -262,6 +289,11 @@ export default function UsersPage() {
     return groups.find((g) => g.id === groupId)?.name || 'Unknown';
   };
 
+  const getRoleName = (roleId?: number) => {
+    if (!roleId) return 'No Role';
+    return roles.find((r) => r.id === roleId)?.name || 'Unknown';
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -317,6 +349,7 @@ export default function UsersPage() {
               <TableHead>Full Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Group</TableHead>
+              <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -325,7 +358,7 @@ export default function UsersPage() {
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -336,18 +369,14 @@ export default function UsersPage() {
                   className={user.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}
                 >
                   <TableCell className="font-mono">{user.username}</TableCell>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {user.full_name}
-                      {user.is_superuser === 1 && (
-                        <Badge variant="default" className="bg-purple-600">
-                          Superuser
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
+                  <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>{user.email || '-'}</TableCell>
-                  <TableCell>{getGroupName(user.group_id)}</TableCell>
+                  <TableCell>{user.group?.name || getGroupName(user.group_id)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {user.role?.name || getRoleName(user.role_id)}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {user.is_active === 1 ? (
                       <Badge variant="default" className="bg-green-600">Active</Badge>
@@ -372,12 +401,12 @@ export default function UsersPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {user.is_superuser !== 1 && (
+                          {user.role_id !== 1 && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenPermissionsDialog(user)}
-                              title="Manage Permissions"
+                              title="Manage Group Permissions"
                             >
                               <Shield className="h-4 w-4" />
                             </Button>
@@ -503,22 +532,37 @@ export default function UsersPage() {
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
-              <Checkbox
-                id="is_superuser"
-                checked={formData.is_superuser}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, is_superuser: checked as boolean })
+            <div className="space-y-2">
+              <Label htmlFor="role_id">
+                Role <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={formData.role_id}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, role_id: value })
                 }
-              />
-              <div className="flex-1">
-                <Label htmlFor="is_superuser" className="cursor-pointer">
-                  Superuser
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Superusers have full access to all features and can manage permissions
-                </p>
-              </div>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()}>
+                      <div>
+                        <div className="font-medium">{role.name}</div>
+                        {role.description && (
+                          <div className="text-xs text-muted-foreground">
+                            {role.description}
+                          </div>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Roles control what actions the user can perform (create, read, update, delete)
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

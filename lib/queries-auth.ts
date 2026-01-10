@@ -1,5 +1,19 @@
 import { authDb as db } from './db-auth';
 
+export interface Role {
+  id: number;
+  name: string;
+  description?: string;
+  can_create: number;
+  can_read: number;
+  can_update: number;
+  can_delete: number;
+  can_manage_users: number;
+  can_access_all_groups: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -8,7 +22,8 @@ export interface User {
   email?: string;
   group_id: number;
   is_active: number;
-  is_superuser?: number;
+  is_superuser?: number; // Deprecated, use role_id instead
+  role_id?: number;
   color_mode?: 'light' | 'dark' | 'system';
   last_login?: string;
   created_at: string;
@@ -64,21 +79,98 @@ export async function getUserById(id: number): Promise<User | null> {
   return (result.rows[0] as unknown as User) || null;
 }
 
-export async function getAllUsers(): Promise<User[]> {
-  const result = await db.execute('SELECT * FROM users ORDER BY full_name');
-  return result.rows as unknown as User[];
+export interface UserWithDetails extends User {
+  group?: Group;
+  role?: Role;
+}
+
+export async function getAllUsers(): Promise<UserWithDetails[]> {
+  const result = await db.execute(`
+    SELECT
+      u.*,
+      g.id as group__id,
+      g.name as group__name,
+      g.description as group__description,
+      g.is_master as group__is_master,
+      g.can_view_all as group__can_view_all,
+      g.can_edit_all as group__can_edit_all,
+      r.id as role__id,
+      r.name as role__name,
+      r.description as role__description,
+      r.can_create as role__can_create,
+      r.can_read as role__can_read,
+      r.can_update as role__can_update,
+      r.can_delete as role__can_delete,
+      r.can_manage_users as role__can_manage_users,
+      r.can_access_all_groups as role__can_access_all_groups
+    FROM users u
+    LEFT JOIN groups g ON u.group_id = g.id
+    LEFT JOIN roles r ON u.role_id = r.id
+    ORDER BY u.full_name
+  `);
+
+  // Transform flat result into nested structure
+  return result.rows.map((row: any) => {
+    const user: UserWithDetails = {
+      id: row.id,
+      username: row.username,
+      password_hash: row.password_hash,
+      full_name: row.full_name,
+      email: row.email,
+      group_id: row.group_id,
+      is_active: row.is_active,
+      is_superuser: row.is_superuser,
+      role_id: row.role_id,
+      color_mode: row.color_mode,
+      last_login: row.last_login,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+
+    if (row.group__id) {
+      user.group = {
+        id: row.group__id,
+        name: row.group__name,
+        description: row.group__description,
+        is_master: row.group__is_master,
+        can_view_all: row.group__can_view_all,
+        can_edit_all: row.group__can_edit_all,
+        created_at: '',
+        updated_at: '',
+      };
+    }
+
+    if (row.role__id) {
+      user.role = {
+        id: row.role__id,
+        name: row.role__name,
+        description: row.role__description,
+        can_create: row.role__can_create,
+        can_read: row.role__can_read,
+        can_update: row.role__can_update,
+        can_delete: row.role__can_delete,
+        can_manage_users: row.role__can_manage_users,
+        can_access_all_groups: row.role__can_access_all_groups,
+        created_at: '',
+        updated_at: '',
+      };
+    }
+
+    return user;
+  });
 }
 
 export async function createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at' | 'last_login'>): Promise<User> {
   const result = await db.execute({
-    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, is_active, is_superuser, color_mode)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, role_id, is_active, is_superuser, color_mode)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       user.username,
       user.password_hash,
       user.full_name,
       user.email || null,
       user.group_id,
+      user.role_id || null,
       user.is_active,
       user.is_superuser || 0,
       user.color_mode || 'system',
@@ -418,4 +510,92 @@ export async function getUserCreatableGroups(userId: number): Promise<number[]> 
 
   const permissions = await getUserGroupPermissions(userId);
   return permissions.filter(p => p.can_create === 1).map(p => p.group_id);
+}
+
+// ============================================================================
+// ROLE-BASED PERMISSIONS
+// ============================================================================
+
+/**
+ * Get all roles
+ */
+export async function getAllRoles(): Promise<Role[]> {
+  const result = await db.execute('SELECT * FROM roles ORDER BY id');
+  return result.rows as unknown as Role[];
+}
+
+/**
+ * Get role by ID
+ */
+export async function getRoleById(id: number): Promise<Role | null> {
+  const result = await db.execute({
+    sql: 'SELECT * FROM roles WHERE id = ?',
+    args: [id],
+  });
+  return (result.rows[0] as unknown as Role) || null;
+}
+
+/**
+ * Get user's role
+ */
+export async function getUserRole(userId: number): Promise<Role | null> {
+  const user = await getUserById(userId);
+  if (!user || !user.role_id) return null;
+  return getRoleById(user.role_id);
+}
+
+/**
+ * Check if user has Administrator role (role_id = 1)
+ */
+export async function isAdministrator(userId: number): Promise<boolean> {
+  const user = await getUserById(userId);
+  return user?.role_id === 1;
+}
+
+/**
+ * Check if user can create records (based on role)
+ */
+export async function canUserCreate(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_create === 1;
+}
+
+/**
+ * Check if user can read records (based on role)
+ */
+export async function canUserRead(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_read === 1;
+}
+
+/**
+ * Check if user can update records (based on role)
+ */
+export async function canUserUpdate(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_update === 1;
+}
+
+/**
+ * Check if user can delete records (based on role)
+ */
+export async function canUserDelete(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_delete === 1;
+}
+
+/**
+ * Check if user can manage other users (based on role)
+ */
+export async function canUserManageUsers(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_manage_users === 1;
+}
+
+/**
+ * Check if user can access all groups (based on role)
+ */
+export async function canUserAccessAllGroups(userId: number): Promise<boolean> {
+  const role = await getUserRole(userId);
+  return role?.can_access_all_groups === 1;
 }

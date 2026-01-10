@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Users, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { config } from '@/lib/config';
+import { useAuth } from '@/lib/auth-context';
+import { useRouter, usePathname } from 'next/navigation';
+import { Spinner } from '@/components/spinner';
 
 interface Employee {
   id: number;
@@ -34,20 +37,52 @@ interface EmployeeSummary {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading: authLoading, token } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      loadDashboardData();
+    }
+  }, [isAuthenticated, token]);
+
+  // Reload data when navigating to dashboard page
+  useEffect(() => {
+    if (pathname === '/dashboard' && isAuthenticated && token) {
+      loadDashboardData();
+    }
+  }, [pathname, isAuthenticated, token]);
 
   const loadDashboardData = async () => {
+    if (!token) {
+      console.warn('Cannot load dashboard data: token is not available');
+      return;
+    }
+
     setLoading(true);
     try {
       const [employeesRes, entriesRes] = await Promise.all([
-        fetch('/api/employees'),
-        fetch('/api/attendance'),
+        fetch('/api/employees', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch('/api/attendance', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
       ]);
 
       const employeesData = await employeesRes.json();
@@ -124,12 +159,17 @@ export default function DashboardPage() {
     );
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading dashboard...</div>
+        <Spinner />
       </div>
     );
+  }
+
+  // Don't render if not authenticated (redirect will happen)
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllEmployees, createEmployee, getEmployeeById } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
-  canUserViewGroup,
-  canUserEditGroup,
   logAudit,
   getUserReadableGroups,
   canUserReadGroup,
@@ -13,6 +11,7 @@ import {
   isSuperuser,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
+import { serializeBigInt } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.json(employee);
+      return NextResponse.json(serializeBigInt(employee));
     } else {
       // Get all employees (filter based on permissions)
       let employees = await getAllEmployees();
@@ -68,7 +67,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json(employees);
+      return NextResponse.json(serializeBigInt(employees));
     }
   } catch (error) {
     console.error('Error fetching employees:', error);
