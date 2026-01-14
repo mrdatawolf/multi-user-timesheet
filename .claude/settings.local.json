@@ -32,7 +32,8 @@
       "Bash(pkill:*)",
       "Bash(npm run build:standalone:*)",
       "Bash(node check-migrations.js:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(npm view:*)"
     ]
   }
 }
