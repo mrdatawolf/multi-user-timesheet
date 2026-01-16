@@ -1,0 +1,18 @@
+{
+  "brandId": "SBS",
+  "brandURI": "127.0.0.1:6029",
+  "features": {
+    "leaveManagement": {
+      "enabled": false
+    },
+    "approvalWorkflows": {
+      "enabled": false
+    },
+    "policyEnforcement": {
+      "enabled": false
+    },
+    "accrualCalculations": {
+      "enabled": false
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "brandId": "BT",
+  "brandURI": "192.168.203.241:6029",
+  "features": {
+    "leaveManagement": {
+      "enabled": false
+    },
+    "approvalWorkflows": {
+      "enabled": false
+    },
+    "policyEnforcement": {
+      "enabled": false
+    },
+    "accrualCalculations": {
+      "enabled": false
+    }
+  }
+}

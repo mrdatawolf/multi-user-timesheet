@@ -12,6 +12,8 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "db:seed-employees": "tsx scripts/seed-employees.ts",
+    "db:seed-demo": "tsx scripts/seed-demo.ts",
+    "dev:demo": "cross-env DEMO_MODE=true next dev -p 6029",
     "build:standalone": "node scripts/package-standalone.js",
     "sync-version": "node scripts/sync-version.js",
     "select-brand": "node scripts/select-brand.js",
@@ -23,7 +25,9 @@
     "db:reset": "tsx scripts/reset-database.ts",
     "auth:init": "tsx scripts/init-auth-db.ts",
     "clean": "node -e \"const fs=require('fs'); ['dist-electron','dist-server','temp-server-build'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\"",
-    "clean:all": "npm run clean && node -e \"const fs=require('fs'); ['.node-portable','.next'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\""
+    "clean:all": "npm run clean && node -e \"const fs=require('fs'); ['.node-portable','.next'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -69,7 +73,8 @@
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.17"
   },
   "main": "electron-main.js",
   "config": {

@@ -5,6 +5,11 @@ const path = require('path');
 let mainWindow;
 let serverProcess;
 
+// Demo mode is enabled by default for Electron app (standalone client)
+// This ensures a fresh database on each launch for demos
+// Set DEMO_MODE=false environment variable to disable
+const DEMO_MODE = process.env.DEMO_MODE !== 'false'; // Default to true unless explicitly disabled
+
 function startServer() {
   const isDev = !app.isPackaged;
   const serverPath = isDev
@@ -13,10 +18,19 @@ function startServer() {
   const serverDir = path.dirname(serverPath);
 
   console.log('Starting server from:', serverPath);
+  console.log('Demo mode:', DEMO_MODE ? 'ENABLED' : 'disabled');
+
+  // Pass environment variables to the server process
+  const serverEnv = {
+    ...process.env,
+    DEMO_MODE: DEMO_MODE ? 'true' : 'false',
+    PORT: '6029',
+  };
 
   serverProcess = spawn('node', [serverPath], {
     cwd: serverDir,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: serverEnv,
   });
 
   serverProcess.on('error', (err) => {
@@ -41,7 +55,7 @@ function createWindow() {
 
   // Wait a moment for server to start, then load the app
   setTimeout(() => {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadURL('http://localhost:6029');
   }, 2000);
 
   mainWindow.on('closed', function () {

@@ -11,6 +11,22 @@ Transform Excel-based timesheet tracking into a modern, secure web application w
 
 ---
 
+## Key Milestones
+
+- [x] Excel replacement complete
+- [x] Multi-user security implemented
+- [x] Flexible time tracking enabled
+- [x] Data protection automated
+- [x] White labeling enabled
+- [ ] Employee data extended (Phase 5)
+- [ ] Leave balance tracking (Phase 6)
+- [ ] Approval workflows (Phase 7)
+- [ ] Policy automation (Phase 8-9)
+- [ ] Self-service portal (Phase 11)
+- [ ] External integrations (Phase 12)
+
+---
+
 ## Completed
 
 ### Phase 1: Core Attendance System
@@ -170,22 +186,6 @@ Employees can log in to view their own attendance (read-only), see personalized 
 Integration with ADP Workforce Now for employee sync and timecard export. Framework designed to support future integrations with Paychex, Gusto, BambooHR, and other HR/payroll systems.
 
 **Impact:** Single source of truth across all business systems.
-
----
-
-## Key Milestones
-
-- [x] Excel replacement complete
-- [x] Multi-user security implemented
-- [x] Flexible time tracking enabled
-- [x] Data protection automated
-- [x] White labeling enabled
-- [ ] Employee data extended (Phase 5)
-- [ ] Leave balance tracking (Phase 6)
-- [ ] Approval workflows (Phase 7)
-- [ ] Policy automation (Phase 8-9)
-- [ ] Self-service portal (Phase 11)
-- [ ] External integrations (Phase 12)
 
 ---
 

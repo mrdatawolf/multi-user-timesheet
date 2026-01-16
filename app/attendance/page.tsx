@@ -239,45 +239,55 @@ export default function AttendancePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Attendance</h1>
         </div>
-        <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <Label htmlFor="employee" className="text-xs">Employee</Label>
-            <Select
-              value={selectedEmployeeId?.toString() || ''}
-              onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
-            >
-              <SelectTrigger id="employee" className="h-8 text-xs">
-                <SelectValue placeholder="Select employee..." />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id.toString()}>
-                    {emp.last_name}, {emp.first_name}
-                    {emp.employee_number && ` (${emp.employee_number})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-wrap gap-2">
+          {/* Selects - inline */}
+          <div className="flex items-end gap-2 p-2 border rounded-lg bg-card">
+            <div className="w-64 space-y-1">
+              <Label htmlFor="employee" className="text-xs">Employee</Label>
+              <Select
+                value={selectedEmployeeId?.toString() || ''}
+                onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
+              >
+                <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
+                  <SelectValue placeholder="Select employee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>
+                      <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
+                      {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-20 space-y-1">
+              <Label htmlFor="year" className="text-xs">Year</Label>
+              <Select
+                value={year.toString()}
+                onValueChange={(value) => setYear(parseInt(value))}
+              >
+                <SelectTrigger id="year" className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map(y => (
+                    <SelectItem key={y} value={y.toString()}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="w-24 space-y-1">
-            <Label htmlFor="year" className="text-xs">Year</Label>
-            <Select
-              value={year.toString()}
-              onValueChange={(value) => setYear(parseInt(value))}
-            >
-              <SelectTrigger id="year" className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map(y => (
-                  <SelectItem key={y} value={y.toString()}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Balance Cards - 3/4 width */}
+          {selectedEmployeeId && (
+            <div className="flex-1 min-w-0">
+              <BalanceCards entries={entries} allocations={allocations} />
+            </div>
+          )}
         </div>
 
         {selectedEmployeeId && (
@@ -299,8 +309,6 @@ export default function AttendancePage() {
                   />
                 </div>
 
-                <BalanceCards entries={entries} allocations={allocations} />
-
                 <div className="mt-3 p-2 border rounded-lg bg-muted/50">
                   <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
@@ -317,9 +325,7 @@ export default function AttendancePage() {
               </>
             ) : (
               <>
-                {/* Balance Cards first layout */}
-                <BalanceCards entries={entries} allocations={allocations} />
-
+                {/* Balance Cards first layout - cards already shown above */}
                 <div className="space-y-3">
                   <h2 className="text-lg font-semibold">
                     Attendance Record: {year}

@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock } from 'lucide-react';
 import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
+import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
 
 interface Employee {
   id: number;
@@ -41,6 +42,9 @@ interface Employee {
   role: string;
   group_id?: number;
   date_of_hire?: string;
+  rehire_date?: string;
+  employment_type?: string;
+  seniority_rank?: number;
   created_by?: number;
   is_active: number;
 }
@@ -62,6 +66,11 @@ export default function UsersPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [allocationsDialogOpen, setAllocationsDialogOpen] = useState(false);
   const [selectedEmployeeForAllocations, setSelectedEmployeeForAllocations] = useState<Employee | null>(null);
+  const [brandFeatures, setBrandFeatures] = useState<BrandFeatures | null>(null);
+
+  // Check if leave management is enabled for this brand
+  const leaveManagementEnabled = brandFeatures?.features?.leaveManagement?.enabled ?? false;
+
   const [formData, setFormData] = useState({
     employee_number: '',
     first_name: '',
@@ -70,6 +79,9 @@ export default function UsersPage() {
     role: 'employee',
     group_id: '',
     date_of_hire: '',
+    rehire_date: '',
+    employment_type: 'full_time',
+    seniority_rank: '',
   });
 
   useEffect(() => {
@@ -77,6 +89,11 @@ export default function UsersPage() {
       router.push('/login');
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Load brand features on mount
+  useEffect(() => {
+    getBrandFeatures().then(setBrandFeatures);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && token) {
@@ -138,6 +155,9 @@ export default function UsersPage() {
         role: employee.role,
         group_id: employee.group_id?.toString() || '',
         date_of_hire: employee.date_of_hire || '',
+        rehire_date: employee.rehire_date || '',
+        employment_type: employee.employment_type || 'full_time',
+        seniority_rank: employee.seniority_rank?.toString() || '',
       });
     } else {
       setEditingEmployee(null);
@@ -149,6 +169,9 @@ export default function UsersPage() {
         role: 'employee',
         group_id: '',
         date_of_hire: '',
+        rehire_date: '',
+        employment_type: 'full_time',
+        seniority_rank: '',
       });
     }
     setIsDialogOpen(true);
@@ -166,6 +189,9 @@ export default function UsersPage() {
       ...formData,
       group_id: formData.group_id ? parseInt(formData.group_id) : null,
       date_of_hire: formData.date_of_hire || null,
+      rehire_date: formData.rehire_date || null,
+      employment_type: formData.employment_type || 'full_time',
+      seniority_rank: formData.seniority_rank ? parseInt(formData.seniority_rank) : null,
     };
 
     try {
@@ -348,6 +374,7 @@ export default function UsersPage() {
               <TableHead>Email</TableHead>
               <TableHead>Job Title</TableHead>
               <TableHead>Group</TableHead>
+              {leaveManagementEnabled && <TableHead>Employment</TableHead>}
               <TableHead>Date of Hire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -355,7 +382,7 @@ export default function UsersPage() {
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={leaveManagementEnabled ? 8 : 7} className="text-center text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>
@@ -381,6 +408,11 @@ export default function UsersPage() {
                       ? groups.find((g) => g.id === employee.group_id)?.name || '-'
                       : '-'}
                   </TableCell>
+                  {leaveManagementEnabled && (
+                    <TableCell className="capitalize">
+                      {employee.employment_type?.replace('_', '-') || 'Full-time'}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {employee.date_of_hire
                       ? new Date(employee.date_of_hire).toLocaleDateString()
@@ -569,6 +601,55 @@ export default function UsersPage() {
                 />
               </div>
             </div>
+
+            {leaveManagementEnabled && (
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employment_type">Employment Type</Label>
+                  <Select
+                    value={formData.employment_type}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, employment_type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_time">Full-time</SelectItem>
+                      <SelectItem value="part_time">Part-time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rehire_date">Rehire Date</Label>
+                  <Input
+                    id="rehire_date"
+                    type="date"
+                    value={formData.rehire_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rehire_date: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="seniority_rank">Seniority Rank (1-5)</Label>
+                  <Input
+                    id="seniority_rank"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={formData.seniority_rank}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seniority_rank: e.target.value })
+                    }
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={handleCloseDialog}>

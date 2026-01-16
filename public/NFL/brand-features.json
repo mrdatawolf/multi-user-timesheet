@@ -1,0 +1,24 @@
+{
+  "brandId": "NFL",
+  "brandURI": "192.168.2.71:6029",
+  "features": {
+    "leaveManagement": {
+      "enabled": true,
+      "leaveTypes": {
+        "vacation": { "enabled": true },
+        "sickLeave": { "enabled": true },
+        "floatingHoliday": { "enabled": true },
+        "paidHoliday": { "enabled": true }
+      }
+    },
+    "approvalWorkflows": {
+      "enabled": true
+    },
+    "policyEnforcement": {
+      "enabled": true
+    },
+    "accrualCalculations": {
+      "enabled": true
+    }
+  }
+}
