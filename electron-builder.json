@@ -1,6 +1,6 @@
 {
   "appId": "com.attendance.app",
-  "productName": "Attendance Management",
+  "productName": "BT Attendance",
   "directories": {
     "app": "electron-app",
     "output": "dist-electron",
@@ -14,11 +14,25 @@
     {
       "from": ".next/standalone",
       "to": "server",
-      "filter": ["**/*", "!node_modules/**"]
+      "filter": [
+        "**/*",
+        "!node_modules/**",
+        "!**/nul",
+        "!**/con",
+        "!**/prn",
+        "!**/aux"
+      ]
     },
     {
       "from": ".next/standalone/node_modules",
-      "to": "server/node_modules"
+      "to": "server/node_modules",
+      "filter": [
+        "**/*",
+        "!**/nul",
+        "!**/con",
+        "!**/prn",
+        "!**/aux"
+      ]
     },
     {
       "from": ".next/static",
@@ -33,7 +47,9 @@
     "target": [
       {
         "target": "nsis",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       }
     ]
   },

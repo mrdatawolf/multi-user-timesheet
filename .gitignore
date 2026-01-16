@@ -51,3 +51,4 @@ nul
 /.claude
 /dist-server
 /examples
+/.node-portable

@@ -17,8 +17,8 @@ let serverProcess;
 function startServer(serverUrl) {
   const isDev = !app.isPackaged;
   const serverPath = isDev
-    ? path.join(__dirname, '..', '.next', 'standalone', 'server.js')
-    : path.join(process.resourcesPath, 'server', 'server.js');
+    ? path.join(__dirname, '..', '.next', 'standalone', 'multi-user-timesheet', 'server.js')
+    : path.join(process.resourcesPath, 'server', 'multi-user-timesheet', 'server.js');
   const serverDir = path.dirname(serverPath);
 
   // Extract port from serverUrl
@@ -56,7 +56,7 @@ function createSettingsWindow() {
 
   settingsWindow = new BrowserWindow({
     width: 700,
-    height: 550,
+    height: 650,
     title: 'Settings - Attendance Management',
     parent: mainWindow,
     modal: true,

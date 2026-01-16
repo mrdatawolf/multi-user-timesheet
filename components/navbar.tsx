@@ -45,9 +45,9 @@ export function Navbar() {
   const appTitle = themeConfig.branding.appTitle;
 
   return (
-    <nav className="border-b">
+    <nav className="border-b sticky top-0 bg-background z-50">
       <div className="max-w-full mx-auto px-3">
-        <div className="flex items-center justify-between h-12">
+        <div className="flex items-center justify-between h-10">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src={logoSrc}

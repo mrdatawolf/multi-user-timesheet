@@ -35,4 +35,14 @@
     @apply bg-background text-foreground;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
+
+  /* Fix prose text color in dark mode */
+  .dark .prose {
+    --tw-prose-body: #f3f4f6;
+    --tw-prose-headings: #ffffff;
+    --tw-prose-bold: #ffffff;
+    --tw-prose-links: #60a5fa;
+    --tw-prose-bullets: #9ca3af;
+    --tw-prose-counters: #9ca3af;
+  }
 }
