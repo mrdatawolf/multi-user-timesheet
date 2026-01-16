@@ -44,6 +44,7 @@ nul
 # electron build outputs
 /dist-electron
 /dist-server
+/dist-all-brands
 
 # electron dependencies
 /electron-app/node_modules

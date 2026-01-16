@@ -141,7 +141,7 @@ async function build() {
 
   // Check dist-server exists
   if (!fs.existsSync(DIST_SERVER_DIR)) {
-    console.error('Error: dist-server not found. Run "npm run build:standalone" first.');
+    console.error('Error: dist-server not found. Run "npm run build:all" to build all distributions.');
     process.exit(1);
   }
 

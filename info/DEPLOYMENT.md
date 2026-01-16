@@ -67,29 +67,44 @@ See [build/README.md](build/README.md) for detailed instructions and design sugg
 npm install
 ```
 
-### Build All Distributions
+### Build All Distributions (Single Brand)
 
 ```bash
 npm run build:all
 ```
 
-This will create:
+This will:
+1. Prompt you to select a brand (TRL, NFL, BT, Default, etc.)
+2. Build the Next.js application with the selected brand's URI
+3. Create standalone server distribution
+4. Build Electron desktop application
+5. Create server installer (NSIS)
+
+**Output:**
 - `dist-server/` - Standalone Node.js server
-- `dist-electron/` - Electron desktop application
+- `dist-electron/` - Electron desktop application and installers
 
-### Build Individual Distributions
+### Build All Brands Automatically
 
-**Standalone Server Only:**
 ```bash
-npm run build
-npm run build:standalone
+npm run build:all:brands
 ```
 
-**Electron App Only:**
-```bash
-npm run build
-npm run electron:build
-```
+This will automatically build distributions for **every brand** in the `public/` folder:
+1. Discovers all available brands
+2. For each brand:
+   - Selects the brand
+   - Runs the full build pipeline
+   - Saves outputs to `dist-all-brands/{brandName}/`
+
+**Output:**
+- `dist-all-brands/TRL/dist-server/` - TRL standalone server
+- `dist-all-brands/TRL/dist-electron/` - TRL Electron app
+- `dist-all-brands/NFL/dist-server/` - NFL standalone server
+- `dist-all-brands/NFL/dist-electron/` - NFL Electron app
+- ... (and so on for each brand)
+
+**Note:** This can take a while depending on the number of brands!
 
 ## Distribution
 
