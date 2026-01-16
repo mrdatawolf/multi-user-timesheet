@@ -4,9 +4,28 @@ const path = require('path');
 console.log('Packaging standalone server for distribution...');
 
 const distDir = path.join(__dirname, '..', 'dist-server');
-const standaloneDir = path.join(__dirname, '..', '.next', 'standalone');
+// Next.js standalone creates a nested folder with the project name
+const standaloneDir = path.join(__dirname, '..', '.next', 'standalone', 'multi-user-timesheet');
 const publicDir = path.join(__dirname, '..', 'public');
 const staticDir = path.join(__dirname, '..', '.next', 'static');
+
+// Folders to exclude when copying (build artifacts that shouldn't be included)
+// Note: Do NOT exclude .next - the standalone server needs its .next folder for BUILD_ID, manifests, etc.
+const EXCLUDE_FOLDERS = [
+  'dist-electron',
+  'dist-server',
+  '.node-portable',
+  'temp-server-build',
+  '.git',
+];
+
+// Files to exclude when copying (Windows reserved names cause NSIS build failures)
+const EXCLUDE_FILES = [
+  'nul',   // Windows reserved device name
+  'con',   // Windows reserved device name
+  'prn',   // Windows reserved device name
+  'aux',   // Windows reserved device name
+];
 
 // Create dist-server directory if it doesn't exist
 if (!fs.existsSync(distDir)) {
@@ -18,9 +37,9 @@ if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
-// Copy entire standalone directory
+// Copy standalone directory (excluding build artifacts)
 console.log('Copying standalone server...');
-copyDir(standaloneDir, distDir);
+copyDir(standaloneDir, distDir, EXCLUDE_FOLDERS);
 
 // Copy static files
 console.log('Copying static files...');
@@ -197,8 +216,8 @@ console.log('');
 console.log('To test: cd dist-server && start-server.bat');
 console.log('');
 
-// Helper function to recursively copy directory
-function copyDir(src, dest) {
+// Helper function to recursively copy directory with optional exclusions
+function copyDir(src, dest, excludeFolders = []) {
   if (!fs.existsSync(src)) {
     console.warn(`Warning: Source directory not found: ${src}`);
     return;
@@ -214,8 +233,20 @@ function copyDir(src, dest) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
+    // Skip excluded folders
+    if (entry.isDirectory() && excludeFolders.includes(entry.name)) {
+      console.log(`  Skipping excluded folder: ${entry.name}`);
+      continue;
+    }
+
+    // Skip excluded files (Windows reserved names)
+    if (!entry.isDirectory() && EXCLUDE_FILES.includes(entry.name.toLowerCase())) {
+      console.log(`  Skipping excluded file: ${entry.name}`);
+      continue;
+    }
+
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
+      copyDir(srcPath, destPath, excludeFolders);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }

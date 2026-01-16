@@ -1,12 +1,12 @@
 import { createClient } from '@libsql/client';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 import { runMigrations } from './migrations';
 import { authMigrations } from './migrations/auth/migrations';
+import { getDatabasePath, logDataPaths } from './data-paths';
 
 // SEPARATE DATABASE FOR AUTHENTICATION
-// For Next.js runtime, process.cwd() is safe because Next.js always runs from project root
-const authDbPath = path.join(process.cwd(), 'databases', 'auth.db');
+// Uses centralized data paths for cross-platform compatibility
+const authDbPath = getDatabasePath('auth.db');
 
 export const authDb = createClient({
   url: `file:${authDbPath}`,

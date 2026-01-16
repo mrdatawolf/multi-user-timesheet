@@ -8,6 +8,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { BackupType } from './types';
+import { getDataDirectory, getBackupsDirectory } from '../data-paths';
 
 /**
  * Get the project root directory
@@ -17,17 +18,17 @@ export function getProjectRoot(): string {
 }
 
 /**
- * Get the databases directory path
+ * Get the databases directory path (uses centralized data paths)
  */
 export function getDatabasesDir(): string {
-  return path.join(getProjectRoot(), 'databases');
+  return getDataDirectory();
 }
 
 /**
- * Get the backups directory path
+ * Get the backups directory path (uses centralized data paths)
  */
 export function getBackupsDir(): string {
-  return path.join(getDatabasesDir(), 'backups');
+  return getBackupsDirectory();
 }
 
 /**

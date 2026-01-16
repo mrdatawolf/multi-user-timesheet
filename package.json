@@ -14,11 +14,16 @@
     "db:seed-employees": "tsx scripts/seed-employees.ts",
     "build:standalone": "node scripts/package-standalone.js",
     "sync-version": "node scripts/sync-version.js",
+    "select-brand": "node scripts/select-brand.js",
     "electron:start": "electron electron-app",
     "electron:build": "node scripts/sync-version.js && electron-builder --config electron-builder.json",
-    "build:all": "npm run build && npm run build:standalone && npm run electron:build",
+    "server:installer": "node scripts/build-server-installer.js",
+    "build:all": "npm run clean && npm run select-brand && npm run build && npm run build:standalone && npm run electron:build && npm run server:installer",
+    "build:branded": "npm run select-brand && npm run build",
     "db:reset": "tsx scripts/reset-database.ts",
-    "auth:init": "tsx scripts/init-auth-db.ts"
+    "auth:init": "tsx scripts/init-auth-db.ts",
+    "clean": "node -e \"const fs=require('fs'); ['dist-electron','dist-server','temp-server-build'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\"",
+    "clean:all": "npm run clean && node -e \"const fs=require('fs'); ['.node-portable','.next'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\""
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",

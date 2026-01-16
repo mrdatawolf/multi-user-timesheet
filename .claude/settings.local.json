@@ -33,7 +33,20 @@
       "Bash(npm run build:standalone:*)",
       "Bash(node check-migrations.js:*)",
       "Bash(xargs:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd.exe /c \"del /f /q \\\\?\\\\C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\temp-server-build\\\\server\\\\nul\")",
+      "Bash(cmd.exe /c \"pushd C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\temp-server-build\\\\server && del \\\\?\\\\%CD%\\\\nul && popd\")",
+      "Bash(cmd.exe /c \"rd /s /q C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\temp-server-build\")",
+      "Bash(cmd.exe /c \"pushd C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-server && del \\\\?\\\\%CD%\\\\nul & popd\")",
+      "Bash(cmd.exe /c \"pushd C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\.next\\\\standalone\\\\multi-user-timesheet && del \\\\?\\\\%CD%\\\\nul & popd\")",
+      "Bash(cmd.exe /c \"pushd C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet && del \\\\?\\\\%CD%\\\\nul & popd\")",
+      "Bash(npm run build:all:*)",
+      "Bash(cmd.exe /c \"pushd C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-electron\\\\win-unpacked\\\\resources\\\\server\\\\multi-user-timesheet && del \\\\?\\\\%CD%\\\\nul & popd\")",
+      "Bash(cmd.exe /c \"for /r C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-electron %f in \\(nul\\) do @del /f /q \\\\?\\\\%f 2>nul\")",
+      "Bash(cmd.exe /c \"mkdir empty_dir 2>nul & robocopy empty_dir dist-electron /MIR /R:1 /W:1 >nul 2>&1 & rmdir empty_dir & rmdir dist-electron\")",
+      "Bash(cmd.exe /c \"del /f /q \\\\?\\\\C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-electron\\\\nul\")",
+      "Bash(git checkout:*)"
     ]
   }
 }

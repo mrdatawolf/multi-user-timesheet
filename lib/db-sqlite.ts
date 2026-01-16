@@ -1,8 +1,8 @@
 import { createClient } from '@libsql/client';
-import path from 'path';
+import { getDatabasePath } from './data-paths';
 
-// For Next.js runtime, process.cwd() is safe because Next.js always runs from project root
-const dbPath = path.join(process.cwd(), 'databases', 'attendance.db');
+// Uses centralized data paths for cross-platform compatibility
+const dbPath = getDatabasePath('attendance.db');
 
 export const db = createClient({
   url: `file:${dbPath}`,
