@@ -1,6 +1,6 @@
 {
   "brandId": "SBS",
-  "brandURI": "127.0.0.1:6029",
+  "brandURI": "http://127.0.0.1:6029",
   "features": {
     "leaveManagement": {
       "enabled": false
