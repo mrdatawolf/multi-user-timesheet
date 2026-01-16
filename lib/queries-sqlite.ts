@@ -9,6 +9,9 @@ export interface Employee {
   role: string;
   group_id?: number;
   date_of_hire?: string;
+  rehire_date?: string;
+  employment_type?: string;  // 'full_time' | 'part_time'
+  seniority_rank?: number;   // 1-5 (tiebreaker for same hire dates)
   created_by?: number;
   is_active: number;
 }
@@ -47,8 +50,8 @@ export async function getEmployeeById(id: number): Promise<Employee | null> {
 
 export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
   const result = await db.execute({
-    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, created_by, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, rehire_date, employment_type, seniority_rank, created_by, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       employee.employee_number || null,
       employee.first_name,
@@ -57,6 +60,9 @@ export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Em
       employee.role,
       employee.group_id || null,
       employee.date_of_hire || null,
+      employee.rehire_date || null,
+      employee.employment_type || 'full_time',
+      employee.seniority_rank || null,
       employee.created_by || null,
       employee.is_active,
     ],

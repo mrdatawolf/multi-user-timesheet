@@ -1,5 +1,6 @@
 import { createClient } from '@libsql/client';
 import { getDatabasePath } from './data-paths';
+import { isDemoMode, logDemoModeBanner } from './demo-mode';
 
 // Uses centralized data paths for cross-platform compatibility
 const dbPath = getDatabasePath('attendance.db');
@@ -21,6 +22,9 @@ export async function initializeDatabase() {
       role TEXT DEFAULT 'employee',
       group_id INTEGER,
       date_of_hire DATE,
+      rehire_date DATE,
+      employment_type TEXT DEFAULT 'full_time',
+      seniority_rank INTEGER,
       created_by INTEGER,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -48,6 +52,30 @@ export async function initializeDatabase() {
   try {
     await db.execute(`ALTER TABLE employees ADD COLUMN created_by INTEGER`);
     console.log('  ✓ Added created_by column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add rehire_date column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN rehire_date DATE`);
+    console.log('  ✓ Added rehire_date column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add employment_type column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN employment_type TEXT DEFAULT 'full_time'`);
+    console.log('  ✓ Added employment_type column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add seniority_rank column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN seniority_rank INTEGER`);
+    console.log('  ✓ Added seniority_rank column to employees table');
   } catch (error) {
     // Column already exists, ignore error
   }
@@ -200,6 +228,9 @@ async function validateSchema() {
       'role',
       'group_id',
       'date_of_hire',
+      'rehire_date',
+      'employment_type',
+      'seniority_rank',
       'created_by',
       'is_active',
       'created_at',
@@ -241,6 +272,47 @@ async function validateSchema() {
   }
 }
 
+/**
+ * Clear all data from tables (for demo mode)
+ * This preserves the schema but removes all rows
+ */
+async function clearDatabaseForDemo() {
+  console.log('');
+  console.log('Clearing database for demo mode...');
+
+  // Delete in order to respect foreign key constraints
+  const tablesToClear = [
+    'attendance_entries',
+    'employee_time_allocations',
+    'employees',
+  ];
+
+  for (const table of tablesToClear) {
+    try {
+      await db.execute(`DELETE FROM ${table}`);
+      console.log(`  ✓ Cleared table: ${table}`);
+    } catch (error) {
+      console.log(`  ⚠ Could not clear table ${table}`);
+    }
+  }
+
+  console.log('  ✓ Database cleared for demo mode');
+}
+
+/**
+ * Seed demo data after clearing
+ */
+async function seedDemoDataInternal() {
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { seedDemoData } = await import('../scripts/seed-demo');
+    await seedDemoData();
+  } catch (error) {
+    console.error('Failed to seed demo data:', error);
+    // Non-fatal - continue without demo data
+  }
+}
+
 // Singleton initialization - only run once per process
 let initPromise: Promise<void> | null = null;
 
@@ -248,8 +320,25 @@ export function ensureInitialized() {
   if (!initPromise && typeof window === 'undefined') {
     // Only initialize at runtime, not during build
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
-      initPromise = initializeDatabase();
+      initPromise = initializeDatabaseWithDemoMode();
     }
   }
   return initPromise;
+}
+
+/**
+ * Initialize database with demo mode support
+ */
+async function initializeDatabaseWithDemoMode() {
+  // Log demo mode banner if enabled
+  logDemoModeBanner();
+
+  // Initialize database schema
+  await initializeDatabase();
+
+  // If demo mode is enabled, clear and reseed
+  if (isDemoMode()) {
+    await clearDatabaseForDemo();
+    await seedDemoDataInternal();
+  }
 }

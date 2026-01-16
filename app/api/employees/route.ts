@@ -107,6 +107,9 @@ export async function POST(request: NextRequest) {
       role: body.role || 'employee',
       group_id: body.group_id,
       date_of_hire: body.date_of_hire,
+      rehire_date: body.rehire_date,
+      employment_type: body.employment_type || 'full_time',
+      seniority_rank: body.seniority_rank,
       created_by: authUser.id,
       is_active: 1
     });
@@ -125,6 +128,9 @@ export async function POST(request: NextRequest) {
         role: newEmployee.role,
         group_id: newEmployee.group_id,
         date_of_hire: newEmployee.date_of_hire,
+        rehire_date: newEmployee.rehire_date,
+        employment_type: newEmployee.employment_type,
+        seniority_rank: newEmployee.seniority_rank,
       }),
       ip_address: getClientIP(request),
       user_agent: getUserAgent(request),
@@ -214,6 +220,21 @@ export async function PUT(request: NextRequest) {
       args.push(body.date_of_hire);
     }
 
+    if (body.rehire_date !== undefined) {
+      updates.push('rehire_date = ?');
+      args.push(body.rehire_date);
+    }
+
+    if (body.employment_type !== undefined) {
+      updates.push('employment_type = ?');
+      args.push(body.employment_type);
+    }
+
+    if (body.seniority_rank !== undefined) {
+      updates.push('seniority_rank = ?');
+      args.push(body.seniority_rank);
+    }
+
     if (body.is_active !== undefined) {
       updates.push('is_active = ?');
       args.push(body.is_active);
@@ -251,6 +272,9 @@ export async function PUT(request: NextRequest) {
         role: oldEmployee.role,
         group_id: oldEmployee.group_id,
         date_of_hire: oldEmployee.date_of_hire,
+        rehire_date: oldEmployee.rehire_date,
+        employment_type: oldEmployee.employment_type,
+        seniority_rank: oldEmployee.seniority_rank,
         is_active: oldEmployee.is_active,
       }),
       new_values: JSON.stringify({
@@ -261,6 +285,9 @@ export async function PUT(request: NextRequest) {
         role: updatedEmployee?.role,
         group_id: updatedEmployee?.group_id,
         date_of_hire: updatedEmployee?.date_of_hire,
+        rehire_date: updatedEmployee?.rehire_date,
+        employment_type: updatedEmployee?.employment_type,
+        seniority_rank: updatedEmployee?.seniority_rank,
         is_active: updatedEmployee?.is_active,
       }),
       ip_address: getClientIP(request),

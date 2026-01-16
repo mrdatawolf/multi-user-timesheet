@@ -23,7 +23,7 @@ async function seedEmployees() {
   console.log('');
 
   try {
-    // Sample employees
+    // Sample employees with new fields (rehire_date, employment_type, seniority_rank)
     const employees = [
       {
         number: 'EMP001',
@@ -32,7 +32,10 @@ async function seedEmployees() {
         email: 'john.smith@company.com',
         role: 'employee',
         group_id: 4, // Employees group
-        date_of_hire: '2023-01-15'
+        date_of_hire: '2023-01-15',
+        rehire_date: null,
+        employment_type: 'full_time',
+        seniority_rank: null
       },
       {
         number: 'EMP002',
@@ -41,7 +44,10 @@ async function seedEmployees() {
         email: 'sarah.johnson@company.com',
         role: 'manager',
         group_id: 2, // Managers group
-        date_of_hire: '2022-03-20'
+        date_of_hire: '2022-03-20',
+        rehire_date: null,
+        employment_type: 'full_time',
+        seniority_rank: null
       },
       {
         number: 'EMP003',
@@ -50,7 +56,10 @@ async function seedEmployees() {
         email: 'michael.williams@company.com',
         role: 'employee',
         group_id: 4, // Employees group
-        date_of_hire: '2023-06-10'
+        date_of_hire: '2023-06-10',
+        rehire_date: null,
+        employment_type: 'full_time',
+        seniority_rank: null
       },
       {
         number: 'EMP004',
@@ -59,7 +68,10 @@ async function seedEmployees() {
         email: 'emily.brown@company.com',
         role: 'hr_specialist',
         group_id: 3, // HR group
-        date_of_hire: '2021-11-05'
+        date_of_hire: '2021-11-05',
+        rehire_date: null,
+        employment_type: 'full_time',
+        seniority_rank: null
       },
       {
         number: 'EMP005',
@@ -68,7 +80,22 @@ async function seedEmployees() {
         email: 'david.martinez@company.com',
         role: 'employee',
         group_id: 4, // Employees group
-        date_of_hire: '2024-02-01'
+        date_of_hire: '2020-02-01',
+        rehire_date: '2024-02-01', // Example rehire
+        employment_type: 'full_time',
+        seniority_rank: 3
+      },
+      {
+        number: 'EMP006',
+        first: 'Lisa',
+        last: 'Garcia',
+        email: 'lisa.garcia@company.com',
+        role: 'employee',
+        group_id: 4, // Employees group
+        date_of_hire: '2024-03-15',
+        rehire_date: null,
+        employment_type: 'part_time', // Part-time employee
+        seniority_rank: null
       },
     ];
 
@@ -87,9 +114,12 @@ async function seedEmployees() {
             role,
             group_id,
             date_of_hire,
+            rehire_date,
+            employment_type,
+            seniority_rank,
             created_by,
             is_active
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             emp.number,
             emp.first,
@@ -98,6 +128,9 @@ async function seedEmployees() {
             emp.role,
             emp.group_id,
             emp.date_of_hire,
+            emp.rehire_date,
+            emp.employment_type,
+            emp.seniority_rank,
             1, // Created by admin (user ID 1)
             1  // Active
           ],
