@@ -1,6 +1,6 @@
 {
   "name": "multi-user-attendance",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 6029",
@@ -19,7 +19,7 @@
     "electron:start": "electron electron-app",
     "electron:build": "node scripts/sync-version.js && electron-builder --config electron-builder.json",
     "server:installer": "node scripts/build-server-installer.js",
-    "build:all": "npm run clean && npm run select-brand && npm run build && node scripts/package-standalone.js && npm run electron:build && npm run server:installer",
+    "build:all": "npm run clean && npm run select-brand && npm run build && node scripts/package-standalone.js && npm run electron:build && npm run server:installer && node scripts/copy-to-distribute.js",
     "build:all:brands": "node scripts/build-all-brands.js",
     "build:branded": "npm run select-brand && npm run build",
     "db:reset": "tsx scripts/reset-database.ts",
