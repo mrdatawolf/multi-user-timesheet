@@ -17,7 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Shield, Map, FlaskConical, Settings } from 'lucide-react';
+import { User, LogOut, Shield, Map, FlaskConical, Settings, HelpCircle } from 'lucide-react';
+import { useHelp } from '@/lib/help-context';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
@@ -32,6 +33,7 @@ export function Navbar() {
   const router = useRouter();
   const { user, isAuthenticated, logout, isLoading, isMaster, isAdministrator } = useAuth();
   const { theme: themeId } = useTheme();
+  const { isHelpMode, toggleHelpMode } = useHelp();
   const themeConfig = getTheme(themeId);
   const showAdminMenu = isMaster || isAdministrator;
   const enabledItems = NAV_ITEMS.filter(item => {
@@ -71,6 +73,25 @@ export function Navbar() {
                 {item.label}
               </Link>
             ))}
+
+            {/* Help Mode Toggle */}
+            {isAuthenticated && (
+              <Button
+                variant={isHelpMode ? 'default' : 'ghost'}
+                size="sm"
+                onClick={toggleHelpMode}
+                className={cn(
+                  'gap-1.5',
+                  isHelpMode && 'bg-blue-600 hover:bg-blue-700 text-white'
+                )}
+                title={isHelpMode ? 'Exit Help Mode' : 'Enter Help Mode'}
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">
+                  {isHelpMode ? 'Help On' : 'Help'}
+                </span>
+              </Button>
+            )}
 
             {!isLoading && (
               <>
