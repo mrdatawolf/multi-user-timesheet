@@ -10,6 +10,8 @@ import { Spinner } from '@/components/spinner';
 import { FileX } from 'lucide-react';
 import Link from 'next/link';
 import { config } from '@/lib/config';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 
 interface Employee {
   id: number;
@@ -33,6 +35,7 @@ interface ReportEntry {
 }
 
 export default function ReportsPage() {
+  const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [reportData, setReportData] = useState<ReportEntry[]>([]);
@@ -41,6 +44,11 @@ export default function ReportsPage() {
   const [selectedTimeCode, setSelectedTimeCode] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), 0, 1));
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), 11, 31));
+
+  // Set the current screen for help context
+  useEffect(() => {
+    setCurrentScreen('reports');
+  }, [setCurrentScreen]);
 
   useEffect(() => {
     loadInitialData();
@@ -144,10 +152,11 @@ export default function ReportsPage() {
       <div className="max-w-full mx-auto space-y-4">
         <h1 className="text-2xl font-bold">Reports</h1>
 
-        <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <label className="text-xs">Employee</label>
-            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+        <HelpArea helpId="report-filters" bubblePosition="bottom">
+          <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
+            <div className="flex-1 min-w-[200px] space-y-1">
+              <label className="text-xs">Employee</label>
+              <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -189,17 +198,23 @@ export default function ReportsPage() {
             <DatePicker date={endDate} setDate={setEndDate} />
           </div>
 
-          <Button onClick={handleGenerateReport} disabled={loading}>
-            {loading ? <Spinner /> : 'Generate Report'}
-          </Button>
+            <HelpArea helpId="generate-report" bubblePosition="top" showHighlight={false}>
+              <Button onClick={handleGenerateReport} disabled={loading}>
+                {loading ? <Spinner /> : 'Generate Report'}
+              </Button>
+            </HelpArea>
 
-          <Button onClick={handleExportCsv} disabled={reportData.length === 0} variant="outline">
-            Export CSV
-          </Button>
-        </div>
+            <HelpArea helpId="export-csv" bubblePosition="top" showHighlight={false}>
+              <Button onClick={handleExportCsv} disabled={reportData.length === 0} variant="outline">
+                Export CSV
+              </Button>
+            </HelpArea>
+          </div>
+        </HelpArea>
 
-        <div className="border rounded-lg">
-          <Table>
+        <HelpArea helpId="report-results" bubblePosition="top">
+          <div className="border rounded-lg">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
@@ -234,8 +249,9 @@ export default function ReportsPage() {
                 ))
               )}
             </TableBody>
-          </Table>
-        </div>
+            </Table>
+          </div>
+        </HelpArea>
       </div>
     </div>
   );

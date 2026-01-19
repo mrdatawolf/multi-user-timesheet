@@ -8,6 +8,8 @@ import { config } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { Spinner } from '@/components/spinner';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 
 interface Employee {
   id: number;
@@ -40,9 +42,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Set the current screen for help context
+  useEffect(() => {
+    setCurrentScreen('dashboard');
+  }, [setCurrentScreen]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -182,56 +190,60 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{employees.length}</div>
-              <p className="text-xs text-muted-foreground">Active employees</p>
-            </CardContent>
-          </Card>
+        <HelpArea helpId="stats-cards" bubblePosition="bottom">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{employees.length}</div>
+                <p className="text-xs text-muted-foreground">Active employees</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{entries.length}</div>
-              <p className="text-xs text-muted-foreground">Attendance entries</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{entries.length}</div>
+                <p className="text-xs text-muted-foreground">Attendance entries</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">Hours logged</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
+                <p className="text-xs text-muted-foreground">Hours logged</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Time Codes</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{timeCodeSummary.length}</div>
-              <p className="text-xs text-muted-foreground">Different codes used</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Time Codes</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{timeCodeSummary.length}</div>
+                <p className="text-xs text-muted-foreground">Different codes used</p>
+              </CardContent>
+            </Card>
+          </div>
+        </HelpArea>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Time Code Usage</CardTitle>
+              <HelpArea helpId="time-code-usage" bubblePosition="right">
+                <CardTitle className="text-base cursor-help">Time Code Usage</CardTitle>
+              </HelpArea>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -254,7 +266,9 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Employee Summary</CardTitle>
+              <HelpArea helpId="employee-summary" bubblePosition="left">
+                <CardTitle className="text-base cursor-help">Employee Summary</CardTitle>
+              </HelpArea>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -280,7 +294,9 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent Entries</CardTitle>
+            <HelpArea helpId="recent-entries" bubblePosition="bottom">
+              <CardTitle className="text-base cursor-help">Recent Entries</CardTitle>
+            </HelpArea>
           </CardHeader>
           <CardContent>
             {recentEntries.length === 0 ? (
