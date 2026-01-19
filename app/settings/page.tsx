@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from 'react';
 import { useTheme } from '@/lib/theme-context';
 import { THEMES, ThemeId } from '@/lib/themes';
 import { ColorMode } from '@/lib/color-modes';
@@ -9,10 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BackupCard } from '@/components/backup-card';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 
 export default function SettingsPage() {
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
   const { user } = useAuth();
+  const { setCurrentScreen } = useHelp();
+
+  // Set the current screen for help context
+  useEffect(() => {
+    setCurrentScreen('settings');
+  }, [setCurrentScreen]);
 
   // Check if user is admin (member of Master group or similar)
   // For now, we'll show theme controls to all users, but you can add group_id check here
@@ -57,7 +66,9 @@ export default function SettingsPage() {
           <CardContent className="space-y-6">
             {/* Color Mode - User Preference */}
             <div className="space-y-2">
-              <Label htmlFor="color-mode">Color Mode</Label>
+              <HelpArea helpId="color-mode" bubblePosition="right">
+                <Label htmlFor="color-mode" className="cursor-help">Color Mode</Label>
+              </HelpArea>
               <Select
                 value={colorMode}
                 onValueChange={(value: ColorMode) => setColorMode(value)}
@@ -88,7 +99,9 @@ export default function SettingsPage() {
             {isAdmin && (
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="theme">Layout Theme</Label>
+                  <HelpArea helpId="layout-theme" bubblePosition="right">
+                    <Label htmlFor="theme" className="cursor-help">Layout Theme</Label>
+                  </HelpArea>
                   <span className="text-xs text-muted-foreground px-2 py-1 bg-primary/10 rounded">
                     Admin Only
                   </span>

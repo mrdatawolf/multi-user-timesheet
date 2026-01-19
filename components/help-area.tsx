@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useHelp } from '@/lib/help-context';
 import { cn } from '@/lib/utils';
 import { Info } from 'lucide-react';
@@ -28,7 +28,7 @@ interface HelpAreaProps {
  *
  * Wraps UI sections with help functionality. When help mode is active:
  * - Shows a highlight ring around the section (optional)
- * - Displays help popover on click
+ * - Displays help popover on hover (no click required)
  * - Uses Radix UI Popover for automatic viewport collision detection
  */
 export function HelpArea({
@@ -39,6 +39,7 @@ export function HelpArea({
   showHighlight = true,
 }: HelpAreaProps) {
   const { isHelpMode, getSectionHelp } = useHelp();
+  const [isOpen, setIsOpen] = useState(false);
 
   const helpContent = getSectionHelp(helpId);
 
@@ -70,7 +71,7 @@ export function HelpArea({
   } as const;
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div
           data-help-id={helpId}
@@ -82,6 +83,8 @@ export function HelpArea({
             ],
             className
           )}
+          onMouseEnter={() => setIsOpen(true)}
+          onMouseLeave={() => setIsOpen(false)}
           role="button"
           aria-label={`Help for ${helpContent.title}`}
         >
@@ -93,7 +96,9 @@ export function HelpArea({
         align="start"
         sideOffset={8}
         collisionPadding={16}
-        className="w-80 p-0 border-blue-200 dark:border-blue-800"
+        className="w-80 p-0 border-blue-200 dark:border-blue-800 pointer-events-none"
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
       >
         {/* Header */}
         <div className="flex items-center gap-2 p-3 border-b border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950 rounded-t-md">

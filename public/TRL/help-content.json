@@ -9,7 +9,7 @@
       "section": "employee-selector",
       "title": "Employee Selector",
       "whatItIs": "Dropdown to choose which employee's attendance you want to view or edit.",
-      "howToUse": "Click the dropdown to see all employees you have permission to access. Type to search by name.",
+      "howToUse": "Click the dropdown to see all employees you have permission to access. Type to search by last name.",
       "howToUpdate": "Go to the Employees tab to add new employees or modify existing ones.",
       "position": "bottom",
       "order": 1
@@ -31,7 +31,7 @@
       "section": "attendance-grid",
       "title": "Attendance Calendar",
       "whatItIs": "The calendar grid showing all time entries for the selected employee throughout the year.",
-      "howToUse": "Click any date cell to add or edit time entries. Single entries show the time code (e.g., 'V 8'), multiple entries show total hours with an asterisk (e.g., '*8.5').",
+      "howToUse": "Click any date cell to add or edit time entries. Single entries show the time code (e.g., 'V 8'), multiple entries show total hours with an asterisk (e.g., '*8.5'), A blue dot in the top right of a cell denotes that there is a note in that cell",
       "howToUpdate": "Click a cell to open the entry dialog where you can add, edit, or delete entries.",
       "position": "top",
       "order": 3
@@ -64,8 +64,8 @@
       "section": "entry-time",
       "title": "Hours & Minutes",
       "whatItIs": "The duration of time off being recorded.",
-      "howToUse": "Use + and - buttons to adjust hours and minutes. Minutes increment in 15-minute intervals.",
-      "howToUpdate": "Total hours for a day cannot exceed 24. Multiple entries on the same day are summed.",
+      "howToUse": "Use + and - buttons to adjust hours and minutes. Minutes increment in 15-minute intervals. Total hours for a day cannot exceed 24. Multiple entries on the same day are summed.",
+      "howToUpdate": "When you are done adjusting time click 'Save All Changes' and it will automatically update the date cell with all of the entered hours and update the balance cards with the used hours.",
       "position": "right",
       "order": 11
     },
@@ -87,7 +87,7 @@
       "title": "Add Employee",
       "whatItIs": "Button to create a new employee record in the system.",
       "howToUse": "Click to open a form for entering new employee information.",
-      "howToUpdate": "Fill out required fields (name, employee number, group) and click Save.",
+      "howToUpdate": "Fill out required fields (name, employee number, group) and click 'Create Employee'.",
       "position": "left",
       "order": 1
     },
@@ -98,7 +98,7 @@
       "title": "Edit Employee",
       "whatItIs": "Opens the employee edit dialog to modify their information.",
       "howToUse": "Click the pencil icon to edit employee details like name, email, group, and hire date.",
-      "howToUpdate": "Make changes in the dialog and click Update to save.",
+      "howToUpdate": "Make changes in the dialog and click 'Update Employee' to save.",
       "position": "left",
       "order": 2
     },
@@ -109,7 +109,7 @@
       "title": "Time Allocations",
       "whatItIs": "Custom time-off hours allocated to this employee per year.",
       "howToUse": "Click the clock icon to view and set annual time-off allocations.",
-      "howToUpdate": "Enter custom hours for each time-off type, or leave blank to use group defaults.",
+      "howToUpdate": "Enter custom hours for each time-off type, or leave blank to use group defaults. Each change has to be saved by clicking the save button to the right of the changed allocated hours before changing another allocation.",
       "position": "left",
       "order": 3
     },
@@ -120,7 +120,7 @@
       "title": "Deactivate Employee",
       "whatItIs": "Marks the employee as inactive (soft delete). Their records are preserved.",
       "howToUse": "Click the trash icon to deactivate. A confirmation dialog will appear.",
-      "howToUpdate": "Superusers can view inactive employees by clicking 'Show Inactive'.",
+      "howToUpdate": "Superusers can view inactive employees by clicking 'Show Inactive'. Reactivation requires database access.",
       "position": "left",
       "order": 4
     },
@@ -142,7 +142,7 @@
       "title": "Edit User",
       "whatItIs": "Opens the user edit dialog to modify account information.",
       "howToUse": "Click the pencil icon to edit user details like name, email, group, and role.",
-      "howToUpdate": "Make changes in the dialog and click Update. Leave password blank to keep current.",
+      "howToUpdate": "Make changes in the dialog and click 'Update User'. Leave password blank to keep current.",
       "position": "left",
       "order": 2
     },
@@ -169,15 +169,26 @@
       "order": 4
     },
     {
-      "id": "settings-theme",
+      "id": "settings-color-mode",
       "screen": "settings",
-      "section": "theme",
-      "title": "Theme Settings",
-      "whatItIs": "Customize the application's visual appearance.",
-      "howToUse": "Choose between light, dark, or system color modes. Select layout themes.",
+      "section": "color-mode",
+      "title": "Color Mode",
+      "whatItIs": "Controls the color scheme of the application (light, dark, or system).",
+      "howToUse": "Select Light for always bright, Dark for always dark, or System to match your device settings.",
       "howToUpdate": "Changes apply immediately and are saved to your browser.",
       "position": "right",
       "order": 1
+    },
+    {
+      "id": "settings-layout-theme",
+      "screen": "settings",
+      "section": "layout-theme",
+      "title": "Layout Theme",
+      "whatItIs": "Admin-only setting that controls layout density, typography, and spacing for all users.",
+      "howToUse": "Select a theme from the dropdown to change the overall layout style.",
+      "howToUpdate": "Changes apply immediately to all users. This setting does not affect colors.",
+      "position": "right",
+      "order": 2
     },
     {
       "id": "settings-backup",
@@ -188,7 +199,106 @@
       "howToUse": "View backup history, create manual backups, or restore from a previous backup.",
       "howToUpdate": "Backups are created automatically. Click 'Create Backup' for manual backup.",
       "position": "top",
+      "order": 3
+    },
+    {
+      "id": "dashboard-stats-cards",
+      "screen": "dashboard",
+      "section": "stats-cards",
+      "title": "Statistics Overview",
+      "whatItIs": "Quick summary cards showing key metrics: total employees, entries, hours logged, and time codes used.",
+      "howToUse": "View at-a-glance statistics for the system. Numbers update as attendance entries are added.",
+      "howToUpdate": "Stats are calculated automatically from attendance data. Add entries on the Attendance page.",
+      "position": "bottom",
+      "order": 1
+    },
+    {
+      "id": "dashboard-time-code-usage",
+      "screen": "dashboard",
+      "section": "time-code-usage",
+      "title": "Time Code Usage",
+      "whatItIs": "Breakdown of hours logged by time code type (Vacation, Sick, Holiday, etc.).",
+      "howToUse": "View which time codes are used most frequently and their total hours.",
+      "howToUpdate": "Data updates automatically as attendance entries are added or modified.",
+      "position": "right",
       "order": 2
+    },
+    {
+      "id": "dashboard-employee-summary",
+      "screen": "dashboard",
+      "section": "employee-summary",
+      "title": "Employee Summary",
+      "whatItIs": "List of employees with their total entry count and hours logged.",
+      "howToUse": "View which employees have the most time-off entries and hours.",
+      "howToUpdate": "Data updates automatically. Click an employee to go to their attendance page.",
+      "position": "left",
+      "order": 3
+    },
+    {
+      "id": "dashboard-recent-entries",
+      "screen": "dashboard",
+      "section": "recent-entries",
+      "title": "Recent Entries",
+      "whatItIs": "The 10 most recent attendance entries across all employees.",
+      "howToUse": "Quickly see the latest time-off entries that have been logged.",
+      "howToUpdate": "Entries appear here automatically when added on the Attendance page.",
+      "position": "top",
+      "order": 4
+    },
+    {
+      "id": "reports-filters",
+      "screen": "reports",
+      "section": "report-filters",
+      "title": "Report Filters",
+      "whatItIs": "Filter controls to narrow down the attendance data included in your report.",
+      "howToUse": "Select employee, time code, and date range, then click 'Generate Report'.",
+      "howToUpdate": "Filters are not saved between sessions. Set them each time you generate a report.",
+      "position": "bottom",
+      "order": 1
+    },
+    {
+      "id": "reports-generate",
+      "screen": "reports",
+      "section": "generate-report",
+      "title": "Generate Report",
+      "whatItIs": "Button to fetch and display attendance data based on your filter selections.",
+      "howToUse": "Set your filters, then click this button to populate the results table.",
+      "howToUpdate": "Click again after changing filters to refresh the results.",
+      "position": "top",
+      "order": 2
+    },
+    {
+      "id": "reports-export",
+      "screen": "reports",
+      "section": "export-csv",
+      "title": "Export CSV",
+      "whatItIs": "Downloads the current report data as a CSV file for use in Excel or other tools.",
+      "howToUse": "After generating a report, click this button to download the data.",
+      "howToUpdate": "Generate a new report first if you want updated data in your export.",
+      "position": "top",
+      "order": 3
+    },
+    {
+      "id": "reports-results",
+      "screen": "reports",
+      "section": "report-results",
+      "title": "Report Results",
+      "whatItIs": "Table showing attendance entries that match your filter criteria.",
+      "howToUse": "Review the data, scroll to see all entries. Export to CSV for further analysis.",
+      "howToUpdate": "Click 'Generate Report' with new filters to refresh the data.",
+      "position": "top",
+      "order": 4
+    },
+    {
+      "id": "entry-add-another",
+      "screen": "attendance",
+      "section": "entry-add-another",
+      "title": "Add New Entry",
+      "whatItIs": "Button to create another entry allowing you split the hours used by multiple time codes.",
+      "howToUse": "Click 'Add Another Entry' and a new entry box will be added below the first one. If you want to remove an entry box select the red trashcan in the top right of the entry.",
+      "howToUpdate": "When you click 'Save All Changes' it will add up the total hours used and display that in the date cell denoted with an asterisk to show it has multiple entries.",
+      "position": "right",
+      "order": 13
     }
   ]
 }

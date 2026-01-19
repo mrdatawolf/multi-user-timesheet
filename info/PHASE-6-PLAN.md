@@ -485,39 +485,43 @@ HELP_AUTO_SHOW_NEW_SCREENS=false
 
 ## Implementation Steps
 
-### Phase 6.1: Core Help System (Week 1)
-1. Create help content structure and data
-2. Implement HelpProvider context
-3. Build HelpBubble component
-4. Create HelpArea wrapper
-5. Add help button to navbar
+### Phase 6.1: Core Help System ✅ COMPLETE
+1. ✅ Created help content structure with brand-specific JSON (`public/{brand}/help-content.json`)
+2. ✅ Implemented HelpProvider context (`lib/help-context.tsx`)
+3. ✅ Built HelpArea component with Radix UI Popover for viewport collision detection
+4. ✅ Help bubbles appear on hover (no click required)
+5. ✅ Added Help toggle button to navbar
+6. ✅ API endpoint for brand selection (`/api/brand-selection`)
 
-### Phase 6.2: Screen Integration (Week 2)
-1. Wrap Attendance screen sections with HelpArea
-2. Wrap Employees screen sections
-3. Wrap Users screen sections
-4. Wrap Dashboard screen sections
-5. Write all help content
+### Phase 6.2: Screen Integration ✅ COMPLETE
+1. ✅ Attendance screen - employee selector, year selector, attendance grid labels
+2. ✅ Attendance dialog - time code, time, notes labels in multi-entry-dialog
+3. ✅ Employees screen - action buttons (add, edit, allocations, delete)
+4. ✅ Users screen - action buttons (add, edit, permissions, delete)
+5. ✅ Dashboard screen - stats cards, time code usage, employee summary, recent entries
+6. ✅ Settings screen - color mode, layout theme labels
+7. ✅ Reports screen - filters, generate/export buttons, results table
+8. ✅ All help content written in `public/TRL/help-content.json`
 
-### Phase 6.3: Progress Tracking (Week 2)
-1. Create user_help_progress table
-2. Implement progress tracking API
-3. "Don't show again" functionality
-4. Reset progress option
-5. Per-screen seen tracking
+### Phase 6.3: Progress Tracking (Partial)
+1. ⏳ Using localStorage instead of database table for simplicity
+2. ✅ Help mode toggle state management
+3. ✅ "Don't show again" option available in context
+4. ✅ Reset help progress option in context
+5. ✅ Per-screen tracking via currentScreen state
 
-### Phase 6.4: Welcome Tour (Week 3)
-1. Build WelcomeTour component
-2. Multi-step walkthrough logic
-3. Highlight animation system
-4. First-time user detection
-5. Skip/dismiss handling
+### Phase 6.4: Welcome Tour (Not Started)
+1. ⏳ Build WelcomeTour component
+2. ⏳ Multi-step walkthrough logic
+3. ⏳ Highlight animation system
+4. ⏳ First-time user detection
+5. ⏳ Skip/dismiss handling
 
-### Phase 6.5: Admin Features (Week 3)
-1. Help content management UI (optional)
-2. Edit help text in-place
-3. Preview mode before saving
-4. Help content validation
+### Phase 6.5: Admin Features (Partial)
+1. ✅ Brand-specific JSON files allow per-brand customization
+2. ⏳ In-place editing UI not implemented
+3. ⏳ Preview mode not implemented
+4. ⏳ Help content validation not implemented
 
 ## Testing Strategy
 
@@ -556,3 +560,42 @@ HELP_AUTO_SHOW_NEW_SCREENS=false
 - Analytics on which help sections are viewed most
 - Tooltips for form field validation
 - AI-powered contextual help suggestions
+
+---
+
+## Roadmap: Upcoming Features
+
+### Phase 6.6: Brand-Specific Time Codes
+Move TimeCode abbreviations and names from the database into brand-specific JSON files (`public/{brand}/time-codes.json`). This allows companies to customize time codes for their specific needs without database modifications.
+
+**Benefits:**
+- Each brand can define their own time codes (V, S, H, FH, etc.)
+- No database migration required for time code changes
+- Consistent with brand-specific help content pattern
+- UUID system already in place for easy migration
+
+**Implementation:**
+1. Create `time-codes.json` structure in brand folders
+2. Update API to read from JSON instead of database
+3. Migrate existing database time codes to JSON format
+4. Update attendance components to use new source
+
+### Phase 6.7: Balance Breakdown Modals
+Add clickable modals to each balance card on the Attendance page (employee/year row) that explain how the available time was calculated.
+
+**Purpose:**
+- Show users exactly how their time-off balance was derived
+- Display all allocation rules that apply (group defaults, employee overrides, accrual rules)
+- Break down used vs. remaining time with detailed line items
+- Help users understand why they have the balance they do
+
+**Implementation:**
+1. Add click handler to each balance card
+2. Create BalanceBreakdownModal component
+3. Fetch and display allocation rules for the employee
+4. Show calculation breakdown:
+   - Base allocation (from group or employee override)
+   - Accrual additions (if applicable)
+   - Carry-over from previous year (if applicable)
+   - Time used (with date breakdowns)
+   - Remaining balance
