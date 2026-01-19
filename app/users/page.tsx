@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
 import { UserPermissionsDialog } from '@/components/user-permissions-dialog';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 
 interface Role {
   id: number;
@@ -79,6 +81,12 @@ export default function UsersPage() {
     group_id: '',
     role_id: '',
   });
+
+  // Set the current screen for help context
+  const { setCurrentScreen } = useHelp();
+  useEffect(() => {
+    setCurrentScreen('users');
+  }, [setCurrentScreen]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -334,10 +342,12 @@ export default function UsersPage() {
               </>
             )}
           </Button>
-          <Button onClick={() => handleOpenDialog()} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add User
-          </Button>
+          <HelpArea helpId="add-user" bubblePosition="left">
+            <Button onClick={() => handleOpenDialog()} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add User
+            </Button>
+          </HelpArea>
         </div>
       </div>
 
@@ -393,33 +403,39 @@ export default function UsersPage() {
                     <div className="flex justify-end gap-2">
                       {user.is_active === 1 && (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(user)}
-                            title="Edit User"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {user.role_id !== 1 && (
+                          <HelpArea helpId="edit-user" bubblePosition="left" showHighlight={false}>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOpenPermissionsDialog(user)}
-                              title="Manage Group Permissions"
+                              onClick={() => handleOpenDialog(user)}
+                              title="Edit User"
                             >
-                              <Shield className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
+                          </HelpArea>
+                          {user.role_id !== 1 && (
+                            <HelpArea helpId="permissions" bubblePosition="left" showHighlight={false}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenPermissionsDialog(user)}
+                                title="Manage Group Permissions"
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                            </HelpArea>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(user)}
-                            className="text-red-600 hover:text-red-700"
-                            disabled={user.id === currentUser?.id}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <HelpArea helpId="delete-user" bubblePosition="left" showHighlight={false}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(user)}
+                              className="text-red-600 hover:text-red-700"
+                              disabled={user.id === currentUser?.id}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </HelpArea>
                         </>
                       )}
                     </div>

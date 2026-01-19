@@ -1,0 +1,194 @@
+{
+  "brandId": "TRL",
+  "version": "1.0",
+  "description": "Help content for TRL brand. Add entries for any section ID to provide contextual help.",
+  "content": [
+    {
+      "id": "attendance-employee-selector",
+      "screen": "attendance",
+      "section": "employee-selector",
+      "title": "Employee Selector",
+      "whatItIs": "Dropdown to choose which employee's attendance you want to view or edit.",
+      "howToUse": "Click the dropdown to see all employees you have permission to access. Type to search by name.",
+      "howToUpdate": "Go to the Employees tab to add new employees or modify existing ones.",
+      "position": "bottom",
+      "order": 1
+    },
+    {
+      "id": "attendance-year-selector",
+      "screen": "attendance",
+      "section": "year-selector",
+      "title": "Year Selector",
+      "whatItIs": "Choose which year's attendance records to display.",
+      "howToUse": "Click the dropdown and select a different year to view historical records.",
+      "howToUpdate": "The calendar automatically displays the selected year. Records are saved per year.",
+      "position": "bottom",
+      "order": 2
+    },
+    {
+      "id": "attendance-grid",
+      "screen": "attendance",
+      "section": "attendance-grid",
+      "title": "Attendance Calendar",
+      "whatItIs": "The calendar grid showing all time entries for the selected employee throughout the year.",
+      "howToUse": "Click any date cell to add or edit time entries. Single entries show the time code (e.g., 'V 8'), multiple entries show total hours with an asterisk (e.g., '*8.5').",
+      "howToUpdate": "Click a cell to open the entry dialog where you can add, edit, or delete entries.",
+      "position": "top",
+      "order": 3
+    },
+    {
+      "id": "attendance-balance-cards",
+      "screen": "attendance",
+      "section": "balance-cards",
+      "title": "Balance Cards",
+      "whatItIs": "Shows used hours vs. allocated hours for time-off codes like Vacation and Floating Holiday.",
+      "howToUse": "View remaining hours for each time-off type. Cards show usage progress with color indicators.",
+      "howToUpdate": "Balances update automatically as you add entries. Allocations can be customized per employee in the Employees tab.",
+      "position": "top",
+      "order": 4
+    },
+    {
+      "id": "entry-time-code",
+      "screen": "attendance",
+      "section": "entry-time-code",
+      "title": "Time Code",
+      "whatItIs": "The type of time being recorded (e.g., Vacation, Sick, Holiday).",
+      "howToUse": "Select a time code from the dropdown. Choose '-' to clear the entry.",
+      "howToUpdate": "Time codes are configured by administrators. Contact your admin to add new codes.",
+      "position": "right",
+      "order": 10
+    },
+    {
+      "id": "entry-time",
+      "screen": "attendance",
+      "section": "entry-time",
+      "title": "Hours & Minutes",
+      "whatItIs": "The duration of time off being recorded.",
+      "howToUse": "Use + and - buttons to adjust hours and minutes. Minutes increment in 15-minute intervals.",
+      "howToUpdate": "Total hours for a day cannot exceed 24. Multiple entries on the same day are summed.",
+      "position": "right",
+      "order": 11
+    },
+    {
+      "id": "entry-notes",
+      "screen": "attendance",
+      "section": "entry-notes",
+      "title": "Notes",
+      "whatItIs": "Optional text to provide context for this entry.",
+      "howToUse": "Add notes like 'doctor appointment' or 'PTO'. Notes are visible to managers.",
+      "howToUpdate": "Edit the text field directly. Notes are saved when you click 'Save All Changes'.",
+      "position": "right",
+      "order": 12
+    },
+    {
+      "id": "employees-add-button",
+      "screen": "employees",
+      "section": "add-employee",
+      "title": "Add Employee",
+      "whatItIs": "Button to create a new employee record in the system.",
+      "howToUse": "Click to open a form for entering new employee information.",
+      "howToUpdate": "Fill out required fields (name, employee number, group) and click Save.",
+      "position": "left",
+      "order": 1
+    },
+    {
+      "id": "employees-edit",
+      "screen": "employees",
+      "section": "edit-employee",
+      "title": "Edit Employee",
+      "whatItIs": "Opens the employee edit dialog to modify their information.",
+      "howToUse": "Click the pencil icon to edit employee details like name, email, group, and hire date.",
+      "howToUpdate": "Make changes in the dialog and click Update to save.",
+      "position": "left",
+      "order": 2
+    },
+    {
+      "id": "employees-allocations",
+      "screen": "employees",
+      "section": "allocations",
+      "title": "Time Allocations",
+      "whatItIs": "Custom time-off hours allocated to this employee per year.",
+      "howToUse": "Click the clock icon to view and set annual time-off allocations.",
+      "howToUpdate": "Enter custom hours for each time-off type, or leave blank to use group defaults.",
+      "position": "left",
+      "order": 3
+    },
+    {
+      "id": "employees-delete",
+      "screen": "employees",
+      "section": "delete-employee",
+      "title": "Deactivate Employee",
+      "whatItIs": "Marks the employee as inactive (soft delete). Their records are preserved.",
+      "howToUse": "Click the trash icon to deactivate. A confirmation dialog will appear.",
+      "howToUpdate": "Superusers can view inactive employees by clicking 'Show Inactive'.",
+      "position": "left",
+      "order": 4
+    },
+    {
+      "id": "users-add",
+      "screen": "users",
+      "section": "add-user",
+      "title": "Add User",
+      "whatItIs": "Creates a new system user account.",
+      "howToUse": "Click to open a form for entering new user credentials and permissions.",
+      "howToUpdate": "Fill out username, password, full name, group, and role, then click Create.",
+      "position": "left",
+      "order": 1
+    },
+    {
+      "id": "users-edit",
+      "screen": "users",
+      "section": "edit-user",
+      "title": "Edit User",
+      "whatItIs": "Opens the user edit dialog to modify account information.",
+      "howToUse": "Click the pencil icon to edit user details like name, email, group, and role.",
+      "howToUpdate": "Make changes in the dialog and click Update. Leave password blank to keep current.",
+      "position": "left",
+      "order": 2
+    },
+    {
+      "id": "users-permissions",
+      "screen": "users",
+      "section": "permissions",
+      "title": "Group Permissions",
+      "whatItIs": "Controls which employee groups this user can access and what actions they can perform.",
+      "howToUse": "Click the shield icon to open the permissions dialog.",
+      "howToUpdate": "Check or uncheck Create, Read, Update, Delete permissions for each employee group.",
+      "position": "left",
+      "order": 3
+    },
+    {
+      "id": "users-delete",
+      "screen": "users",
+      "section": "delete-user",
+      "title": "Deactivate User",
+      "whatItIs": "Marks the user as inactive (soft delete). They can no longer log in.",
+      "howToUse": "Click the trash icon to deactivate. A confirmation dialog will appear.",
+      "howToUpdate": "Reactivation requires database access. Use 'Show Inactive' to view deactivated users.",
+      "position": "left",
+      "order": 4
+    },
+    {
+      "id": "settings-theme",
+      "screen": "settings",
+      "section": "theme",
+      "title": "Theme Settings",
+      "whatItIs": "Customize the application's visual appearance.",
+      "howToUse": "Choose between light, dark, or system color modes. Select layout themes.",
+      "howToUpdate": "Changes apply immediately and are saved to your browser.",
+      "position": "right",
+      "order": 1
+    },
+    {
+      "id": "settings-backup",
+      "screen": "settings",
+      "section": "backup",
+      "title": "Backup Management",
+      "whatItIs": "Create, restore, and manage database backups.",
+      "howToUse": "View backup history, create manual backups, or restore from a previous backup.",
+      "howToUpdate": "Backups are created automatically. Click 'Create Backup' for manual backup.",
+      "position": "top",
+      "order": 2
+    }
+  ]
+}

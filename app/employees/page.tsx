@@ -32,6 +32,8 @@ import {
 import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock } from 'lucide-react';
 import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
 import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 
 interface Employee {
   id: number;
@@ -70,6 +72,12 @@ export default function UsersPage() {
 
   // Check if leave management is enabled for this brand
   const leaveManagementEnabled = brandFeatures?.features?.leaveManagement?.enabled ?? false;
+
+  // Set the current screen for help context
+  const { setCurrentScreen } = useHelp();
+  useEffect(() => {
+    setCurrentScreen('employees');
+  }, [setCurrentScreen]);
 
   const [formData, setFormData] = useState({
     employee_number: '',
@@ -357,10 +365,12 @@ export default function UsersPage() {
             </Button>
           )}
           {canCreateEmployee() && (
-            <Button onClick={() => handleOpenDialog()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Employee
-            </Button>
+            <HelpArea helpId="add-employee" bubblePosition="left">
+              <Button onClick={() => handleOpenDialog()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Employee
+              </Button>
+            </HelpArea>
           )}
         </div>
       </div>
@@ -421,34 +431,40 @@ export default function UsersPage() {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {canEditEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(employee)}
-                          title="Edit Employee"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <HelpArea helpId="edit-employee" bubblePosition="left" showHighlight={false}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenDialog(employee)}
+                            title="Edit Employee"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </HelpArea>
                       )}
                       {canEditEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenAllocationsDialog(employee)}
-                          title="Manage Time Allocations"
-                        >
-                          <Clock className="h-4 w-4" />
-                        </Button>
+                        <HelpArea helpId="allocations" bubblePosition="left" showHighlight={false}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenAllocationsDialog(employee)}
+                            title="Manage Time Allocations"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </HelpArea>
                       )}
                       {canDeleteEmployee(employee) && employee.is_active === 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(employee)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <HelpArea helpId="delete-employee" bubblePosition="left" showHighlight={false}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(employee)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </HelpArea>
                       )}
                       {employee.is_active === 0 && (
                         <span className="text-xs text-muted-foreground italic">Deleted</span>

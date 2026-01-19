@@ -21,6 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Minus, Plus, Trash2, PlusCircle } from 'lucide-react';
 import type { AttendanceEntry } from './attendance-grid';
+import { HelpArea } from '@/components/help-area';
 
 interface TimeCode {
   code: string;
@@ -194,9 +195,11 @@ export function MultiEntryDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`time-code-${entry.tempId}`} className="text-xs">
-                  Time Code
-                </Label>
+                <HelpArea helpId="entry-time-code" bubblePosition="right" showHighlight={false}>
+                  <Label htmlFor={`time-code-${entry.tempId}`} className="text-xs cursor-help">
+                    Time Code
+                  </Label>
+                </HelpArea>
                 <Select
                   value={entry.time_code}
                   onValueChange={(value) => updateEntry(entry.tempId, 'time_code', value)}
@@ -216,7 +219,9 @@ export function MultiEntryDialog({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Time</Label>
+                <HelpArea helpId="entry-time" bubblePosition="right" showHighlight={false}>
+                  <Label className="text-xs cursor-help">Time</Label>
+                </HelpArea>
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-xs font-bold">hrs</span>
                   <Button
@@ -273,9 +278,11 @@ export function MultiEntryDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`notes-${entry.tempId}`} className="text-xs">
-                  Notes
-                </Label>
+                <HelpArea helpId="entry-notes" bubblePosition="right" showHighlight={false}>
+                  <Label htmlFor={`notes-${entry.tempId}`} className="text-xs cursor-help">
+                    Notes
+                  </Label>
+                </HelpArea>
                 <Textarea
                   id={`notes-${entry.tempId}`}
                   value={entry.notes}

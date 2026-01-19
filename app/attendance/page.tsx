@@ -12,6 +12,8 @@ import { UserPlus } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 import { useAuth } from '@/lib/auth-context';
+import { useHelp } from '@/lib/help-context';
+import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -54,6 +56,12 @@ export default function AttendancePage() {
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
+  const { setCurrentScreen } = useHelp();
+
+  // Set the current screen for help context
+  useEffect(() => {
+    setCurrentScreen('attendance');
+  }, [setCurrentScreen]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -243,7 +251,9 @@ export default function AttendancePage() {
           {/* Selects - inline */}
           <div className="flex items-end gap-2 p-2 border rounded-lg bg-card">
             <div className="w-64 space-y-1">
-              <Label htmlFor="employee" className="text-xs">Employee</Label>
+              <HelpArea helpId="employee-selector" bubblePosition="bottom">
+                <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
+              </HelpArea>
               <Select
                 value={selectedEmployeeId?.toString() || ''}
                 onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
@@ -263,7 +273,9 @@ export default function AttendancePage() {
             </div>
 
             <div className="w-20 space-y-1">
-              <Label htmlFor="year" className="text-xs">Year</Label>
+              <HelpArea helpId="year-selector" bubblePosition="bottom">
+                <Label htmlFor="year" className="text-xs cursor-help">Year</Label>
+              </HelpArea>
               <Select
                 value={year.toString()}
                 onValueChange={(value) => setYear(parseInt(value))}
@@ -296,9 +308,11 @@ export default function AttendancePage() {
               <>
                 {/* Attendance Record first layout */}
                 <div className="space-y-3">
-                  <h2 className="text-lg font-semibold">
-                    Attendance Record: {year}
-                  </h2>
+                  <HelpArea helpId="attendance-grid" bubblePosition="bottom">
+                    <h2 className="text-lg font-semibold cursor-help">
+                      Attendance Record: {year}
+                    </h2>
+                  </HelpArea>
 
                   <AttendanceGrid
                     year={year}
@@ -327,9 +341,11 @@ export default function AttendancePage() {
               <>
                 {/* Balance Cards first layout - cards already shown above */}
                 <div className="space-y-3">
-                  <h2 className="text-lg font-semibold">
-                    Attendance Record: {year}
-                  </h2>
+                  <HelpArea helpId="attendance-grid" bubblePosition="bottom">
+                    <h2 className="text-lg font-semibold cursor-help">
+                      Attendance Record: {year}
+                    </h2>
+                  </HelpArea>
 
                   <AttendanceGrid
                     year={year}
