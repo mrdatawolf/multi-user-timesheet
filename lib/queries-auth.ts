@@ -599,3 +599,108 @@ export async function canUserAccessAllGroups(userId: number): Promise<boolean> {
   const role = await getUserRole(userId);
   return role?.can_access_all_groups === 1;
 }
+
+// ============================================================================
+// JOB TITLE MANAGEMENT
+// ============================================================================
+
+export interface JobTitle {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get all job titles
+ */
+export async function getAllJobTitles(): Promise<JobTitle[]> {
+  const result = await db.execute('SELECT * FROM job_titles ORDER BY name');
+  return result.rows as unknown as JobTitle[];
+}
+
+/**
+ * Get active job titles only
+ */
+export async function getActiveJobTitles(): Promise<JobTitle[]> {
+  const result = await db.execute('SELECT * FROM job_titles WHERE is_active = 1 ORDER BY name');
+  return result.rows as unknown as JobTitle[];
+}
+
+/**
+ * Get job title by ID
+ */
+export async function getJobTitleById(id: number): Promise<JobTitle | null> {
+  const result = await db.execute({
+    sql: 'SELECT * FROM job_titles WHERE id = ?',
+    args: [id],
+  });
+  return (result.rows[0] as unknown as JobTitle) || null;
+}
+
+/**
+ * Create a new job title
+ */
+export async function createJobTitle(jobTitle: Omit<JobTitle, 'id' | 'created_at' | 'updated_at'>): Promise<JobTitle> {
+  const result = await db.execute({
+    sql: `INSERT INTO job_titles (name, description, is_active)
+          VALUES (?, ?, ?)`,
+    args: [
+      jobTitle.name,
+      jobTitle.description || null,
+      jobTitle.is_active ?? 1,
+    ],
+  });
+
+  const id = Number(result.lastInsertRowid);
+  return { id, ...jobTitle, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+}
+
+/**
+ * Update a job title
+ */
+export async function updateJobTitle(id: number, updates: Partial<Omit<JobTitle, 'id' | 'created_at' | 'updated_at'>>): Promise<JobTitle | null> {
+  const setClauses: string[] = [];
+  const args: any[] = [];
+
+  if (updates.name !== undefined) {
+    setClauses.push('name = ?');
+    args.push(updates.name);
+  }
+
+  if (updates.description !== undefined) {
+    setClauses.push('description = ?');
+    args.push(updates.description);
+  }
+
+  if (updates.is_active !== undefined) {
+    setClauses.push('is_active = ?');
+    args.push(updates.is_active);
+  }
+
+  if (setClauses.length === 0) {
+    return getJobTitleById(id);
+  }
+
+  setClauses.push('updated_at = CURRENT_TIMESTAMP');
+  args.push(id);
+
+  await db.execute({
+    sql: `UPDATE job_titles SET ${setClauses.join(', ')} WHERE id = ?`,
+    args,
+  });
+
+  return getJobTitleById(id);
+}
+
+/**
+ * Delete a job title
+ */
+export async function deleteJobTitle(id: number): Promise<void> {
+  await db.execute({
+    sql: 'DELETE FROM job_titles WHERE id = ?',
+    args: [id],
+  });
+}

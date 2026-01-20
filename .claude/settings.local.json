@@ -47,7 +47,8 @@
       "Bash(cmd.exe /c \"mkdir empty_dir 2>nul & robocopy empty_dir dist-electron /MIR /R:1 /W:1 >nul 2>&1 & rmdir empty_dir & rmdir dist-electron\")",
       "Bash(cmd.exe /c \"del /f /q \\\\?\\\\C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-electron\\\\nul\")",
       "Bash(git checkout:*)",
-      "Bash(npx vitest run)"
+      "Bash(npx vitest run)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

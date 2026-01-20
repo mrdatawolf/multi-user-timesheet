@@ -1,6 +1,6 @@
 # Product Roadmap - Multi-User Timesheet Application
 
-**Last Updated:** January 19, 2026
+**Last Updated:** January 20, 2026
 **Current Status:** Phase 6 In Progress
 
 ---
@@ -30,7 +30,7 @@ Transform Excel-based timesheet tracking into a modern, secure web application w
 - [x] Flexible time tracking enabled (Phase 3)
 - [x] Data protection automated (Phase 4)
 - [x] White labeling & brand URI (Phase 4.5)
-- [ ] Leave balance tracking (Phase 6) ← **Current**
+- [ ] Interactive help system (Phase 6) ← **Current**
 - [ ] Approval workflows (Phase 7)
 - [ ] Policy automation (Phase 8)
 
@@ -38,21 +38,24 @@ Transform Excel-based timesheet tracking into a modern, secure web application w
 
 ## Current Phase
 
-### Phase 6: Leave Types & Balance Tracking
+### Phase 6: Interactive Contextual Help System
 **Status:** In Progress
 **Plan:** [PHASE-6-PLAN.md](PHASE-6-PLAN.md)
 
-Define leave types and track balances per employee. Enables manual balance management before automated accruals are implemented.
+Comprehensive contextual help system with modal overlays and interactive tooltips that guide users through each screen. Provides on-demand help bubbles explaining what each section does, how to use it, and how to update data.
 
 **Key Deliverables:**
-- Leave types table (Vacation, Sick, Floating Holiday, Paid Holiday)
-- Per-brand leave type configuration
-- Balance tracking per employee per leave type
-- Manual balance entry/adjustment by managers
-- Balance display on employee cards
-- Year boundary handling (calendar year vs vacation year)
+- ✅ Screen-level help with hover tooltips (What it is, How to use, How to update)
+- ✅ Help toggle button in navbar
+- ✅ Brand-specific help content (JSON files)
+- ✅ HelpArea component with Radix UI Popover
+- ⏳ Welcome tour for new users
+- ✅ Brand-specific time codes (move from DB to JSON)
+- ✅ Balance breakdown modals
+- ✅ Groups management in Settings (super admin only)
+- ✅ Job Titles management in Settings (super admin only)
 
-**Impact:** Visibility into employee leave balances.
+**Impact:** Reduced support questions, improved user onboarding.
 
 ---
 

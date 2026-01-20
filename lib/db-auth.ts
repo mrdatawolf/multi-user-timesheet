@@ -76,6 +76,20 @@ export async function initializeAuthDatabase() {
     )
   `);
 
+  // Create job_titles table
+  await authDb.execute(`
+    CREATE TABLE IF NOT EXISTS job_titles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Note: Job titles are seeded via migration 005_seed_job_titles.ts
+
   // Insert default master group
   await authDb.execute({
     sql: `INSERT OR IGNORE INTO groups (id, name, description, is_master, can_view_all, can_edit_all)
@@ -112,6 +126,7 @@ export async function initializeAuthDatabase() {
   console.log('  - Users table created');
   console.log('  - Audit log table created');
   console.log('  - Group permissions table created');
+  console.log('  - Job titles table created');
   console.log('  - Default admin user created (username: admin, password: admin123)');
 
   // Run migrations

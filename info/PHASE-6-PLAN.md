@@ -510,18 +510,112 @@ HELP_AUTO_SHOW_NEW_SCREENS=false
 4. ✅ Reset help progress option in context
 5. ✅ Per-screen tracking via currentScreen state
 
-### Phase 6.4: Welcome Tour (Not Started)
-1. ⏳ Build WelcomeTour component
-2. ⏳ Multi-step walkthrough logic
-3. ⏳ Highlight animation system
-4. ⏳ First-time user detection
-5. ⏳ Skip/dismiss handling
+### Phase 6.4: Welcome Tour (Removed)
+Removed from scope - in-person training and contextual help system are sufficient.
+
+### Phase 6.10: Attendance Page Employee Values Display
+Explain how the attendance page values next to employees are calculated/generated.
+
+1. ⏳ Add help content explaining employee totals calculation
+2. ⏳ Document how hours are summed and displayed
 
 ### Phase 6.5: Admin Features (Partial)
 1. ✅ Brand-specific JSON files allow per-brand customization
 2. ⏳ In-place editing UI not implemented
 3. ⏳ Preview mode not implemented
 4. ⏳ Help content validation not implemented
+
+### Phase 6.8: Groups Management ✅ COMPLETE
+Super admins can manage employee groups directly from the Settings page.
+
+**Purpose:**
+- Allow super admins to create, edit, and delete groups without database access
+- Centralize group management in the UI
+- Configure group-level permissions (can_view_all, can_edit_all)
+
+**Implementation:**
+1. ✅ Created `GroupManagement` component (`components/group-management.tsx`)
+   - DataTable listing all groups with columns: Name, Description, Permissions, Actions
+   - Add Group dialog with name, description, permission toggles
+   - Edit Group dialog (pre-filled form)
+   - Delete Group with confirmation (warn if group has employees)
+2. ✅ Added Groups section to Settings page (super admin only)
+3. ✅ DELETE endpoint in `/api/groups` route
+4. ✅ Add help content for Groups management section
+5. ✅ Audit logging for all group CRUD operations
+
+**UI Layout:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Groups Management                            [+ Add Group]  │
+├─────────────────────────────────────────────────────────────┤
+│ Name         │ Description      │ View All │ Edit All │     │
+├──────────────┼──────────────────┼──────────┼──────────┼─────┤
+│ Master       │ Full system...   │    ✓     │    ✓     │ ✏️🗑️│
+│ Production   │ Production team  │    ✗     │    ✗     │ ✏️🗑️│
+│ Office       │ Office staff     │    ✓     │    ✗     │ ✏️🗑️│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Phase 6.9: Job Titles Management ✅ COMPLETE
+Super admins can define and manage job titles that can be assigned to employees.
+
+**Purpose:**
+- Replace free-text role field with standardized job titles
+- Enable filtering and reporting by job title
+- Support job title-based policy rules in future phases
+
+**Implementation:**
+1. ✅ Created `job_titles` table in auth.db (in `lib/db-auth.ts`)
+2. ✅ Migration `005_seed_job_titles.ts` seeds 17 default job titles on server start
+3. ✅ Created `/api/job-titles` endpoint (GET, POST, PUT, DELETE)
+4. ✅ Created `JobTitleManagement` component (`components/job-title-management.tsx`)
+   - DataTable listing all job titles: Name, Description, Status, Actions
+   - Add Job Title dialog
+   - Edit Job Title dialog
+   - Delete Job Title with confirmation
+5. ✅ Added Job Titles section to Settings page (super admin only)
+6. ✅ Updated Employee forms to use job title dropdown fetched from API
+7. ✅ Add help content for Job Titles management section
+8. ⏳ Future: Add `job_title_id` foreign key column to employees table (currently uses name string)
+
+**UI Layout:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Job Titles                                [+ Add Job Title] │
+├─────────────────────────────────────────────────────────────┤
+│ Title            │ Description              │ Status │      │
+├──────────────────┼──────────────────────────┼────────┼──────┤
+│ Operator         │ Machine operator         │ Active │ ✏️🗑️ │
+│ Supervisor       │ Team supervisor          │ Active │ ✏️🗑️ │
+│ Manager          │ Department manager       │ Active │ ✏️🗑️ │
+│ Office Admin     │ Administrative staff     │ Active │ ✏️🗑️ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Settings Page Layout (Super Admin View):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Settings                                                     │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─── Appearance ────────────────────────────────────────┐   │
+│ │ Color Mode: [Light ▼]                                  │   │
+│ │ Layout Theme: [Default ▼]  (Admin Only)               │   │
+│ └────────────────────────────────────────────────────────┘   │
+│                                                              │
+│ ┌─── Groups Management ─────────────────────────────────┐   │
+│ │ [DataTable with groups...]                             │   │
+│ └────────────────────────────────────────────────────────┘   │
+│                                                              │
+│ ┌─── Job Titles ────────────────────────────────────────┐   │
+│ │ [DataTable with job titles...]                         │   │
+│ └────────────────────────────────────────────────────────┘   │
+│                                                              │
+│ ┌─── Database Backups ──────────────────────────────────┐   │
+│ │ [Backup controls...]                                   │   │
+│ └────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Testing Strategy
 
@@ -565,37 +659,39 @@ HELP_AUTO_SHOW_NEW_SCREENS=false
 
 ## Roadmap: Upcoming Features
 
-### Phase 6.6: Brand-Specific Time Codes
+### Phase 6.6: Brand-Specific Time Codes ✅ COMPLETE
 Move TimeCode abbreviations and names from the database into brand-specific JSON files (`public/{brand}/time-codes.json`). This allows companies to customize time codes for their specific needs without database modifications.
 
 **Benefits:**
 - Each brand can define their own time codes (V, S, H, FH, etc.)
 - No database migration required for time code changes
 - Consistent with brand-specific help content pattern
-- UUID system already in place for easy migration
+- Falls back to database if no JSON file exists
 
 **Implementation:**
-1. Create `time-codes.json` structure in brand folders
-2. Update API to read from JSON instead of database
-3. Migrate existing database time codes to JSON format
-4. Update attendance components to use new source
+1. ✅ Created `time-codes.json` structure in brand folders (`public/TRL/time-codes.json`)
+2. ✅ Created shared utility `lib/brand-time-codes.ts` for loading brand time codes
+3. ✅ Updated `/api/time-codes` to read from JSON with database fallback
+4. ✅ Updated `/api/employee-allocations` to use brand time codes for defaults and lookups
+5. ✅ Components work without modification (they receive time codes via API)
 
-### Phase 6.7: Balance Breakdown Modals
-Add clickable modals to each balance card on the Attendance page (employee/year row) that explain how the available time was calculated.
+### Phase 6.7: Balance Breakdown Modals ✅ COMPLETE
+Add clickable modals to each balance card on the Attendance page that explain how the available time was calculated.
 
 **Purpose:**
 - Show users exactly how their time-off balance was derived
-- Display all allocation rules that apply (group defaults, employee overrides, accrual rules)
+- Display allocation source (default vs. employee override)
 - Break down used vs. remaining time with detailed line items
 - Help users understand why they have the balance they do
 
 **Implementation:**
-1. Add click handler to each balance card
-2. Create BalanceBreakdownModal component
-3. Fetch and display allocation rules for the employee
-4. Show calculation breakdown:
-   - Base allocation (from group or employee override)
-   - Accrual additions (if applicable)
-   - Carry-over from previous year (if applicable)
-   - Time used (with date breakdowns)
-   - Remaining balance
+1. ✅ Created `BalanceBreakdownModal` component (`components/balance-breakdown-modal.tsx`)
+2. ✅ Added click handlers to all four balance cards (FH, PS, V, H)
+3. ✅ Modal shows:
+   - Allocation source (default or employee override)
+   - Summary with total used and remaining
+   - Progress bar visualization
+   - Detailed usage with entries grouped by month
+   - Entry dates and notes
+4. ✅ Updated help content to explain clickable cards
+5. ✅ Cards have hover state to indicate clickability
