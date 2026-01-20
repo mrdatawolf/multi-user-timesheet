@@ -695,3 +695,72 @@ Add clickable modals to each balance card on the Attendance page that explain ho
    - Entry dates and notes
 4. ✅ Updated help content to explain clickable cards
 5. ✅ Cards have hover state to indicate clickability
+
+#### Phase 6.7.1: Accrual Calculation Engine ✅ COMPLETE
+Created a comprehensive accrual calculation engine to explain how leave hours are earned.
+
+**Files Created/Modified:**
+- `lib/accrual-calculations.ts` - Core accrual calculation logic
+- `public/NFL/brand-features.json` - Brand-specific accrual rules
+
+**Accrual Types Implemented:**
+
+**1. Quarterly Accrual (Floating Holiday - FH)**
+```typescript
+interface QuarterlyRule {
+  type: 'quarterly';
+  hoursPerPeriod: number;  // e.g., 8 hours
+  maxAnnual: number;       // e.g., 24 hours
+  eligibility: { waitPeriod: { years: number } };
+  quarters: { Q1, Q2, Q3, Q4 with start/end dates };
+}
+```
+
+**2. Hours-Worked Accrual (Personal Sick Leave - PSL)**
+```typescript
+interface HoursWorkedRule {
+  type: 'hoursWorked';
+  accrualRate: { earnHours: 1, perHoursWorked: 30 };
+  maxAccrual: 80;
+  maxUsage: { hours: 40, days: 5, rule: 'whicheverGreater' };
+  period: '12month';
+  accrualExclusions: ['paidLeave', 'unpaidLeave'];
+  hoursCountedBy: {
+    nonexempt: ['straightTime', 'overtime'];
+    exemptFullTime: { assumedWeeklyHours: 40, condition: 'anyWorkPerformed' };
+    exemptPartTime: 'regularSchedule';
+  };
+}
+```
+
+**3. Tiered Seniority Accrual (Vacation - V)**
+```typescript
+interface TieredSeniorityRule {
+  type: 'tieredSeniority';
+  period: { type: 'custom', startMonth: 6, startDay: 1, endMonth: 5, endDay: 31 };
+  eligibility: {
+    fullTime: { hoursThreshold: 1200, includesHolidayPay: true, ... };
+    exempt: { waitPeriod: { months: 6 }, expectedUsage: 80 };
+  };
+  tiers: [
+    { minBaseYears: 0, maxBaseYears: 2, fullTime: { weeks: 1, hours: 40 }, partTime: { earnHours: 1, perHoursWorked: 30, maxHours: 40 } },
+    { minBaseYears: 3, maxBaseYears: 4, fullTime: { weeks: 2, hours: 80 }, ... },
+    { minBaseYears: 5, maxBaseYears: 7, fullTime: { weeks: 2, hours: 120 }, ... },
+    { minBaseYears: 8, maxBaseYears: 14, fullTime: { weeks: 3, hours: 160 }, ... },
+    { minBaseYears: 15, maxBaseYears: null, fullTime: { weeks: 4, hours: 200 }, ... }
+  ];
+}
+```
+
+**Balance Breakdown Modal Updates:**
+- Modal now displays accrual-specific information based on rule type
+- Quarterly: Shows quarters earned, hours per quarter, eligibility status
+- Hours-Worked: Shows estimated hours worked, accrual rate, effective max usage
+- Tiered Seniority: Shows current tier, years of service, employee type
+
+**Key Interfaces:**
+- `VacationTier` - Defines vacation tiers with min/max years and hours
+- `TieredSeniorityRule` - Full tiered seniority rule configuration
+- `HoursWorkedAccrualDetails` - Details for hours-worked calculations
+- `TieredSeniorityAccrualDetails` - Details for tiered seniority calculations
+- `AccrualResult` - Standardized return type for all accrual calculations

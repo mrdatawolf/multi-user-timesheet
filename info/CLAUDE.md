@@ -55,6 +55,7 @@ lib/
   queries-sqlite.ts     # Data queries
   auth-context.tsx      # Auth state provider
   help-context.tsx      # Help system provider
+  accrual-calculations.ts  # Leave accrual calculation engine
   migrations/           # Database migrations
     auth/               # Auth DB migrations
       005_seed_job_titles.ts  # Seeds default job titles
@@ -89,9 +90,24 @@ Two separate SQLite databases:
 Multi-tenant via `public/{brand}/` folders. Each brand can have:
 - Custom time codes (`time-codes.json`)
 - Custom help content (`help-content.json`)
-- Feature flags (`brand-features.json`)
+- Feature flags and accrual rules (`brand-features.json`)
 
 Brand selected at build time via `lib/brand-selection.json`.
+
+### Accrual Calculation Engine
+The system supports multiple leave accrual types defined in `brand-features.json`:
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `quarterly` | Earns hours per quarter | Floating Holiday: 8 hrs/quarter, max 24/year |
+| `hoursWorked` | Earns hours based on hours worked | PSL: 1 hr per 30 hrs worked, max 80 |
+| `tieredSeniority` | Earns based on years of service | Vacation: Tiers from 40-200 hrs based on tenure |
+
+Accrual rules are brand-specific and support:
+- Eligibility wait periods (days, months, years)
+- Maximum accrual and usage limits
+- Custom accrual periods (calendar year, fiscal year, custom dates)
+- Employee type differentiation (full-time, part-time, exempt)
 
 ---
 
@@ -101,11 +117,16 @@ Brand selected at build time via `lib/brand-selection.json`.
 - Contextual help tooltips (HelpArea component)
 - Help toggle in navbar
 - Brand-specific help content
-- Balance breakdown modals
+- Balance breakdown modals with accrual calculation display
 - Groups management (Settings page)
 - Job Titles management (Settings page)
 - Brand-specific time codes
 - Help content for Groups/Job Titles sections
+- Accrual calculation engine (`lib/accrual-calculations.ts`)
+  - Quarterly accrual (Floating Holiday)
+  - Hours-worked accrual (Personal Sick Leave)
+  - Tiered seniority accrual (Vacation)
+- Brand-specific accrual rules in `brand-features.json`
 
 **Remaining:**
 - Attendance page: explain how employee values (totals) are generated
@@ -177,6 +198,8 @@ headers: { Authorization: `Bearer ${token}` }
 | Brand config | `lib/brand-selection.json` |
 | Help content | `public/{brand}/help-content.json` |
 | Time codes | `public/{brand}/time-codes.json` |
+| Accrual rules | `public/{brand}/brand-features.json` |
+| Accrual engine | `lib/accrual-calculations.ts` |
 
 ---
 
