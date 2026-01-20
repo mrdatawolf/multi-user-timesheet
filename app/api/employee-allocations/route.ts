@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/middleware/auth';
 import { db } from '@/lib/db-sqlite';
+import { getBrandTimeCodes, getBrandTimeCodeByCode, getAccrualRuleForTimeCode } from '@/lib/brand-time-codes';
+import { calculateAccrual, AccrualResult, AccrualRule } from '@/lib/accrual-calculations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,36 +26,108 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all time codes with their default allocations
-    const timeCodesResult = await db.execute(
-      'SELECT id, code, description, default_allocation FROM time_codes WHERE is_active = 1 ORDER BY code'
-    );
+    // Get employee's hire date for accrual calculations
+    const employeeResult = await db.execute({
+      sql: 'SELECT date_of_hire FROM employees WHERE id = ?',
+      args: [parseInt(employeeId)]
+    });
+    const hireDate = employeeResult.rows.length > 0
+      ? (employeeResult.rows[0] as any).date_of_hire
+      : null;
+
+    // Try to get time codes from brand JSON first
+    const brandTimeCodes = getBrandTimeCodes();
+    const targetYear = parseInt(year);
+    const asOfDate = new Date();
 
     // Get employee-specific allocations for this year
     const allocationsResult = await db.execute({
       sql: `SELECT time_code, time_code_id, allocated_hours, notes
             FROM employee_time_allocations
             WHERE employee_id = ? AND year = ?`,
-      args: [parseInt(employeeId), parseInt(year)]
+      args: [parseInt(employeeId), targetYear]
     });
 
-    // Build response combining defaults and overrides
-    const allocations = timeCodesResult.rows.map((tc: any) => {
-      const override = allocationsResult.rows.find((a: any) => a.time_code_id === tc.id);
-      return {
-        time_code: tc.code,
-        time_code_id: tc.id,
-        description: tc.description,
-        default_allocation: tc.default_allocation,
-        allocated_hours: override ? override.allocated_hours : tc.default_allocation,
-        is_override: !!override,
-        notes: override?.notes || null
-      };
-    });
+    let allocations;
+
+    if (brandTimeCodes) {
+      // Use brand-specific time codes from JSON
+      allocations = brandTimeCodes.map((tc) => {
+        const override = allocationsResult.rows.find((a: any) => a.time_code_id === tc.id);
+
+        // Check for accrual rules for this time code
+        const accrualRule = getAccrualRuleForTimeCode(tc.code);
+        let accrualDetails: AccrualResult | null = null;
+        let allocatedHours = override ? (override as any).allocated_hours : tc.default_allocation;
+
+        if (accrualRule && hireDate) {
+          // Calculate accrued hours based on rules
+          accrualDetails = calculateAccrual(
+            hireDate,
+            targetYear,
+            asOfDate,
+            accrualRule as AccrualRule
+          );
+          // Use accrued hours instead of static allocation
+          allocatedHours = accrualDetails.accruedHours;
+        }
+
+        return {
+          time_code: tc.code,
+          time_code_id: tc.id,
+          description: tc.description,
+          default_allocation: tc.default_allocation,
+          allocated_hours: allocatedHours,
+          is_override: !!override && !accrualRule, // Not an override if using accrual
+          is_accrual: !!accrualRule,
+          accrual_details: accrualDetails,
+          notes: override ? (override as any).notes : null
+        };
+      });
+    } else {
+      // Fall back to database
+      const timeCodesResult = await db.execute(
+        'SELECT id, code, description, default_allocation FROM time_codes WHERE is_active = 1 ORDER BY code'
+      );
+
+      allocations = timeCodesResult.rows.map((tc: any) => {
+        const override = allocationsResult.rows.find((a: any) => a.time_code_id === tc.id);
+
+        // Check for accrual rules for this time code
+        const accrualRule = getAccrualRuleForTimeCode(tc.code);
+        let accrualDetails: AccrualResult | null = null;
+        let allocatedHours = override ? override.allocated_hours : tc.default_allocation;
+
+        if (accrualRule && hireDate) {
+          // Calculate accrued hours based on rules
+          accrualDetails = calculateAccrual(
+            hireDate,
+            targetYear,
+            asOfDate,
+            accrualRule as AccrualRule
+          );
+          // Use accrued hours instead of static allocation
+          allocatedHours = accrualDetails.accruedHours;
+        }
+
+        return {
+          time_code: tc.code,
+          time_code_id: tc.id,
+          description: tc.description,
+          default_allocation: tc.default_allocation,
+          allocated_hours: allocatedHours,
+          is_override: !!override && !accrualRule,
+          is_accrual: !!accrualRule,
+          accrual_details: accrualDetails,
+          notes: override?.notes || null
+        };
+      });
+    }
 
     return NextResponse.json({
       employee_id: parseInt(employeeId),
-      year: parseInt(year),
+      year: targetYear,
+      hire_date: hireDate,
       allocations
     });
   } catch (error) {
@@ -94,20 +168,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Look up time_code_id from time_code
-    const timeCodeResult = await db.execute({
-      sql: 'SELECT id FROM time_codes WHERE code = ?',
-      args: [time_code]
-    });
+    // Try to look up time_code_id from brand JSON first
+    const brandTimeCode = getBrandTimeCodeByCode(time_code);
+    let timeCodeId: number;
 
-    if (timeCodeResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid time code' },
-        { status: 400 }
-      );
+    if (brandTimeCode) {
+      timeCodeId = brandTimeCode.id;
+    } else {
+      // Fall back to database lookup
+      const timeCodeResult = await db.execute({
+        sql: 'SELECT id FROM time_codes WHERE code = ?',
+        args: [time_code]
+      });
+
+      if (timeCodeResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'Invalid time code' },
+          { status: 400 }
+        );
+      }
+
+      timeCodeId = (timeCodeResult.rows[0] as any).id;
     }
-
-    const timeCodeId = (timeCodeResult.rows[0] as any).id;
 
     // Insert or update allocation
     await db.execute({
@@ -172,20 +254,28 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Look up time_code_id from time_code
-    const timeCodeResult = await db.execute({
-      sql: 'SELECT id FROM time_codes WHERE code = ?',
-      args: [timeCode]
-    });
+    // Try to look up time_code_id from brand JSON first
+    const brandTimeCode = getBrandTimeCodeByCode(timeCode);
+    let timeCodeId: number;
 
-    if (timeCodeResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid time code' },
-        { status: 400 }
-      );
+    if (brandTimeCode) {
+      timeCodeId = brandTimeCode.id;
+    } else {
+      // Fall back to database lookup
+      const timeCodeResult = await db.execute({
+        sql: 'SELECT id FROM time_codes WHERE code = ?',
+        args: [timeCode]
+      });
+
+      if (timeCodeResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'Invalid time code' },
+          { status: 400 }
+        );
+      }
+
+      timeCodeId = (timeCodeResult.rows[0] as any).id;
     }
-
-    const timeCodeId = (timeCodeResult.rows[0] as any).id;
 
     // Delete the allocation (will revert to default)
     await db.execute({

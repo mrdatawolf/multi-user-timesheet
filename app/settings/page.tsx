@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BackupCard } from '@/components/backup-card';
+import { GroupManagement } from '@/components/group-management';
+import { JobTitleManagement } from '@/components/job-title-management';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 
@@ -26,6 +28,9 @@ export default function SettingsPage() {
   // Check if user is admin (member of Master group or similar)
   // For now, we'll show theme controls to all users, but you can add group_id check here
   const isAdmin = user?.group_id === 1; // Master group
+
+  // Check if user is superuser (can manage groups and job titles)
+  const isSuperAdmin = user?.is_superuser === 1 || user?.group_id === 1;
 
   const colorModeOptions: { value: ColorMode; label: string; icon: typeof Sun; description: string }[] = [
     {
@@ -129,6 +134,12 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Groups Management - Super Admin Only */}
+        {isSuperAdmin && <GroupManagement />}
+
+        {/* Job Titles - Super Admin Only */}
+        {isSuperAdmin && <JobTitleManagement />}
 
         {/* Database Backups - Admin Only */}
         {isAdmin && <BackupCard />}

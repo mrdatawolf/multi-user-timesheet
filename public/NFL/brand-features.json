@@ -18,7 +18,23 @@
       "enabled": true
     },
     "accrualCalculations": {
-      "enabled": true
+      "enabled": true,
+      "rules": {
+        "FH": {
+          "type": "quarterly",
+          "hoursPerPeriod": 8,
+          "maxAnnual": 24,
+          "eligibility": {
+            "waitPeriod": { "years": 1 }
+          },
+          "quarters": {
+            "Q1": { "startMonth": 3, "startDay": 1, "endMonth": 5, "endDay": 31 },
+            "Q2": { "startMonth": 6, "startDay": 1, "endMonth": 8, "endDay": 31 },
+            "Q3": { "startMonth": 9, "startDay": 1, "endMonth": 11, "endDay": 30 },
+            "Q4": { "startMonth": 12, "startDay": 1, "endMonth": 2, "endDay": 28 }
+          }
+        }
+      }
     }
   }
 }

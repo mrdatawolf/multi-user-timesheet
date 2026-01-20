@@ -1,7 +1,7 @@
 {
-  "brandId": "TRL",
+  "brandId": "NFL",
   "version": "1.0",
-  "description": "Help content for TRL brand. Add entries for any section ID to provide contextual help.",
+  "description": "Help content for NFL brand. Add entries for any section ID to provide contextual help.",
   "content": [
     {
       "id": "attendance-employee-selector",

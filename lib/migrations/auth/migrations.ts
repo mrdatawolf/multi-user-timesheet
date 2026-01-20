@@ -3,6 +3,7 @@ import { migration as addSuperuser } from './001_add_superuser_to_users';
 import { migration as createUserGroupPermissions } from './002_create_user_group_permissions';
 import { migration as addUserPreferences } from './003_add_user_preferences';
 import { migration as addRoles } from './004_add_roles';
+import { migration as seedJobTitles } from './005_seed_job_titles';
 
 /**
  * Auth Database Migrations
@@ -21,4 +22,5 @@ export const authMigrations: Migration[] = [
   createUserGroupPermissions,
   addUserPreferences,
   addRoles,
+  seedJobTitles,
 ];

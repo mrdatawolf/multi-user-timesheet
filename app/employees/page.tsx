@@ -57,11 +57,19 @@ interface Group {
   description: string;
 }
 
+interface JobTitle {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: number;
+}
+
 export default function UsersPage() {
   const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -84,7 +92,7 @@ export default function UsersPage() {
     first_name: '',
     last_name: '',
     email: '',
-    role: 'employee',
+    role: 'Employee',
     group_id: '',
     date_of_hire: '',
     rehire_date: '',
@@ -107,6 +115,7 @@ export default function UsersPage() {
     if (isAuthenticated && token) {
       loadEmployees();
       loadGroups();
+      loadJobTitles();
     }
   }, [isAuthenticated, token, showInactive]);
 
@@ -140,10 +149,27 @@ export default function UsersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setGroups(data);
+        setGroups(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Failed to load groups:', error);
+    }
+  };
+
+  const loadJobTitles = async () => {
+    try {
+      const response = await fetch('/api/job-titles?active=true', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setJobTitles(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to load job titles:', error);
     }
   };
 
@@ -174,7 +200,7 @@ export default function UsersPage() {
         first_name: '',
         last_name: '',
         email: '',
-        role: 'employee',
+        role: 'Employee',
         group_id: '',
         date_of_hire: '',
         rehire_date: '',
@@ -584,23 +610,11 @@ export default function UsersPage() {
                     <SelectValue placeholder="Select job title" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="employee">Employee</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="director">Director</SelectItem>
-                    <SelectItem value="administrator">Administrator</SelectItem>
-                    <SelectItem value="hr">HR Specialist</SelectItem>
-                    <SelectItem value="accountant">Accountant</SelectItem>
-                    <SelectItem value="technician">Technician</SelectItem>
-                    <SelectItem value="engineer">Engineer</SelectItem>
-                    <SelectItem value="analyst">Analyst</SelectItem>
-                    <SelectItem value="coordinator">Coordinator</SelectItem>
-                    <SelectItem value="assistant">Assistant</SelectItem>
-                    <SelectItem value="consultant">Consultant</SelectItem>
-                    <SelectItem value="specialist">Specialist</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
-                    <SelectItem value="intern">Intern</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {jobTitles.map((jt) => (
+                      <SelectItem key={jt.id} value={jt.name}>
+                        {jt.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
