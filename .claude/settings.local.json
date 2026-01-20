@@ -48,7 +48,10 @@
       "Bash(cmd.exe /c \"del /f /q \\\\?\\\\C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\dist-electron\\\\nul\")",
       "Bash(git checkout:*)",
       "Bash(npx vitest run)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python -c \" from docx import Document doc = Document\\(''examples/32. Vacation Policy.docx''\\) for para in doc.paragraphs: if para.text.strip\\(\\): print\\(para.text\\) \")",
+      "Bash(unzip:*)",
+      "Bash(fold:*)"
     ]
   }
 }
