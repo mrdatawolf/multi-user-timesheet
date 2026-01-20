@@ -215,6 +215,8 @@ headers: { Authorization: `Bearer ${token}` }
 
 5. **Settings page is super-admin only** - Groups and Job Titles management only visible to superusers
 
+6. **Accrual rule keys must match time codes** - In `brand-features.json`, accrual rule keys (e.g., `"PS"`, `"FH"`, `"V"`) must exactly match the `code` field in `time-codes.json`. Mismatches cause accrual calculations to not display in modals.
+
 ---
 
 ## Related Documentation

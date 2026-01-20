@@ -701,7 +701,11 @@ Created a comprehensive accrual calculation engine to explain how leave hours ar
 
 **Files Created/Modified:**
 - `lib/accrual-calculations.ts` - Core accrual calculation logic
+- `lib/brand-time-codes.ts` - Updated `AccrualRuleConfig` interface to support all accrual types
 - `public/NFL/brand-features.json` - Brand-specific accrual rules
+- `components/balance-cards.tsx` - Added `AccrualDetails` interface for modal data
+
+**Important:** Accrual rule keys in `brand-features.json` must match time code strings in `time-codes.json` (e.g., use `"PS"` not `"PSL"` for Personal Sick).
 
 **Accrual Types Implemented:**
 
@@ -716,7 +720,7 @@ interface QuarterlyRule {
 }
 ```
 
-**2. Hours-Worked Accrual (Personal Sick Leave - PSL)**
+**2. Hours-Worked Accrual (Personal Sick Leave - PS)**
 ```typescript
 interface HoursWorkedRule {
   type: 'hoursWorked';
