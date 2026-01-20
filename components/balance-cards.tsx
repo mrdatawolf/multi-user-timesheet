@@ -10,12 +10,64 @@ interface AttendanceEntry {
   notes?: string;
 }
 
+interface AccrualDetails {
+  isEligible: boolean;
+  eligibilityDate: string | null;
+  accruedHours: number;
+  maxHours: number;
+  quartersEarned: number;
+  quarterDetails: Array<{
+    quarter: string;
+    startDate: string;
+    hours: number;
+    earned: boolean;
+  }>;
+  nextAccrualDate: string | null;
+  message: string;
+  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority';
+  hoursWorkedDetails?: {
+    totalHoursWorked: number;
+    accrualRate: { earnHours: number; perHoursWorked: number };
+    maxAccrual: number;
+    maxUsage: { hours: number; days: number; rule: string };
+    effectiveUsageLimit: number;
+    accrualExclusions: string[];
+    hoursCountedBy: {
+      nonexempt: string[];
+      exemptFullTime: { assumedWeeklyHours: number; condition: string };
+      exemptPartTime: string;
+    };
+  };
+  tieredSeniorityDetails?: {
+    baseYears: number;
+    currentTier: {
+      minBaseYears: number;
+      maxBaseYears: number | null;
+      fullTime: { weeks: number; hours: number };
+      partTime: { earnHours: number; perHoursWorked: number; maxHours: number };
+    };
+    employeeType: 'fullTime' | 'partTime' | 'exempt';
+    periodStart: string;
+    periodEnd: string;
+    hoursThreshold: number;
+    estimatedHoursWorked?: number;
+    isFullTimeQualified: boolean;
+    notes?: {
+      baseYearDefinition?: string;
+      payoutRule?: string;
+      terminationRule?: string;
+    };
+  };
+}
+
 interface TimeAllocation {
   time_code: string;
   description: string;
   default_allocation: number | null;
   allocated_hours: number | null;
   is_override: boolean;
+  is_accrual?: boolean;
+  accrual_details?: AccrualDetails | null;
 }
 
 interface BalanceCardsProps {

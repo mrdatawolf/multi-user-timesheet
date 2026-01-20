@@ -84,21 +84,65 @@ export interface BrandFeatures {
 }
 
 export interface AccrualRuleConfig {
-  type: 'quarterly' | 'monthly' | 'annual';
-  hoursPerPeriod: number;
-  maxAnnual: number;
-  eligibility: {
-    waitPeriod: {
+  type: 'quarterly' | 'monthly' | 'annual' | 'hoursWorked' | 'tieredSeniority';
+  hoursPerPeriod?: number;
+  maxAnnual?: number;
+  maxAccrual?: number;
+  maxUsage?: {
+    hours: number;
+    days: number;
+    rule: 'whicheverGreater' | 'whicheverLesser' | 'fixed';
+  };
+  period?: '12month' | 'calendarYear' | {
+    type: string;
+    startMonth?: number;
+    startDay?: number;
+    endMonth?: number;
+    endDay?: number;
+  };
+  accrualRate?: {
+    earnHours: number;
+    perHoursWorked: number;
+  };
+  eligibility?: {
+    waitPeriod?: {
       years?: number;
       months?: number;
       days?: number;
     };
+    fullTime?: {
+      hoursThreshold?: number;
+      includesHolidayPay?: boolean;
+      includesJuryDuty?: boolean;
+      includesFuneralLeave?: boolean;
+    };
+    exempt?: {
+      waitPeriod?: { months?: number; years?: number; days?: number };
+      expectedUsage?: number;
+    };
+  };
+  accrualExclusions?: string[];
+  hoursCountedBy?: {
+    nonexempt: string[];
+    exemptFullTime: { assumedWeeklyHours: number; condition: string };
+    exemptPartTime: string;
   };
   quarters?: {
     Q1: { startMonth: number; startDay: number; endMonth: number; endDay: number };
     Q2: { startMonth: number; startDay: number; endMonth: number; endDay: number };
     Q3: { startMonth: number; startDay: number; endMonth: number; endDay: number };
     Q4: { startMonth: number; startDay: number; endMonth: number; endDay: number };
+  };
+  tiers?: Array<{
+    minBaseYears: number;
+    maxBaseYears: number | null;
+    fullTime: { weeks: number; hours: number };
+    partTime: { earnHours: number; perHoursWorked: number; maxHours: number };
+  }>;
+  notes?: {
+    baseYearDefinition?: string;
+    payoutRule?: string;
+    terminationRule?: string;
   };
 }
 
