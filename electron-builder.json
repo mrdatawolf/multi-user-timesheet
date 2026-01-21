@@ -17,6 +17,12 @@
       "filter": [
         "**/*",
         "!node_modules/**",
+        "!**/distribute/**",
+        "!**/dist-electron/**",
+        "!**/dist-server/**",
+        "!**/temp-server-build/**",
+        "!**/.node-portable/**",
+        "!**/electron-app/**",
         "!**/nul",
         "!**/con",
         "!**/prn",
