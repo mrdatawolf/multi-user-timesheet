@@ -51,7 +51,20 @@
       "Bash(npx tsc:*)",
       "Bash(python -c \" from docx import Document doc = Document\\(''examples/32. Vacation Policy.docx''\\) for para in doc.paragraphs: if para.text.strip\\(\\): print\\(para.text\\) \")",
       "Bash(unzip:*)",
-      "Bash(fold:*)"
+      "Bash(fold:*)",
+      "Bash(test:*)",
+      "Bash(if [ ! -d \"static\" ])",
+      "Bash(then cmd //c \"mklink /D static ..\\\\..\\\\..\\\\static\")",
+      "Bash(fi)",
+      "Bash(npm run test:*)",
+      "Bash(node:*)",
+      "Bash(npx electron:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(\"./node_modules/electron/dist/electron.exe\" --version)",
+      "Bash(timeout 15 npx:*)",
+      "Bash(\"./node_modules/electron/dist/electron.exe\" -v)",
+      "Bash(\"./node_modules/electron/dist/electron.exe\" --help)",
+      "Bash(npm show:*)"
     ]
   }
 }

@@ -1,18 +1,19 @@
 {
   "brandId": "LCIT",
   "brandURI": "http://127.0.0.1:6029",
+  "DemoMode": true,
   "features": {
     "leaveManagement": {
-      "enabled": false
+      "enabled": true
     },
     "approvalWorkflows": {
-      "enabled": false
+      "enabled": true
     },
     "policyEnforcement": {
-      "enabled": false
+      "enabled": true
     },
     "accrualCalculations": {
-      "enabled": false
+      "enabled": true
     }
   }
 }

@@ -35,8 +35,8 @@ function getSelectedBrand() {
   }
 }
 
-// Get brandURI from brand-features.json
-function getBrandURI(brandName) {
+// Get brand features from brand-features.json
+function getBrandFeatures(brandName) {
   const brandFeaturesPath = path.join(ROOT_DIR, 'public', brandName, 'brand-features.json');
 
   try {
@@ -51,7 +51,7 @@ function getBrandURI(brandName) {
       process.exit(1);
     }
 
-    return brandFeatures.brandURI;
+    return brandFeatures;
   } catch (error) {
     console.error('');
     console.error(`Error: Could not read brand-features.json for ${brandName}`);
@@ -64,7 +64,9 @@ function getBrandURI(brandName) {
 // Main function
 function main() {
   const brandName = getSelectedBrand();
-  const brandURI = getBrandURI(brandName);
+  const brandFeatures = getBrandFeatures(brandName);
+  const brandURI = brandFeatures.brandURI;
+  const demoMode = brandFeatures.DemoMode === true;
 
   console.log('');
   console.log('========================================');
@@ -72,6 +74,7 @@ function main() {
   console.log('========================================');
   console.log(`  Brand: ${brandName}`);
   console.log(`  Brand URI: ${brandURI}`);
+  console.log(`  Demo Mode: ${demoMode ? 'ENABLED' : 'disabled'}`);
   console.log('========================================');
   console.log('');
 
@@ -91,9 +94,48 @@ function main() {
       cwd: ROOT_DIR
     });
 
+    // Create symlink for static files in standalone folder (for electron:start dev mode)
+    const standaloneStaticDir = path.join(ROOT_DIR, '.next', 'standalone', 'multi-user-timesheet', '.next', 'static');
+    const sourceStaticDir = path.join(ROOT_DIR, '.next', 'static');
+
+    if (fs.existsSync(sourceStaticDir) && !fs.existsSync(standaloneStaticDir)) {
+      console.log('Creating symlink for static files in standalone folder...');
+      try {
+        // On Windows, use junction for directories (doesn't require admin)
+        if (process.platform === 'win32') {
+          execSync(`mklink /J "${standaloneStaticDir}" "${sourceStaticDir}"`, { shell: 'cmd.exe' });
+        } else {
+          fs.symlinkSync(sourceStaticDir, standaloneStaticDir, 'dir');
+        }
+        console.log('Static files symlink created successfully.');
+      } catch (symlinkError) {
+        console.warn('Warning: Could not create static files symlink:', symlinkError.message);
+        console.warn('You may need to run: npm run electron:start with admin privileges');
+      }
+    }
+
+    // Seed demo data if DemoMode is enabled
+    if (demoMode) {
+      console.log('');
+      console.log('Demo Mode enabled - seeding demo data...');
+      console.log('');
+      try {
+        execSync('npx tsx scripts/seed-demo.ts', {
+          stdio: 'inherit',
+          cwd: ROOT_DIR
+        });
+      } catch (seedError) {
+        console.warn('Warning: Could not seed demo data:', seedError.message);
+        console.warn('You can manually run: npm run db:seed-demo');
+      }
+    }
+
     console.log('');
     console.log('========================================');
     console.log('  Build completed successfully!');
+    if (demoMode) {
+      console.log('  Demo Mode: Database seeded with demo data');
+    }
     console.log('========================================');
     console.log('');
   } catch (error) {

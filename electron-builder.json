@@ -1,6 +1,6 @@
 {
   "appId": "com.attendance.app",
-  "productName": "TRL Attendance",
+  "productName": "Attendance Management",
   "directories": {
     "app": "electron-app",
     "output": "dist-electron",
@@ -47,6 +47,10 @@
     {
       "from": "public",
       "to": "server/public"
+    },
+    {
+      "from": "lib/brand-selection.json",
+      "to": "server/lib/brand-selection.json"
     }
   ],
   "win": {

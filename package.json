@@ -1,6 +1,6 @@
 {
   "name": "multi-user-attendance",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "private": true,
   "scripts": {
     "dev": "next dev -p 6029",
@@ -26,8 +26,7 @@
     "auth:init": "tsx scripts/init-auth-db.ts",
     "clean": "node -e \"const fs=require('fs'); ['dist-electron','dist-server','temp-server-build'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\"",
     "clean:all": "npm run clean && node -e \"const fs=require('fs'); ['.node-portable','.next'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned: '+d)}})\"",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -68,7 +67,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.9",
     "autoprefixer": "^10.4.17",
-    "electron": "^39.2.7",
+    "electron": "^33.0.0",
     "electron-builder": "^26.0.12",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.0.10",

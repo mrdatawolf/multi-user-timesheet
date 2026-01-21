@@ -304,8 +304,8 @@ async function clearDatabaseForDemo() {
  */
 async function seedDemoDataInternal() {
   try {
-    // Dynamic import to avoid circular dependencies
-    const { seedDemoData } = await import('../scripts/seed-demo');
+    // Import from lib folder (bundled with standalone build)
+    const { seedDemoData } = await import('./seed-demo-data');
     await seedDemoData();
   } catch (error) {
     console.error('Failed to seed demo data:', error);
@@ -317,11 +317,24 @@ async function seedDemoDataInternal() {
 let initPromise: Promise<void> | null = null;
 
 export function ensureInitialized() {
+  console.log('[DB-INIT] ensureInitialized called');
+  console.log('[DB-INIT] initPromise:', initPromise ? 'exists' : 'null');
+  console.log('[DB-INIT] window:', typeof window);
+  console.log('[DB-INIT] NODE_ENV:', process.env.NODE_ENV);
+  console.log('[DB-INIT] NEXT_PHASE:', process.env.NEXT_PHASE);
+  console.log('[DB-INIT] DEMO_MODE:', process.env.DEMO_MODE);
+  console.log('[DB-INIT] DATA_PATH:', process.env.DATA_PATH);
+
   if (!initPromise && typeof window === 'undefined') {
     // Only initialize at runtime, not during build
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
+      console.log('[DB-INIT] Starting initialization...');
       initPromise = initializeDatabaseWithDemoMode();
+    } else {
+      console.log('[DB-INIT] Skipping - build phase detected');
     }
+  } else {
+    console.log('[DB-INIT] Skipping - already initialized or in browser');
   }
   return initPromise;
 }
@@ -330,6 +343,8 @@ export function ensureInitialized() {
  * Initialize database with demo mode support
  */
 async function initializeDatabaseWithDemoMode() {
+  console.log('[DB-INIT] initializeDatabaseWithDemoMode starting...');
+
   // Log demo mode banner if enabled
   logDemoModeBanner();
 
@@ -337,8 +352,15 @@ async function initializeDatabaseWithDemoMode() {
   await initializeDatabase();
 
   // If demo mode is enabled, clear and reseed
-  if (isDemoMode()) {
+  const demoMode = isDemoMode();
+  console.log('[DB-INIT] isDemoMode() returned:', demoMode);
+
+  if (demoMode) {
+    console.log('[DB-INIT] Demo mode enabled - clearing and seeding...');
     await clearDatabaseForDemo();
     await seedDemoDataInternal();
+    console.log('[DB-INIT] Demo seeding complete');
+  } else {
+    console.log('[DB-INIT] Demo mode disabled - skipping seed');
   }
 }

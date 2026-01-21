@@ -235,6 +235,13 @@ function copyDir(src, dest, excludeFolders = []) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
+    // Skip symbolic links (junctions on Windows)
+    // The real static files are copied separately, so we skip symlinks to avoid EPERM errors
+    if (entry.isSymbolicLink()) {
+      console.log(`  Skipping symlink: ${entry.name}`);
+      continue;
+    }
+
     // Skip excluded folders
     if (entry.isDirectory() && excludeFolders.includes(entry.name)) {
       console.log(`  Skipping excluded folder: ${entry.name}`);

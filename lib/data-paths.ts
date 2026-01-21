@@ -1,16 +1,18 @@
 import path from 'path';
 import fs from 'fs';
+import { getRuntimeDataPath } from './demo-mode';
 
 /**
  * Data Paths Configuration
  *
  * Priority for data directory:
- * 1. Custom path from data-path.json config file (set by super admin)
- * 2. DATA_PATH environment variable
- * 3. Development: ./databases/ relative to project root
- * 4. Production (Windows): %APPDATA%/AttendanceServer/
- * 5. Production (macOS): ~/Library/Application Support/AttendanceServer/
- * 6. Production (Linux): ~/.local/share/AttendanceServer/
+ * 1. Runtime config from Electron (highest priority when running under Electron)
+ * 2. Custom path from data-path.json config file (set by super admin)
+ * 3. DATA_PATH environment variable
+ * 4. Development: ./databases/ relative to project root
+ * 5. Production (Windows): %APPDATA%/AttendanceServer/
+ * 6. Production (macOS): ~/Library/Application Support/AttendanceServer/
+ * 7. Production (Linux): ~/.local/share/AttendanceServer/
  *
  * This ensures the database is always in a writable location,
  * even when the server is installed in a protected directory.
@@ -108,18 +110,26 @@ export function getCustomDataPath(): string | null {
 export function getDataDirectory(): string {
   let dataDir: string;
 
-  // Priority 1: Custom path from config file
-  const config = readConfig();
-  if (config.customPath && fs.existsSync(config.customPath)) {
-    dataDir = config.customPath;
+  // Priority 1: Runtime config from Electron (written by Electron on startup)
+  const runtimePath = getRuntimeDataPath();
+  if (runtimePath) {
+    console.log(`[DATA-PATHS] Using runtime data path: ${runtimePath}`);
+    dataDir = runtimePath;
   }
-  // Priority 2: Environment variable
-  else if (process.env.DATA_PATH) {
-    dataDir = process.env.DATA_PATH;
-  }
-  // Priority 3+: Default based on environment
+  // Priority 2: Custom path from config file
   else {
-    dataDir = getDefaultDataDirectory();
+    const config = readConfig();
+    if (config.customPath && fs.existsSync(config.customPath)) {
+      dataDir = config.customPath;
+    }
+    // Priority 3: Environment variable
+    else if (process.env.DATA_PATH) {
+      dataDir = process.env.DATA_PATH;
+    }
+    // Priority 4+: Default based on environment
+    else {
+      dataDir = getDefaultDataDirectory();
+    }
   }
 
   // Ensure directory exists
