@@ -41,11 +41,55 @@
       "screen": "attendance",
       "section": "balance-cards",
       "title": "Balance Cards",
-      "whatItIs": "Shows used hours vs. allocated hours for time-off codes like Vacation and Floating Holiday.",
-      "howToUse": "Click any card to see a detailed breakdown including allocation source, usage summary, and individual entries with dates.",
-      "howToUpdate": "Balances update automatically as you add entries. Allocations can be customized per employee in the Employees tab.",
+      "whatItIs": "Shows used hours vs. allocated hours for time-off codes. 'Used' is the sum of all attendance entries with that time code for the selected year. 'Total' comes from either accrual calculations (based on hire date and company policy) or manual employee overrides.",
+      "howToUse": "Click any card to see a detailed breakdown including allocation source, usage summary, and individual entries with dates. The modal explains exactly how hours were calculated.",
+      "howToUpdate": "Balances update automatically as you add entries. For accrual-based codes, hours are calculated from your hire date and eligibility. For manual allocations, go to Employees tab to set custom hours.",
       "position": "top",
       "order": 4
+    },
+    {
+      "id": "balance-floating-holiday",
+      "screen": "attendance",
+      "section": "balance-floating-holiday",
+      "title": "Floating Holiday Balance",
+      "whatItIs": "Floating Holidays accrue quarterly: 8 hours per quarter (Q1: Mar-May, Q2: Jun-Aug, Q3: Sep-Nov, Q4: Dec-Feb), up to 24 hours per year. Eligibility begins after 1 year of employment.",
+      "howToUse": "Click the card to see quarter-by-quarter breakdown showing which quarters you've earned and when the next accrual date is. Used hours are subtracted from accrued hours to show remaining balance.",
+      "howToUpdate": "Hours accrue automatically when each quarter begins (if eligible). Add FH entries on the attendance calendar to use your floating holidays.",
+      "position": "top",
+      "order": 5
+    },
+    {
+      "id": "balance-personal-sick",
+      "screen": "attendance",
+      "section": "balance-personal-sick",
+      "title": "Personal Sick Balance",
+      "whatItIs": "Personal Sick hours accrue based on hours worked: 1 hour earned per 30 hours worked, up to 80 hours max accrual. Usage is limited to 40 hours or 5 days per 12-month period, whichever is greater.",
+      "howToUse": "Click the card to see accrual rate, estimated hours worked, and effective usage limits. The system estimates hours worked based on your employment duration.",
+      "howToUpdate": "Hours accrue automatically based on estimated work hours. No accrual during paid or unpaid leave. Add PS entries to use personal sick time.",
+      "position": "top",
+      "order": 6
+    },
+    {
+      "id": "balance-vacation",
+      "screen": "attendance",
+      "section": "balance-vacation",
+      "title": "Vacation Balance",
+      "whatItIs": "Vacation hours are based on years of service (base years). Full-time employees (1,200+ hours/year) receive: 0-2 yrs: 1 week (40h), 3-4 yrs: 2 weeks (80h), 5-7 yrs: 3 weeks (120h), 8-14 yrs: 4 weeks (160h), 15+ yrs: 5 weeks (200h).",
+      "howToUse": "Click the card to see your current tier, base years, employee type (full-time/part-time/exempt), and the vacation base year period (June 1 - May 31).",
+      "howToUpdate": "Tier is determined by years of service as of the benefit period start. Part-time employees earn hours at a rate based on hours worked. Add V entries to use vacation time.",
+      "position": "top",
+      "order": 7
+    },
+    {
+      "id": "balance-holiday",
+      "screen": "attendance",
+      "section": "balance-holiday",
+      "title": "Holiday Hours",
+      "whatItIs": "Total holiday hours recorded for the year. Unlike other balances, this shows total usage only - there is no allocation limit for paid holidays.",
+      "howToUse": "Click the card to see a list of all holiday entries with dates and notes. This helps track which company holidays you've recorded.",
+      "howToUpdate": "Add H (Holiday) entries on the attendance calendar when you take paid holidays. Hours are summed to show yearly total.",
+      "position": "top",
+      "order": 8
     },
     {
       "id": "entry-time-code",

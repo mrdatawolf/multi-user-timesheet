@@ -41,11 +41,55 @@
       "screen": "attendance",
       "section": "balance-cards",
       "title": "Balance Cards",
-      "whatItIs": "Shows used hours vs. allocated hours for time-off codes like Vacation and Floating Holiday.",
-      "howToUse": "Click any card to see a detailed breakdown including allocation source, usage summary, and individual entries with dates.",
-      "howToUpdate": "Balances update automatically as you add entries. Allocations can be customized per employee in the Employees tab.",
+      "whatItIs": "Shows used hours vs. allocated hours for time-off codes. 'Used' is the sum of all attendance entries with that time code for the selected year. 'Total' comes from either default allocations, accrual calculations, or manual employee overrides.",
+      "howToUse": "Click any card to see a detailed breakdown including allocation source, usage summary, and individual entries with dates. The modal explains exactly how hours were calculated.",
+      "howToUpdate": "Balances update automatically as you add entries. Allocations can be customized per employee in the Employees tab using the clock icon.",
       "position": "top",
       "order": 4
+    },
+    {
+      "id": "balance-floating-holiday",
+      "screen": "attendance",
+      "section": "balance-floating-holiday",
+      "title": "Floating Holiday Balance",
+      "whatItIs": "Shows remaining floating holiday hours. Calculated as: Allocated Hours - Used Hours. Allocation may come from company defaults, accrual rules, or employee overrides.",
+      "howToUse": "Click the card to see how many hours you've used, your allocation source, and a list of all FH entries by date.",
+      "howToUpdate": "Add FH entries on the attendance calendar to use floating holidays. Allocations can be set per employee in the Employees tab.",
+      "position": "top",
+      "order": 5
+    },
+    {
+      "id": "balance-personal-sick",
+      "screen": "attendance",
+      "section": "balance-personal-sick",
+      "title": "Personal Sick Balance",
+      "whatItIs": "Shows remaining personal sick hours. Calculated as: Allocated Hours - Used Hours. May be based on accrual (hours earned per hours worked) or fixed allocation.",
+      "howToUse": "Click the card to see your allocation details, usage limits, and a list of all PS entries by date.",
+      "howToUpdate": "Add PS entries on the attendance calendar to use personal sick time. Hours accrue or are allocated based on company policy.",
+      "position": "top",
+      "order": 6
+    },
+    {
+      "id": "balance-vacation",
+      "screen": "attendance",
+      "section": "balance-vacation",
+      "title": "Vacation Balance",
+      "whatItIs": "Shows total vacation hours used this year. Vacation allocation may be based on years of service, employment type, or fixed company policy.",
+      "howToUse": "Click the card to see your vacation tier (if applicable), allocation details, and a list of all V entries by date.",
+      "howToUpdate": "Add V entries on the attendance calendar to record vacation time. Allocations may change based on your seniority.",
+      "position": "top",
+      "order": 7
+    },
+    {
+      "id": "balance-holiday",
+      "screen": "attendance",
+      "section": "balance-holiday",
+      "title": "Holiday Hours",
+      "whatItIs": "Total paid holiday hours recorded for the year. This shows usage only - there is no allocation limit for paid holidays.",
+      "howToUse": "Click the card to see a list of all holiday entries with dates and notes.",
+      "howToUpdate": "Add H (Holiday) entries on the attendance calendar when you take paid holidays.",
+      "position": "top",
+      "order": 8
     },
     {
       "id": "entry-time-code",

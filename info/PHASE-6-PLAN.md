@@ -513,11 +513,20 @@ HELP_AUTO_SHOW_NEW_SCREENS=false
 ### Phase 6.4: Welcome Tour (Removed)
 Removed from scope - in-person training and contextual help system are sufficient.
 
-### Phase 6.10: Attendance Page Employee Values Display
+### Phase 6.10: Attendance Page Employee Values Display ✅ COMPLETE
 Explain how the attendance page values next to employees are calculated/generated.
 
-1. ⏳ Add help content explaining employee totals calculation
-2. ⏳ Document how hours are summed and displayed
+1. ✅ Add help content explaining employee totals calculation
+2. ✅ Document how hours are summed and displayed
+
+**Implementation:**
+- Updated `attendance-balance-cards` help entry with detailed calculation explanation
+- Added new help entries for each balance card type:
+  - `balance-floating-holiday` - Explains quarterly accrual (NFL: 8h/quarter, 24h max, 1-year eligibility)
+  - `balance-personal-sick` - Explains hours-worked accrual (1h per 30h worked, 80h max)
+  - `balance-vacation` - Explains tiered seniority system (40h-200h based on years of service)
+  - `balance-holiday` - Explains usage-only tracking (no allocation limit)
+- Help content added to both NFL and TRL brands
 
 ### Phase 6.5: Admin Features (Partial)
 1. ✅ Brand-specific JSON files allow per-brand customization
