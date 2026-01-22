@@ -3,7 +3,7 @@
   "brandURI": "http://192.168.203.241:6029",
   "features": {
     "leaveManagement": {
-      "enabled": false,
+      "enabled": true,
        "leaveTypes": {
         "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
         "sickLeave": { "enabled": true, "timeCode": "PS", "label": "Paid Sick Leave" },

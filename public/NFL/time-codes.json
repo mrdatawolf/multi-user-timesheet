@@ -1,7 +1,7 @@
 {
-  "brandId": "TRL",
+  "brandId": "NFL",
   "version": "1.0",
-  "description": "Time codes for TRL brand. These define the available time entry types and their default annual allocations.",
+  "description": "Time codes for NFL brand. These define the available time entry types and their default annual allocations.",
   "timeCodes": [
     {
       "id": 1,
