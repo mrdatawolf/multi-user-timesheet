@@ -5,10 +5,10 @@
     "leaveManagement": {
       "enabled": true,
       "leaveTypes": {
-        "vacation": { "enabled": true },
-        "sickLeave": { "enabled": true },
-        "floatingHoliday": { "enabled": true },
-        "paidHoliday": { "enabled": true }
+        "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
+        "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave" },
+        "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
+        "paidHoliday": { "enabled": true, "timeCode": "HL", "label": "Holiday" }
       }
     },
     "approvalWorkflows": {
@@ -20,7 +20,7 @@
     "accrualCalculations": {
       "enabled": true,
       "rules": {
-        "FH": {
+        "FLH": {
           "type": "quarterly",
           "hoursPerPeriod": 8,
           "maxAnnual": 24,
@@ -34,7 +34,7 @@
             "Q4": { "startMonth": 12, "startDay": 1, "endMonth": 2, "endDay": 28 }
           }
         },
-        "PS": {
+        "PSL": {
           "type": "hoursWorked",
           "accrualRate": {
             "earnHours": 1,

@@ -12,6 +12,8 @@ import { getCurrentBrandId } from './brand-config';
 // Leave type configuration
 export interface LeaveTypeConfig {
   enabled: boolean;
+  timeCode?: string;  // Maps to actual time code in database (e.g., "FLH", "PSL", "V")
+  label?: string;     // Display label for UI (e.g., "Floating Holiday", "Paid Sick Leave")
 }
 
 // Brand features configuration structure
