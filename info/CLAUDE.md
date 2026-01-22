@@ -1,7 +1,7 @@
 # Claude Project Summary
 
 **Quick Reference for AI Assistants**
-*Last Updated: January 20, 2026*
+*Last Updated: January 22, 2026*
 
 ---
 
@@ -111,25 +111,17 @@ Accrual rules are brand-specific and support:
 
 ---
 
-## Current Phase: 6 (Help System)
+## Current Phase: 7 (Reporting)
 
-**Completed:**
-- Contextual help tooltips (HelpArea component)
-- Help toggle in navbar
-- Brand-specific help content
-- Balance breakdown modals with accrual calculation display
-- Groups management (Settings page)
-- Job Titles management (Settings page)
-- Brand-specific time codes
-- Help content for Groups/Job Titles sections
-- Accrual calculation engine (`lib/accrual-calculations.ts`)
-  - Quarterly accrual (Floating Holiday)
-  - Hours-worked accrual (Personal Sick Leave)
-  - Tiered seniority accrual (Vacation)
-- Brand-specific accrual rules in `brand-features.json`
+**Goal:** Build a flexible reporting system with common reports shared across brands and brand-specific custom reports.
 
-**Remaining:**
-- Attendance page: explain how employee values (totals) are generated
+**Architecture:**
+- Common report components in `components/reports/common/`
+- Brand-specific report definitions in `public/{brand}/reports/report-definitions.json`
+- Generic report engine that renders reports based on JSON configuration
+- Hybrid approach: coded components for complex reports, JSON-driven for simpler custom reports
+
+**See:** [PHASE-7-PLAN.md](PHASE-7-PLAN.md) for detailed implementation plan
 
 ---
 
@@ -142,9 +134,10 @@ Accrual rules are brand-specific and support:
 | 3 | ✅ | Multiple entries per day |
 | 4 | ✅ | Automated backups (7-day, 4-week, 12-month) |
 | 4.5 | ✅ | White labeling, brand URI configuration |
-| **6** | **In Progress** | Contextual help, groups/job titles management |
-| 7 | Planned | Leave request & approval workflows |
-| 8 | Planned | Policy engine (eligibility, limits, lockouts) |
+| 6 | ✅ | Contextual help, groups/job titles management |
+| **7** | **In Progress** | Reporting system (common + brand-specific reports) |
+| 8 | Planned | Leave request & approval workflows |
+| 9 | Planned | Policy engine (eligibility, limits, lockouts) |
 
 ---
 
@@ -215,7 +208,9 @@ headers: { Authorization: `Bearer ${token}` }
 
 5. **Settings page is super-admin only** - Groups and Job Titles management only visible to superusers
 
-6. **Accrual rule keys must match time codes** - In `brand-features.json`, accrual rule keys (e.g., `"PS"`, `"FH"`, `"V"`) must exactly match the `code` field in `time-codes.json`. Mismatches cause accrual calculations to not display in modals.
+6. **Time codes are configured in leaveTypes** - In `brand-features.json`, each leave type in `leaveManagement.leaveTypes` must include a `timeCode` property that maps to the actual code in the database/time-codes.json. Example: `"floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" }`. The accrual rules keys (e.g., `"PSL"`, `"FLH"`, `"V"`) must also match these time codes.
+
+7. **Employees are soft-deleted** - DELETE on employees sets `is_active = 0`, not actual deletion. Reactivation is done via PUT with `is_active: 1`. Master users can view inactive employees via "Show Inactive" toggle and reactivate them.
 
 ---
 

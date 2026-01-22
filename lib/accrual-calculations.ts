@@ -654,8 +654,9 @@ export function calculateAccrual(
 
 /**
  * Load brand features and check for accrual rules
+ * Returns a record of time code -> accrual rule mappings
  */
-export async function loadAccrualRules(brandId: string): Promise<{ FH?: AccrualRule } | null> {
+export async function loadAccrualRules(brandId: string): Promise<Record<string, AccrualRule> | null> {
   try {
     const response = await fetch(`/${brandId}/brand-features.json`);
     if (!response.ok) return null;

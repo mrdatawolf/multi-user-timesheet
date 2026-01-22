@@ -114,10 +114,26 @@ function main() {
       }
     }
 
-    // Seed demo data if DemoMode is enabled
+    // Write demo mode flag file to standalone build for server to read
+    const standaloneDir = path.join(ROOT_DIR, '.next', 'standalone', 'multi-user-timesheet');
+    const demoModeFlagPath = path.join(standaloneDir, 'demo-mode.json');
+
+    if (fs.existsSync(standaloneDir)) {
+      const demoModeConfig = {
+        demoMode: demoMode,
+        brand: brandName,
+        brandURI: brandURI,
+        builtAt: new Date().toISOString()
+      };
+      fs.writeFileSync(demoModeFlagPath, JSON.stringify(demoModeConfig, null, 2));
+      console.log(`Demo mode flag written to: ${demoModeFlagPath}`);
+      console.log(`Demo mode: ${demoMode ? 'ENABLED' : 'disabled'}`);
+    }
+
+    // Seed demo data at build time if DemoMode is enabled (for development testing)
     if (demoMode) {
       console.log('');
-      console.log('Demo Mode enabled - seeding demo data...');
+      console.log('Demo Mode enabled - seeding demo data for build...');
       console.log('');
       try {
         execSync('npx tsx scripts/seed-demo.ts', {

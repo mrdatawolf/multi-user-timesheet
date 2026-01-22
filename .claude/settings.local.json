@@ -64,7 +64,8 @@
       "Bash(timeout 15 npx:*)",
       "Bash(\"./node_modules/electron/dist/electron.exe\" -v)",
       "Bash(\"./node_modules/electron/dist/electron.exe\" --help)",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(npm run lint)"
     ]
   }
 }

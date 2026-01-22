@@ -317,24 +317,11 @@ async function seedDemoDataInternal() {
 let initPromise: Promise<void> | null = null;
 
 export function ensureInitialized() {
-  console.log('[DB-INIT] ensureInitialized called');
-  console.log('[DB-INIT] initPromise:', initPromise ? 'exists' : 'null');
-  console.log('[DB-INIT] window:', typeof window);
-  console.log('[DB-INIT] NODE_ENV:', process.env.NODE_ENV);
-  console.log('[DB-INIT] NEXT_PHASE:', process.env.NEXT_PHASE);
-  console.log('[DB-INIT] DEMO_MODE:', process.env.DEMO_MODE);
-  console.log('[DB-INIT] DATA_PATH:', process.env.DATA_PATH);
-
   if (!initPromise && typeof window === 'undefined') {
     // Only initialize at runtime, not during build
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
-      console.log('[DB-INIT] Starting initialization...');
       initPromise = initializeDatabaseWithDemoMode();
-    } else {
-      console.log('[DB-INIT] Skipping - build phase detected');
     }
-  } else {
-    console.log('[DB-INIT] Skipping - already initialized or in browser');
   }
   return initPromise;
 }
@@ -343,8 +330,6 @@ export function ensureInitialized() {
  * Initialize database with demo mode support
  */
 async function initializeDatabaseWithDemoMode() {
-  console.log('[DB-INIT] initializeDatabaseWithDemoMode starting...');
-
   // Log demo mode banner if enabled
   logDemoModeBanner();
 
@@ -352,15 +337,8 @@ async function initializeDatabaseWithDemoMode() {
   await initializeDatabase();
 
   // If demo mode is enabled, clear and reseed
-  const demoMode = isDemoMode();
-  console.log('[DB-INIT] isDemoMode() returned:', demoMode);
-
-  if (demoMode) {
-    console.log('[DB-INIT] Demo mode enabled - clearing and seeding...');
+  if (isDemoMode()) {
     await clearDatabaseForDemo();
     await seedDemoDataInternal();
-    console.log('[DB-INIT] Demo seeding complete');
-  } else {
-    console.log('[DB-INIT] Demo mode disabled - skipping seed');
   }
 }

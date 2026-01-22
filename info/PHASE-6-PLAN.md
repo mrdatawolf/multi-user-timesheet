@@ -777,3 +777,51 @@ interface TieredSeniorityRule {
 - `HoursWorkedAccrualDetails` - Details for hours-worked calculations
 - `TieredSeniorityAccrualDetails` - Details for tiered seniority calculations
 - `AccrualResult` - Standardized return type for all accrual calculations
+
+#### Phase 6.7.2: Leave Types Time Code Mapping ✅ COMPLETE
+Added configurable time code mappings to leaveTypes in brand-features.json so balance cards dynamically use the correct time codes.
+
+**Problem Solved:**
+Previously, balance-cards.tsx had hardcoded time code abbreviations (e.g., `'FH'`, `'PS'`, `'H'`). When brands updated their time codes in the database (e.g., `FLH` instead of `FH`), the balance cards didn't reflect the correct data.
+
+**Solution:**
+Extended the `leaveTypes` configuration in `brand-features.json` to include `timeCode` and `label` properties:
+
+```json
+"leaveTypes": {
+  "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
+  "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave" },
+  "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
+  "paidHoliday": { "enabled": true, "timeCode": "HL", "label": "Holiday" }
+}
+```
+
+**Files Modified:**
+- `public/NFL/brand-features.json` - Added timeCode and label to each leave type
+- `lib/brand-features.ts` - Extended `LeaveTypeConfig` interface with optional `timeCode` and `label`
+- `components/balance-cards.tsx` - Now loads time codes dynamically from brand features
+- `lib/accrual-calculations.ts` - Changed `loadAccrualRules` return type from hardcoded `{ FH?: AccrualRule }` to flexible `Record<string, AccrualRule>`
+
+**Benefits:**
+- Each brand can use different time code abbreviations
+- Balance cards automatically use the correct codes from configuration
+- No code changes needed when time codes change - just update brand-features.json
+- Labels are also configurable for display purposes
+
+### Phase 6.11: Employee Reactivation ✅ COMPLETE
+Added ability for authorized users to reactivate deactivated employees.
+
+**Problem:**
+When employees were deactivated (soft delete), there was no way to restore them through the UI. The only option was "Deleted" text with no action.
+
+**Solution:**
+Added a reactivate button that appears for inactive employees when viewing with "Show Inactive" enabled.
+
+**Implementation:**
+- Added `handleReactivate` function that calls PUT /api/employees with `is_active: 1`
+- Added green reactivate button (↻ RotateCcw icon) in the Actions column
+- Button only appears for users with delete permission (same permission check as deactivate)
+- Users without permission see "Inactive" text instead
+
+**Files Modified:**
+- `app/employees/page.tsx` - Added RotateCcw import, handleReactivate function, and reactivate button UI

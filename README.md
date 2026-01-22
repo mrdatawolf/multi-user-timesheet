@@ -346,6 +346,26 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - Revert to defaults option for any allocation
 - Support for mid-year adjustments and custom arrangements
 
+### Employee Management
+- Add, edit, and deactivate employee records
+- **Reactivate deactivated employees** - Master users can view inactive employees and reactivate them with a single click
+- Group-based visibility controls
+- Custom time allocations per employee
+
+### Brand-Specific Time Codes
+- Time codes are configured per brand in `brand-features.json`
+- Each leave type maps to a specific time code via the `timeCode` property
+- Balance cards dynamically use the configured time codes
+- Example configuration:
+  ```json
+  "leaveTypes": {
+    "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
+    "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave" },
+    "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
+    "paidHoliday": { "enabled": true, "timeCode": "HL", "label": "Holiday" }
+  }
+  ```
+
 ### Dashboard (Optional)
 - Total employees, entries, hours statistics
 - Time code usage summary

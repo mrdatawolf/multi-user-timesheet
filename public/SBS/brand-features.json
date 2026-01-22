@@ -1,7 +1,7 @@
 {
   "brandId": "SBS",
   "brandURI": "http://127.0.0.1:6029",
-  "DemoMode": true,
+  "DemoMode": false,
   "features": {
     "leaveManagement": {
       "enabled": true

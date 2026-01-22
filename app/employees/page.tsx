@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock, RotateCcw } from 'lucide-react';
 import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
 import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
 import { useHelp } from '@/lib/help-context';
@@ -294,6 +294,35 @@ export default function UsersPage() {
     }
   };
 
+  const handleReactivate = async (employee: Employee) => {
+    if (!confirm(`Are you sure you want to reactivate ${employee.first_name} ${employee.last_name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: employee.id,
+          is_active: 1,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reactivate employee');
+      }
+
+      loadEmployees();
+    } catch (error) {
+      console.error('Failed to reactivate employee:', error);
+      alert('Failed to reactivate employee');
+    }
+  };
+
   // Check if current user can edit a given employee
   const canEditEmployee = (employee: Employee): boolean => {
     if (!user || !user.group) return false;
@@ -492,8 +521,19 @@ export default function UsersPage() {
                           </Button>
                         </HelpArea>
                       )}
-                      {employee.is_active === 0 && (
-                        <span className="text-xs text-muted-foreground italic">Deleted</span>
+                      {employee.is_active === 0 && canDeleteEmployee(employee) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReactivate(employee)}
+                          className="text-green-600 hover:text-green-700"
+                          title="Reactivate Employee"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {employee.is_active === 0 && !canDeleteEmployee(employee) && (
+                        <span className="text-xs text-muted-foreground italic">Inactive</span>
                       )}
                       {employee.is_active === 1 && !canEditEmployee(employee) && !canDeleteEmployee(employee) && (
                         <span className="text-xs text-muted-foreground italic">No access</span>

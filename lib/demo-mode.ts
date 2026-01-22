@@ -7,13 +7,12 @@
  * - Demo data is consistent for presentations
  * - Data does not persist after the application closes
  *
- * Demo mode is enabled by:
- * 1. Brand's brand-features.json having DemoMode: true (highest priority)
- * 2. Setting DEMO_MODE=true environment variable (fallback)
- * 3. The Electron app sets this when launching in standalone mode
+ * Demo mode is enabled by (in priority order):
+ * 1. demo-mode.json file in server working directory (written by build script)
+ * 2. Brand's brand-features.json having DemoMode: true
+ * 3. Setting DEMO_MODE=true environment variable (fallback)
  *
  * For unit tests:
- * - Tests can check isDemoMode() to conditionally run demo-specific tests
  * - Tests can use setDemoModeOverride() to force demo mode state
  */
 
@@ -23,140 +22,71 @@ import * as path from 'path';
 // Internal state for testing overrides
 let demoModeOverride: boolean | null = null;
 
-// Cache for brand demo mode setting (to avoid repeated file reads)
-let brandDemoModeCache: boolean | null | undefined = undefined;
-
-// Cache for runtime config (written by Electron)
-let runtimeConfigCache: { demoMode: boolean; dataPath: string } | null | undefined = undefined;
+// Cache for demo mode (to avoid repeated file reads)
+let demoModeCache: boolean | undefined = undefined;
 
 /**
- * Read runtime config written by Electron
- * This is the most reliable way to get demo mode setting when running under Electron
+ * Read demo mode from demo-mode.json (written by build script)
  */
-function getRuntimeConfig(): { demoMode: boolean; dataPath: string } | null {
-  if (runtimeConfigCache !== undefined) {
-    return runtimeConfigCache;
-  }
-
+function getDemoModeFromFlag(): boolean | null {
   try {
-    // Runtime config is written by Electron to the server's working directory
-    const configPath = path.join(process.cwd(), 'runtime-config.json');
-    console.log('[DEMO-MODE] Checking for runtime-config.json at:', configPath);
+    // Check current working directory (server's directory)
+    const configPath = path.join(process.cwd(), 'demo-mode.json');
 
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf8');
       const config = JSON.parse(content);
-      console.log('[DEMO-MODE] Found runtime config:', JSON.stringify(config));
-      runtimeConfigCache = config;
-      return config;
+      console.log('[DEMO-MODE] Found demo-mode.json, demoMode:', config.demoMode);
+      return config.demoMode === true;
     }
 
-    console.log('[DEMO-MODE] No runtime-config.json found (not running under Electron)');
-    runtimeConfigCache = null;
     return null;
   } catch (error) {
-    console.log('[DEMO-MODE] Error reading runtime config:', error);
-    runtimeConfigCache = null;
+    console.log('[DEMO-MODE] Error reading demo-mode.json:', error);
     return null;
   }
 }
 
 /**
- * Get the data path from runtime config (if available)
+ * Read demo mode from brand config files
  */
-export function getRuntimeDataPath(): string | null {
-  const config = getRuntimeConfig();
-  return config?.dataPath || null;
-}
-
-/**
- * Get the demo mode setting from the brand's brand-features.json
- *
- * @returns true if brand has DemoMode: true, false if explicitly false, null if not set
- */
-function getBrandDemoMode(): boolean | null {
-  console.log('[DEMO-MODE] getBrandDemoMode() called');
-  console.log('[DEMO-MODE] brandDemoModeCache:', brandDemoModeCache);
-
-  // Return cached value if already read
-  if (brandDemoModeCache !== undefined) {
-    console.log('[DEMO-MODE] Returning cached value:', brandDemoModeCache);
-    return brandDemoModeCache;
-  }
-
+function getDemoModeFromBrandConfig(): boolean | null {
   try {
-    // Find the project root by looking for package.json
-    let currentDir = __dirname;
-    let rootDir = currentDir;
-    console.log('[DEMO-MODE] Starting __dirname:', __dirname);
+    // Try to find brand config in current working directory
+    const cwd = process.cwd();
+    const brandSelectionPath = path.join(cwd, 'lib', 'brand-selection.json');
 
-    // Walk up to find the project root (where package.json is)
-    for (let i = 0; i < 10; i++) {
-      const pkgPath = path.join(currentDir, 'package.json');
-      console.log('[DEMO-MODE] Checking for package.json at:', pkgPath, 'exists:', fs.existsSync(pkgPath));
-      if (fs.existsSync(pkgPath)) {
-        rootDir = currentDir;
-        break;
-      }
-      const parentDir = path.dirname(currentDir);
-      if (parentDir === currentDir) break;
-      currentDir = parentDir;
-    }
-    console.log('[DEMO-MODE] Found rootDir:', rootDir);
-
-    // Read brand selection
-    const brandSelectionPath = path.join(rootDir, 'lib', 'brand-selection.json');
-    console.log('[DEMO-MODE] brandSelectionPath:', brandSelectionPath, 'exists:', fs.existsSync(brandSelectionPath));
     if (!fs.existsSync(brandSelectionPath)) {
-      console.log('[DEMO-MODE] brand-selection.json not found, returning null');
-      brandDemoModeCache = null;
       return null;
     }
 
     const brandSelection = JSON.parse(fs.readFileSync(brandSelectionPath, 'utf8'));
-    console.log('[DEMO-MODE] brandSelection:', JSON.stringify(brandSelection));
     if (!brandSelection.brand) {
-      console.log('[DEMO-MODE] No brand in selection, returning null');
-      brandDemoModeCache = null;
       return null;
     }
 
-    // Read brand features
-    const brandFeaturesPath = path.join(rootDir, 'public', brandSelection.brand, 'brand-features.json');
-    console.log('[DEMO-MODE] brandFeaturesPath:', brandFeaturesPath, 'exists:', fs.existsSync(brandFeaturesPath));
+    const brandFeaturesPath = path.join(cwd, 'public', brandSelection.brand, 'brand-features.json');
     if (!fs.existsSync(brandFeaturesPath)) {
-      console.log('[DEMO-MODE] brand-features.json not found, returning null');
-      brandDemoModeCache = null;
       return null;
     }
 
     const brandFeatures = JSON.parse(fs.readFileSync(brandFeaturesPath, 'utf8'));
-    console.log('[DEMO-MODE] brandFeatures.DemoMode:', brandFeatures.DemoMode, 'type:', typeof brandFeatures.DemoMode);
-
-    // Check if DemoMode is explicitly set
     if (typeof brandFeatures.DemoMode === 'boolean') {
       console.log('[DEMO-MODE] Found DemoMode in brand config:', brandFeatures.DemoMode);
-      brandDemoModeCache = brandFeatures.DemoMode;
       return brandFeatures.DemoMode;
     }
 
-    console.log('[DEMO-MODE] DemoMode not set in brand config, returning null');
-    brandDemoModeCache = null;
     return null;
   } catch (error) {
-    // If any error occurs, fall back to null (use env var)
-    console.log('[DEMO-MODE] Error reading brand config:', error);
-    brandDemoModeCache = null;
     return null;
   }
 }
 
 /**
- * Clear the brand demo mode cache (for testing)
+ * Clear the demo mode cache (for testing)
  */
 export function clearBrandDemoModeCache(): void {
-  brandDemoModeCache = undefined;
-  runtimeConfigCache = undefined;
+  demoModeCache = undefined;
 }
 
 /**
@@ -165,36 +95,35 @@ export function clearBrandDemoModeCache(): void {
  * @returns true if demo mode is enabled
  */
 export function isDemoMode(): boolean {
-  console.log('[DEMO-MODE] isDemoMode() called');
-  console.log('[DEMO-MODE] demoModeOverride:', demoModeOverride);
-
   // Allow tests to override
   if (demoModeOverride !== null) {
-    console.log('[DEMO-MODE] Using override:', demoModeOverride);
     return demoModeOverride;
   }
 
-  // Check runtime config first (written by Electron, highest priority)
-  const runtimeConfig = getRuntimeConfig();
-  if (runtimeConfig !== null) {
-    console.log('[DEMO-MODE] Using runtime config:', runtimeConfig.demoMode);
-    return runtimeConfig.demoMode;
+  // Return cached value if available
+  if (demoModeCache !== undefined) {
+    return demoModeCache;
   }
 
-  // Check brand config second
-  const brandDemoMode = getBrandDemoMode();
-  console.log('[DEMO-MODE] getBrandDemoMode() returned:', brandDemoMode);
-
-  if (brandDemoMode !== null) {
-    console.log('[DEMO-MODE] Using brand config:', brandDemoMode);
-    return brandDemoMode;
+  // 1. Check demo-mode.json flag file (highest priority - written by build)
+  const flagValue = getDemoModeFromFlag();
+  if (flagValue !== null) {
+    demoModeCache = flagValue;
+    return flagValue;
   }
 
-  // Fall back to environment variable
+  // 2. Check brand config
+  const brandValue = getDemoModeFromBrandConfig();
+  if (brandValue !== null) {
+    demoModeCache = brandValue;
+    return brandValue;
+  }
+
+  // 3. Check environment variable
   const envValue = process.env.DEMO_MODE;
-  console.log('[DEMO-MODE] DEMO_MODE env var:', envValue);
   const result = envValue === 'true' || envValue === '1';
-  console.log('[DEMO-MODE] Final result:', result);
+  demoModeCache = result;
+  console.log('[DEMO-MODE] Using env var DEMO_MODE:', envValue, '-> result:', result);
   return result;
 }
 
@@ -205,6 +134,7 @@ export function isDemoMode(): boolean {
  */
 export function setDemoModeOverride(value: boolean | null): void {
   demoModeOverride = value;
+  demoModeCache = undefined;
 }
 
 /**
@@ -234,4 +164,9 @@ export function logDemoModeBanner(): void {
     console.log('╚════════════════════════════════════════════════════════════╝');
     console.log('');
   }
+}
+
+// Legacy export for compatibility (no longer used)
+export function getRuntimeDataPath(): string | null {
+  return null;
 }
