@@ -16,7 +16,8 @@ const EXCLUDE_FOLDERS = [
   'dist-server',
   '.node-portable',
   'temp-server-build',
-  'distribute',   // Contains built exe files - must not be copied into new builds
+  'distribute',        // Contains built client exe files - must not be copied into new builds
+  'distribute_server', // Contains built server exe files - must not be copied into new builds
   'electron-app',
   '.git',
 ];
