@@ -41,7 +41,7 @@ interface EmployeeSummary {
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
@@ -60,38 +60,34 @@ export default function DashboardPage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       loadDashboardData();
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated]);
 
   // Reload data when navigating to dashboard page
   useEffect(() => {
-    if (pathname === '/dashboard' && isAuthenticated && token) {
+    if (pathname === '/dashboard' && isAuthenticated) {
       loadDashboardData();
     }
-  }, [pathname, isAuthenticated, token]);
+  }, [pathname, isAuthenticated]);
 
   const loadDashboardData = async () => {
-    if (!token) {
-      console.warn('Cannot load dashboard data: token is not available');
+    if (!isAuthenticated) {
+      console.warn('Cannot load dashboard data: not authenticated');
       return;
     }
 
     setLoading(true);
     try {
       const [employeesRes, entriesRes] = await Promise.all([
-        fetch('/api/employees', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch('/api/attendance', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
+        authFetch('/api/employees'),
+        authFetch('/api/attendance'),
       ]);
+
+      if (employeesRes.status === 401 || entriesRes.status === 401) {
+        return;
+      }
 
       const employeesData = await employeesRes.json();
       const entriesData = await entriesRes.json();

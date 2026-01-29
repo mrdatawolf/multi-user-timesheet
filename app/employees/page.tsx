@@ -65,7 +65,7 @@ interface JobTitle {
 }
 
 export default function UsersPage() {
-  const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -112,21 +112,19 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       loadEmployees();
       loadGroups();
       loadJobTitles();
     }
-  }, [isAuthenticated, token, showInactive]);
+  }, [isAuthenticated, showInactive]);
 
   const loadEmployees = async () => {
     try {
       const url = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch(url);
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -141,11 +139,9 @@ export default function UsersPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await fetch('/api/groups', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/groups');
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -158,11 +154,9 @@ export default function UsersPage() {
 
   const loadJobTitles = async () => {
     try {
-      const response = await fetch('/api/job-titles?active=true', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/job-titles?active=true');
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -231,11 +225,10 @@ export default function UsersPage() {
     try {
       if (editingEmployee) {
         // Update employee
-        const response = await fetch('/api/employees', {
+        const response = await authFetch('/api/employees', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             id: editingEmployee.id,
@@ -243,19 +236,22 @@ export default function UsersPage() {
           }),
         });
 
+        if (response.status === 401) return;
+
         if (!response.ok) {
           throw new Error('Failed to update employee');
         }
       } else {
         // Create employee
-        const response = await fetch('/api/employees', {
+        const response = await authFetch('/api/employees', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         });
+
+        if (response.status === 401) return;
 
         if (!response.ok) {
           throw new Error('Failed to create employee');
@@ -276,12 +272,11 @@ export default function UsersPage() {
     }
 
     try {
-      const response = await fetch(`/api/employees?id=${employee.id}`, {
+      const response = await authFetch(`/api/employees?id=${employee.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (response.status === 401) return;
 
       if (!response.ok) {
         throw new Error('Failed to delete employee');
@@ -300,17 +295,18 @@ export default function UsersPage() {
     }
 
     try {
-      const response = await fetch('/api/employees', {
+      const response = await authFetch('/api/employees', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           id: employee.id,
           is_active: 1,
         }),
       });
+
+      if (response.status === 401) return;
 
       if (!response.ok) {
         throw new Error('Failed to reactivate employee');

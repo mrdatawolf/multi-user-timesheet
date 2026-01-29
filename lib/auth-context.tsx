@@ -39,6 +39,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  authFetch: (url: string, options?: RequestInit) => Promise<Response>;
 
   // GROUP-BASED DATA VISIBILITY: Which employees/data the user can see
   isMaster: boolean;              // User is in the master group (sees all data)
@@ -181,12 +182,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  /**
+   * Authenticated fetch wrapper that automatically handles session expiry.
+   * If the API returns 401 (Unauthorized), the user is logged out and redirected to login.
+   */
+  const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const headers = new Headers(options.headers);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Handle session expiry - redirect to login
+    if (response.status === 401) {
+      console.warn('[Auth] Session expired - redirecting to login');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      setToken(null);
+      setUser(null);
+      router.push('/login?expired=1');
+      // Return the response so caller can handle it if needed
+    }
+
+    return response;
+  };
+
   const value: AuthContextType = {
     user,
     token,
     isLoading,
     login,
     logout,
+    authFetch,
     isAuthenticated: !!user && !!token,
     // Group-based data visibility (which employees/groups you can see)
     isMaster: user?.group?.is_master === 1,

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
@@ -11,9 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/spinner';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -21,6 +23,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if session expired (redirected from authFetch)
+  const sessionExpired = searchParams.get('expired') === '1';
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -94,6 +99,13 @@ export default function LoginPage() {
               />
             </div>
 
+            {sessionExpired && !error && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-md">
+                <AlertCircle className="h-4 w-4" />
+                <span>Your session has expired. Please sign in again.</span>
+              </div>
+            )}
+
             {error && (
               <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
                 <AlertCircle className="h-4 w-4" />
@@ -116,5 +128,17 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Spinner />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

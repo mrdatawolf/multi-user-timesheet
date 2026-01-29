@@ -45,7 +45,7 @@ interface TimeAllocation {
 export default function AttendancePage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
@@ -71,43 +71,40 @@ export default function AttendancePage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       loadInitialData();
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (selectedEmployeeId && token) {
+    if (selectedEmployeeId && isAuthenticated) {
       loadAttendanceData();
     }
-  }, [selectedEmployeeId, year, token]);
+  }, [selectedEmployeeId, year, isAuthenticated]);
 
   // Reload data when navigating to attendance page
   useEffect(() => {
-    if (pathname === '/attendance' && selectedEmployeeId && token) {
+    if (pathname === '/attendance' && selectedEmployeeId && isAuthenticated) {
       loadAttendanceData();
     }
   }, [pathname]);
 
   const loadInitialData = async () => {
-    if (!token) {
-      console.warn('Cannot load initial data: token is not available');
+    if (!isAuthenticated) {
+      console.warn('Cannot load initial data: not authenticated');
       return;
     }
 
     try {
       const [employeesRes, timeCodesRes] = await Promise.all([
-        fetch('/api/employees', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch('/api/time-codes', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
+        authFetch('/api/employees'),
+        authFetch('/api/time-codes'),
       ]);
+
+      // If redirected to login due to expired session, stop processing
+      if (employeesRes.status === 401 || timeCodesRes.status === 401) {
+        return;
+      }
 
       const employeesData = await employeesRes.json();
       const timeCodesData = await timeCodesRes.json();
@@ -139,21 +136,18 @@ export default function AttendancePage() {
   };
 
   const loadAttendanceData = async () => {
-    if (!selectedEmployeeId || !token) return;
+    if (!selectedEmployeeId || !isAuthenticated) return;
 
     try {
       const [attendanceRes, allocationsRes] = await Promise.all([
-        fetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+        authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
+        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`)
       ]);
+
+      // If redirected to login due to expired session, stop processing
+      if (attendanceRes.status === 401 || allocationsRes.status === 401) {
+        return;
+      }
 
       const attendanceData = await attendanceRes.json();
       const allocationsData = await allocationsRes.json();
@@ -181,15 +175,14 @@ export default function AttendancePage() {
   };
 
   const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[]) => {
-    if (!selectedEmployeeId || !token) return;
+    if (!selectedEmployeeId || !isAuthenticated) return;
 
     try {
       // Send batch update to API
-      const response = await fetch('/api/attendance', {
+      const response = await authFetch('/api/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: 'update_day',
@@ -198,6 +191,11 @@ export default function AttendancePage() {
           entries: updatedEntries,
         }),
       });
+
+      // If redirected to login due to expired session, stop processing
+      if (response.status === 401) {
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));

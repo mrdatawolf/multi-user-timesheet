@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +13,7 @@ import Link from 'next/link';
 import { config } from '@/lib/config';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
+import { useAuth } from '@/lib/auth-context';
 
 interface Employee {
   id: number;
@@ -35,6 +37,8 @@ interface ReportEntry {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
@@ -50,16 +54,29 @@ export default function ReportsPage() {
     setCurrentScreen('reports');
   }, [setCurrentScreen]);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadInitialData();
+    }
+  }, [isAuthenticated]);
 
   const loadInitialData = async () => {
     try {
       const [employeesRes, timeCodesRes] = await Promise.all([
-        fetch('/api/employees'),
-        fetch('/api/time-codes'),
+        authFetch('/api/employees'),
+        authFetch('/api/time-codes'),
       ]);
+
+      if (employeesRes.status === 401 || timeCodesRes.status === 401) {
+        return;
+      }
 
       const employeesData = await employeesRes.json();
       const timeCodesData = await timeCodesRes.json();
@@ -92,7 +109,12 @@ export default function ReportsPage() {
         endDate: endDate?.toISOString() || '',
       });
 
-      const res = await fetch(`/api/reports?${params.toString()}`);
+      const res = await authFetch(`/api/reports?${params.toString()}`);
+
+      if (res.status === 401) {
+        return;
+      }
+
       const data = await res.json();
 
       if (Array.isArray(data)) {

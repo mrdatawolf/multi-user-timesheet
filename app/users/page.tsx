@@ -62,7 +62,7 @@ interface Group {
 }
 
 export default function UsersPage() {
-  const { user: currentUser, isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -95,7 +95,7 @@ export default function UsersPage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       // Only superusers can access this page
       if (currentUser && !currentUser.is_superuser) {
         router.push('/');
@@ -105,15 +105,13 @@ export default function UsersPage() {
       loadGroups();
       loadRoles();
     }
-  }, [isAuthenticated, token, showInactive, currentUser]);
+  }, [isAuthenticated, showInactive, currentUser]);
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('/api/users', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/users');
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -129,11 +127,9 @@ export default function UsersPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await fetch('/api/groups', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/groups');
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -146,11 +142,9 @@ export default function UsersPage() {
 
   const loadRoles = async () => {
     try {
-      const response = await fetch('/api/roles', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/roles');
+
+      if (response.status === 401) return;
 
       if (response.ok) {
         const data = await response.json();
@@ -221,14 +215,15 @@ export default function UsersPage() {
           updatePayload.password = formData.password;
         }
 
-        const response = await fetch('/api/users', {
+        const response = await authFetch('/api/users', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(updatePayload),
         });
+
+        if (response.status === 401) return;
 
         if (!response.ok) {
           const error = await response.json();
@@ -241,14 +236,15 @@ export default function UsersPage() {
           return;
         }
 
-        const response = await fetch('/api/users', {
+        const response = await authFetch('/api/users', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         });
+
+        if (response.status === 401) return;
 
         if (!response.ok) {
           const error = await response.json();
@@ -275,12 +271,11 @@ export default function UsersPage() {
     }
 
     try {
-      const response = await fetch(`/api/users?id=${user.id}`, {
+      const response = await authFetch(`/api/users?id=${user.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (response.status === 401) return;
 
       if (!response.ok) {
         throw new Error('Failed to delete user');

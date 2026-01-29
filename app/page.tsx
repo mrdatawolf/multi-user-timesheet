@@ -38,7 +38,7 @@ interface EmployeeSummary {
 }
 
 export default function Home() {
-  const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -46,28 +46,24 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       loadDashboardData();
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [isAuthenticated, authLoading, token]);
+  }, [isAuthenticated, authLoading]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
       const [employeesRes, entriesRes] = await Promise.all([
-        fetch('/api/employees', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch('/api/attendance', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
+        authFetch('/api/employees'),
+        authFetch('/api/attendance'),
       ]);
+
+      if (employeesRes.status === 401 || entriesRes.status === 401) {
+        return;
+      }
 
       const employeesData = await employeesRes.json();
       const entriesData = await entriesRes.json();
