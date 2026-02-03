@@ -8,7 +8,7 @@
         "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
         "sickLeave": { "enabled": true, "timeCode": "PS", "label": "Paid Sick Leave" },
         "floatingHoliday": { "enabled": true, "timeCode": "FH", "label": "Floating Holiday" },
-        "paidHoliday": { "enabled": true, "timeCode": "H", "label": "Holiday" }
+        "paidHoliday": { "enabled": false, "timeCode": "H", "label": "Holiday" }
       }
     },
     "approvalWorkflows": {
@@ -19,6 +19,19 @@
     },
     "accrualCalculations": {
       "enabled": false
+    },
+    "companyHolidays": {
+      "enabled": true,
+      "year": 2026,
+      "dates": [
+        { "date": "2026-01-01", "name": "New Year's Day" },
+        { "date": "2026-05-25", "name": "Memorial Day" },
+        { "date": "2026-07-03", "name": "Independence Day (Observed)" },
+        { "date": "2026-09-07", "name": "Labor Day" },
+        { "date": "2026-11-26", "name": "Thanksgiving" },
+        { "date": "2026-11-27", "name": "Day after Thanksgiving" },
+        { "date": "2026-12-25", "name": "Christmas Day" }
+      ]
     }
   }
 }

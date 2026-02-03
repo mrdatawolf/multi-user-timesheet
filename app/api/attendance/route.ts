@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById } from '@/lib/queries-sqlite';
+import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById, syncTimeCodesFromJson } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
   logAudit,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
+import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,6 +86,12 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Ensure time codes from brand JSON are synced to database (include inactive for proper sync)
+    const brandTimeCodes = getBrandTimeCodes(undefined, true);
+    if (brandTimeCodes) {
+      await syncTimeCodesFromJson(brandTimeCodes);
     }
 
     const body = await request.json();

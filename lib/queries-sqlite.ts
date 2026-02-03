@@ -78,6 +78,50 @@ export async function getAllTimeCodes(): Promise<TimeCode[]> {
   return result.rows as unknown as TimeCode[];
 }
 
+/**
+ * Sync time codes from brand JSON to database
+ * JSON is source of truth - inserts missing codes, updates existing ones
+ * Uses code as the unique identifier (not id)
+ */
+export async function syncTimeCodesFromJson(brandTimeCodes: {
+  id: number;
+  code: string;
+  description: string;
+  hours_limit: number | null;
+  is_active: number;
+}[]): Promise<{ inserted: number; updated: number }> {
+  let inserted = 0;
+  let updated = 0;
+
+  for (const tc of brandTimeCodes) {
+    // Use INSERT OR REPLACE with code as the key
+    // This handles both insert and update cases
+    const existing = await db.execute({
+      sql: 'SELECT id FROM time_codes WHERE code = ?',
+      args: [tc.code],
+    });
+
+    if (existing.rows.length === 0) {
+      // Insert new time code (let database auto-generate ID)
+      await db.execute({
+        sql: `INSERT INTO time_codes (code, description, hours_limit, is_active)
+              VALUES (?, ?, ?, ?)`,
+        args: [tc.code, tc.description, tc.hours_limit, tc.is_active],
+      });
+      inserted++;
+    } else {
+      // Update existing time code
+      await db.execute({
+        sql: `UPDATE time_codes SET description = ?, hours_limit = ?, is_active = ? WHERE code = ?`,
+        args: [tc.description, tc.hours_limit, tc.is_active, tc.code],
+      });
+      updated++;
+    }
+  }
+
+  return { inserted, updated };
+}
+
 // Attendance entry queries
 export async function getAllEntries(): Promise<AttendanceEntry[]> {
   const result = await db.execute('SELECT * FROM attendance_entries ORDER BY entry_date DESC');

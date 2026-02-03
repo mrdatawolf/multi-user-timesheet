@@ -36,14 +36,19 @@ export function getCurrentBrand(): string {
 /**
  * Load time codes from brand-specific JSON file
  * Returns null if no JSON file exists for the brand
+ * @param brand - Optional brand override
+ * @param includeInactive - If true, returns all time codes including inactive ones (for syncing)
  */
-export function getBrandTimeCodes(brand?: string): BrandTimeCode[] | null {
+export function getBrandTimeCodes(brand?: string, includeInactive?: boolean): BrandTimeCode[] | null {
   const targetBrand = brand || getCurrentBrand();
   try {
     const timeCodesPath = path.join(process.cwd(), 'public', targetBrand, 'time-codes.json');
     if (fs.existsSync(timeCodesPath)) {
       const data: TimeCodesFile = JSON.parse(fs.readFileSync(timeCodesPath, 'utf8'));
-      // Filter to only active time codes
+      // Return all codes for syncing, or only active codes for display
+      if (includeInactive) {
+        return data.timeCodes;
+      }
       return data.timeCodes.filter(tc => tc.is_active === 1);
     }
   } catch (error) {

@@ -2,23 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Parser } from 'json2csv';
-import { Spinner } from '@/components/spinner';
-import { FileX } from 'lucide-react';
 import Link from 'next/link';
 import { config } from '@/lib/config';
 import { useHelp } from '@/lib/help-context';
-import { HelpArea } from '@/components/help-area';
 import { useAuth } from '@/lib/auth-context';
+import { ReportFilters } from '@/components/reports/report-filters';
+import { ReportTable } from '@/components/reports/report-table';
+import { ReportExport } from '@/components/reports/report-export';
 
 interface Employee {
   id: number;
   first_name: string;
-
   last_name: string;
 }
 
@@ -36,6 +30,33 @@ interface ReportEntry {
   notes: string;
 }
 
+interface ReportColumn {
+  key: string;
+  header: string;
+}
+
+interface ReportDefinition {
+  id: string;
+  name: string;
+  description: string;
+  apiEndpoint: string;
+  isDefault?: boolean;
+  columns: ReportColumn[];
+  export: {
+    csv: boolean;
+    pdf: boolean;
+    filename: string;
+  };
+}
+
+const DEFAULT_COLUMNS: ReportColumn[] = [
+  { key: 'employee_name', header: 'Employee' },
+  { key: 'entry_date', header: 'Date' },
+  { key: 'time_code', header: 'Time Code' },
+  { key: 'hours', header: 'Hours' },
+  { key: 'notes', header: 'Notes' },
+];
+
 export default function ReportsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
@@ -43,18 +64,17 @@ export default function ReportsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [reportData, setReportData] = useState<ReportEntry[]>([]);
+  const [reportDefinition, setReportDefinition] = useState<ReportDefinition | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
   const [selectedTimeCode, setSelectedTimeCode] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), 0, 1));
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), 11, 31));
 
-  // Set the current screen for help context
   useEffect(() => {
     setCurrentScreen('reports');
   }, [setCurrentScreen]);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
@@ -69,9 +89,10 @@ export default function ReportsPage() {
 
   const loadInitialData = async () => {
     try {
-      const [employeesRes, timeCodesRes] = await Promise.all([
+      const [employeesRes, timeCodesRes, reportDefRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
+        authFetch('/api/report-definitions?id=attendance-summary'),
       ]);
 
       if (employeesRes.status === 401 || timeCodesRes.status === 401) {
@@ -94,9 +115,23 @@ export default function ReportsPage() {
         console.error('Invalid time codes data:', timeCodesData);
         setTimeCodes([]);
       }
+
+      // Load report definition (non-critical, use defaults if fails)
+      if (reportDefRes.ok) {
+        const reportDefData = await reportDefRes.json();
+        if (reportDefData && !reportDefData.error) {
+          setReportDefinition(reportDefData);
+        }
+      }
     } catch (error) {
       console.error('Failed to load initial data:', error);
     }
+  };
+
+  // Format date as YYYY-MM-DD for database comparison
+  const formatDateForApi = (date: Date | undefined): string => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
   };
 
   const handleGenerateReport = async () => {
@@ -105,8 +140,8 @@ export default function ReportsPage() {
       const params = new URLSearchParams({
         employeeId: selectedEmployeeId,
         timeCode: selectedTimeCode,
-        startDate: startDate?.toISOString() || '',
-        endDate: endDate?.toISOString() || '',
+        startDate: formatDateForApi(startDate),
+        endDate: formatDateForApi(endDate),
       });
 
       const res = await authFetch(`/api/reports?${params.toString()}`);
@@ -131,24 +166,11 @@ export default function ReportsPage() {
     }
   };
 
-  const handleExportCsv = () => {
-    if (reportData.length === 0) return;
-
-    const json2csvParser = new Parser();
-    const csv = json2csvParser.parse(reportData);
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'attendance_report.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+  // Use report definition values or fall back to defaults
+  const columns = reportDefinition?.columns || DEFAULT_COLUMNS;
+  const exportFilename = reportDefinition?.export?.filename
+    ? `${reportDefinition.export.filename}.csv`
+    : 'attendance_report.csv';
 
   if (!config.features.enableReports) {
     return (
@@ -162,7 +184,7 @@ export default function ReportsPage() {
             <code className="text-sm bg-muted px-2 py-1 rounded">true</code>.
           </p>
           <Link href="/attendance" className="inline-block text-blue-600 hover:underline">
-            ← Go back to Attendance
+            &larr; Go back to Attendance
           </Link>
         </div>
       </div>
@@ -172,108 +194,36 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen p-3">
       <div className="max-w-full mx-auto space-y-4">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h1 className="text-2xl font-bold">
+          {reportDefinition?.name || 'Reports'}
+        </h1>
 
-        <HelpArea helpId="report-filters" bubblePosition="bottom">
-          <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
-            <div className="flex-1 min-w-[200px] space-y-1">
-              <label className="text-xs">Employee</label>
-              <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Employees</SelectItem>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id.toString()}>
-                    {emp.last_name}, {emp.first_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <ReportFilters
+          employees={employees}
+          timeCodes={timeCodes}
+          selectedEmployeeId={selectedEmployeeId}
+          onEmployeeChange={setSelectedEmployeeId}
+          selectedTimeCode={selectedTimeCode}
+          onTimeCodeChange={setSelectedTimeCode}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          endDate={endDate}
+          onEndDateChange={setEndDate}
+          onGenerate={handleGenerateReport}
+          loading={loading}
+          actionButtons={
+            <ReportExport
+              data={reportData}
+              filename={exportFilename}
+            />
+          }
+        />
 
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <label className="text-xs">Time Code</label>
-            <Select value={selectedTimeCode} onValueChange={setSelectedTimeCode}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time Codes</SelectItem>
-                {timeCodes.map(tc => (
-                  <SelectItem key={tc.code} value={tc.code}>
-                    {tc.code} - {tc.description}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <label className="text-xs">Start Date</label>
-            <DatePicker date={startDate} setDate={setStartDate} />
-          </div>
-
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <label className="text-xs">End Date</label>
-            <DatePicker date={endDate} setDate={setEndDate} />
-          </div>
-
-            <HelpArea helpId="generate-report" bubblePosition="top" showHighlight={false}>
-              <Button onClick={handleGenerateReport} disabled={loading}>
-                {loading ? <Spinner /> : 'Generate Report'}
-              </Button>
-            </HelpArea>
-
-            <HelpArea helpId="export-csv" bubblePosition="top" showHighlight={false}>
-              <Button onClick={handleExportCsv} disabled={reportData.length === 0} variant="outline">
-                Export CSV
-              </Button>
-            </HelpArea>
-          </div>
-        </HelpArea>
-
-        <HelpArea helpId="report-results" bubblePosition="top">
-          <div className="border rounded-lg">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time Code</TableHead>
-                <TableHead>Hours</TableHead>
-                <TableHead>Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    <Spinner />
-                  </TableCell>
-                </TableRow>
-              ) : reportData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No results found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                reportData.map((row, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{row.employee_name}</TableCell>
-                    <TableCell>{row.entry_date}</TableCell>
-                    <TableCell>{row.time_code}</TableCell>
-                    <TableCell>{row.hours}</TableCell>
-                    <TableCell>{row.notes}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-            </Table>
-          </div>
-        </HelpArea>
+        <ReportTable
+          columns={columns}
+          data={reportData}
+          loading={loading}
+        />
       </div>
     </div>
   );

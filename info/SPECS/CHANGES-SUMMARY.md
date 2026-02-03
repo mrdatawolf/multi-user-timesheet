@@ -509,3 +509,258 @@ No action required. The feature is complete and working correctly.
 ## Version
 
 **Current Version:** 0.8.1 (includes dynamic employee allocations)
+
+---
+
+# User Authentication & Permissions Improvements - Changes Summary
+
+*February 2, 2026*
+
+## Features Added
+
+### 1. Case-Insensitive Username Login
+
+**Problem:** Usernames were case-sensitive, causing login failures when users typed "Patrick" instead of "patrick".
+
+**Solution:** Added `COLLATE NOCASE` to username queries in SQLite.
+
+#### Files Modified:
+- **lib/queries-auth.ts** - `getUserByUsername()` now uses case-insensitive comparison
+- **app/api/auth/login/route.ts** - Debug query also case-insensitive
+
+**Code Change:**
+```sql
+-- Before
+SELECT * FROM users WHERE username = ? AND is_active = 1
+
+-- After
+SELECT * FROM users WHERE username = ? COLLATE NOCASE AND is_active = 1
+```
+
+### 2. Automatic Own-Group CRUD Permissions
+
+**Problem:** Users needed explicit `user_group_permissions` entries to access their own group's data.
+
+**Solution:** Modified all CRUD permission functions to automatically return `true` if the target group is the user's own group.
+
+#### Files Modified:
+- **lib/queries-auth.ts** - Updated 5 functions:
+  - `canUserCreateInGroup()` - Added own-group check
+  - `canUserReadGroup()` - Added own-group check
+  - `canUserUpdateInGroup()` - Added own-group check
+  - `canUserDeleteInGroup()` - Added own-group check
+  - `getUserReadableGroups()` - Includes own group in results
+- **app/api/employees/route.ts** - Also includes own group in readable groups
+
+**Code Pattern:**
+```typescript
+export async function canUserReadGroup(userId: number, groupId: number): Promise<boolean> {
+  if (await isSuperuser(userId)) return true;
+
+  // Users can always read their own group
+  const user = await getUserById(userId);
+  if (user && user.group_id === groupId) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_read === 1;
+}
+```
+
+### 3. Auto-Employee Creation for First User in Group
+
+**Problem:** When a new user logged in and their group had no employees, they couldn't use the system.
+
+**Solution:** When fetching employees, if a non-superuser's group has no employees, automatically create an employee record for them.
+
+#### Files Modified:
+- **app/api/employees/route.ts** - Added auto-creation logic in GET handler
+
+**Behavior:**
+1. Non-superuser requests employee list
+2. System filters to their readable groups
+3. If no employees exist in user's own group:
+   - Parse user's `full_name` into first/last name
+   - Create employee with user's email
+   - Log audit entry with `auto_created: true`
+   - Include new employee in response
+
+### 4. Enhanced Login Debugging (Development Mode)
+
+**Problem:** Login failures gave generic "Invalid username or password" with no debug info.
+
+**Solution:** In development mode, the login endpoint now provides specific debug info.
+
+#### Files Modified:
+- **app/api/auth/login/route.ts** - Added detailed error checking
+
+**Debug Messages:**
+- `"User not found"` - Username doesn't exist in database
+- `"User is inactive"` - User exists but `is_active = 0`
+- `"Password mismatch"` - Username correct but password wrong
+
+### 5. Time Codes JSON as Source of Truth
+
+**Problem:** Time codes in brand JSON files weren't syncing properly to the database.
+
+**Solution:** On server start, all time codes from JSON sync to database, including `is_active` status.
+
+#### Files Modified:
+- **lib/db-sqlite.ts** - Syncs brand time codes during database initialization
+- **lib/brand-time-codes.ts** - Added `includeInactive` parameter
+- **app/api/time-codes/route.ts** - Syncs all codes, returns only active
+- **components/balance-cards.tsx** - Hides cards for inactive time codes
+
+**Behavior:**
+- JSON `is_active: 0` → Time code hidden from dropdowns and balance cards
+- JSON `is_active: 1` → Time code visible and usable
+- Database always matches JSON on server restart
+
+## Files Created
+None
+
+## Files Modified
+
+1. **lib/queries-auth.ts** - Case-insensitive login, own-group permissions
+2. **app/api/auth/login/route.ts** - Debug logging, case-insensitive query
+3. **app/api/employees/route.ts** - Auto-employee creation, own-group permissions
+4. **lib/db-sqlite.ts** - Time code sync from JSON
+5. **lib/brand-time-codes.ts** - Added includeInactive parameter
+6. **app/api/time-codes/route.ts** - Syncs all, returns active only
+7. **components/balance-cards.tsx** - Hides inactive time code cards
+8. **info/CLAUDE.md** - Updated documentation
+9. **info/SPECS/AUTH-SYSTEM.md** - Updated documentation
+10. **info/SPECS/CHANGES-SUMMARY.md** - This section
+
+## Testing Done
+
+- ✅ Login works with any case (Patrick, PATRICK, patrick)
+- ✅ Users can access their own group without explicit permissions
+- ✅ Auto-employee created when first user in group
+- ✅ Time codes sync from JSON on server start
+- ✅ Inactive time codes hidden from UI
+- ✅ Build succeeds
+
+## Breaking Changes
+None - all changes are backward compatible.
+
+## Version
+
+**Current Version:** 0.8.2 (includes user auth improvements)
+
+---
+
+# Dashboard Upcoming Staffing & Reports Permissions - Changes Summary
+
+*February 2, 2026*
+
+## Features Added
+
+### 1. Dashboard "Upcoming Staffing" Section
+
+**Enhancement:** Added a 5-day staffing overview to both dashboard pages (`/` and `/dashboard`) showing who will be out or working remotely.
+
+#### Files Created:
+- **app/api/dashboard/upcoming-staffing/route.ts** - New API endpoint for upcoming staffing data
+
+#### Files Modified:
+- **app/page.tsx** - Added upcoming staffing section to home page
+- **app/dashboard/page.tsx** - Added upcoming staffing section to dashboard page
+
+**Features:**
+- Shows next 5 days in a responsive grid (5 columns on desktop, 1 on mobile)
+- Displays employee name, time code, and hours for each entry
+- Single entry: `Patrick M. (V8)` - Vacation, 8 hours
+- Multiple entries: `Patrick M. (*5)` - Multiple codes totaling 5 hours
+- Shows "No entries" when a day has no scheduled time off/remote work
+- **Intentionally shows ALL employees** - lets everyone see office staffing
+
+**API Endpoint:** `GET /api/dashboard/upcoming-staffing?days=5`
+- Available to ALL authenticated users (not permission-filtered)
+- Returns only basic info: employee name, date, time code, hours
+- Does NOT expose sensitive balance/allocation data
+- Filters to active employees only
+
+### 2. Reports API Permission Filtering
+
+**Problem:** The reports page showed all employees' data regardless of user permissions.
+
+**Solution:** Added authentication and group-based permission filtering to the reports API.
+
+#### Files Modified:
+- **app/api/reports/route.ts** - Complete rewrite with permission filtering
+
+**Changes:**
+- Added authentication check (returns 401 if not logged in)
+- Superusers see all employee data
+- Non-superusers only see:
+  - Employees in their own group
+  - Employees in groups they have explicit read permission for
+  - Employees with no group assigned
+
+**Code Pattern:**
+```typescript
+if (!userIsSuperuser) {
+  const readableGroupIds = await getUserReadableGroups(authUser.id);
+  if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {
+    readableGroupIds.push(authUser.group_id);
+  }
+  sql += ` AND (e.group_id IS NULL OR e.group_id IN (${placeholders}))`;
+}
+```
+
+## Technical Implementation
+
+### Dashboard Staffing Data Flow:
+1. User loads dashboard page
+2. `loadDashboardData()` fetches from `/api/dashboard/upcoming-staffing?days=5`
+3. API queries attendance_entries joined with employees for date range
+4. Frontend groups entries by employee per day
+5. Multiple entries for same person/day consolidated with total hours
+
+### Entry Grouping Logic:
+```typescript
+const entriesByEmployee = upcomingStaffingData
+  .filter(entry => entry.entry_date === dateStr)
+  .reduce((acc, entry) => {
+    const key = `${entry.first_name}-${entry.last_name}`;
+    if (!acc[key]) {
+      acc[key] = { firstName, lastName, entries: [], totalHours: 0 };
+    }
+    acc[key].entries.push({ timeCode, hours });
+    acc[key].totalHours += hours;
+    return acc;
+  }, {});
+```
+
+### Display Format:
+- Single entry: `(${timeCode}${hours})` → `(V8)`
+- Multiple entries: `(*${totalHours})` → `(*5)`
+
+## Files Created
+
+1. **app/api/dashboard/upcoming-staffing/route.ts** - Staffing data endpoint
+
+## Files Modified
+
+1. **app/page.tsx** - Home page with staffing section
+2. **app/dashboard/page.tsx** - Dashboard page with staffing section
+3. **app/api/reports/route.ts** - Permission-filtered reports
+4. **info/CLAUDE.md** - Updated documentation
+5. **info/SPECS/CHANGES-SUMMARY.md** - This section
+
+## Testing Done
+
+- ✅ Dashboard shows upcoming staffing for all employees
+- ✅ Multiple entries per person/day consolidated correctly
+- ✅ Reports filtered by user's readable groups
+- ✅ Superusers see all report data
+- ✅ Non-superusers only see their group's data
+- ✅ No authentication errors on dashboard
+
+## Breaking Changes
+
+None - all changes are backward compatible.
+
+## Version
+
+**Current Version:** 0.8.3 (includes dashboard staffing & reports permissions)

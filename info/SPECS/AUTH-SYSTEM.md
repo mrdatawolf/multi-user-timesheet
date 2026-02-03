@@ -352,6 +352,14 @@ View audit log entries (requires Master or HR group).
 
 4. **Same Group Access**
    - Users can always view/edit data in their own group
+   - This is automatic - no explicit `user_group_permissions` entries needed
+   - All CRUD operations are allowed on own group by default
+
+5. **Auto-Employee Creation**
+   - When a user first accesses the Employees API and no employees exist in their group
+   - System automatically creates an employee record for them
+   - Uses user's full_name (split into first/last) and email
+   - Only happens for non-superusers
 
 ### Permission Checks
 
@@ -526,9 +534,10 @@ console.log(entries);
 - Verify group_permissions table for specific grants
 
 ### Login Not Working
-- Verify username and password are correct
+- Verify username and password are correct (note: username is case-insensitive)
 - Check that user is active (is_active = 1)
 - Review audit log for failed login attempts
+- In development mode, the login endpoint returns debug info (e.g., "User not found", "User is inactive", "Password mismatch")
 
 ### Database Reset
 

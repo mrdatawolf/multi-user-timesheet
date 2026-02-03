@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BalanceBreakdownModal } from './balance-breakdown-modal';
 import { getBrandFeatures, type LeaveTypeConfig } from '@/lib/brand-features';
+import { useAuth } from '@/lib/auth-context';
 
 interface AttendanceEntry {
   entry_date: string;
@@ -98,6 +99,7 @@ const DEFAULT_LEAVE_TYPES: LeaveTypes = {
 };
 
 export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
+  const { authFetch } = useAuth();
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     timeCode: '',
@@ -105,8 +107,9 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   });
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypes>(DEFAULT_LEAVE_TYPES);
   const [leaveManagementEnabled, setLeaveManagementEnabled] = useState(true);
+  const [activeTimeCodes, setActiveTimeCodes] = useState<Set<string>>(new Set());
 
-  // Load brand features to get time code mappings
+  // Load brand features and active time codes
   useEffect(() => {
     const loadFeatures = async () => {
       try {
@@ -124,8 +127,27 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
       }
     };
 
+    const loadTimeCodes = async () => {
+      try {
+        const response = await authFetch('/api/time-codes');
+        if (response.ok) {
+          const timeCodes = await response.json();
+          // Create a set of active time code strings
+          const activeCodes = new Set<string>(
+            timeCodes
+              .filter((tc: { is_active: number }) => tc.is_active === 1)
+              .map((tc: { code: string }) => tc.code)
+          );
+          setActiveTimeCodes(activeCodes);
+        }
+      } catch (error) {
+        console.error('Failed to load time codes:', error);
+      }
+    };
+
     loadFeatures();
-  }, []);
+    loadTimeCodes();
+  }, [authFetch]);
 
   const openModal = (timeCode: string, title: string) => {
     setModalState({ isOpen: true, timeCode, title });
@@ -160,6 +182,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   // Helper to render a balance card with usage tracking (shows remaining)
   const renderBalanceCard = (config: LeaveTypeConfig | undefined, key: string, defaultLabel: string) => {
     if (!config?.enabled || !config.timeCode) return null;
+    // Also check if the time code is active in time-codes.json
+    if (activeTimeCodes.size > 0 && !activeTimeCodes.has(config.timeCode)) return null;
 
     const timeCode = config.timeCode;
     const label = config.label || defaultLabel;
@@ -198,6 +222,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   // Helper to render a usage-only card (no allocation tracking)
   const renderUsageCard = (config: LeaveTypeConfig | undefined, key: string, defaultLabel: string, subtitle: string) => {
     if (!config?.enabled || !config.timeCode) return null;
+    // Also check if the time code is active in time-codes.json
+    if (activeTimeCodes.size > 0 && !activeTimeCodes.has(config.timeCode)) return null;
 
     const timeCode = config.timeCode;
     const label = config.label || defaultLabel;

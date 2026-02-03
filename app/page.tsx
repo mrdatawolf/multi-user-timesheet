@@ -8,7 +8,7 @@ import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Calendar, Clock, TrendingUp, LogIn } from 'lucide-react';
+import { Users, Calendar, Clock, TrendingUp, LogIn, CalendarDays } from 'lucide-react';
 
 interface Employee {
   id: number;
@@ -37,12 +37,23 @@ interface EmployeeSummary {
   totalHours: number;
 }
 
+interface UpcomingStaffingEntry {
+  id: number;
+  employee_id: number;
+  entry_date: string;
+  time_code: string;
+  hours: number;
+  first_name: string;
+  last_name: string;
+}
+
 export default function Home() {
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
+  const [upcomingStaffingData, setUpcomingStaffingData] = useState<UpcomingStaffingEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,17 +67,18 @@ export default function Home() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [employeesRes, entriesRes] = await Promise.all([
+      // Fetch employees and upcoming staffing (available to all authenticated users)
+      const [employeesRes, upcomingStaffingRes] = await Promise.all([
         authFetch('/api/employees'),
-        authFetch('/api/attendance'),
+        authFetch('/api/dashboard/upcoming-staffing?days=5'),
       ]);
 
-      if (employeesRes.status === 401 || entriesRes.status === 401) {
+      if (employeesRes.status === 401) {
         return;
       }
 
       const employeesData = await employeesRes.json();
-      const entriesData = await entriesRes.json();
+      const upcomingData = upcomingStaffingRes.ok ? await upcomingStaffingRes.json() : [];
 
       if (Array.isArray(employeesData)) {
         setEmployees(employeesData);
@@ -75,11 +87,11 @@ export default function Home() {
         setEmployees([]);
       }
 
-      if (Array.isArray(entriesData)) {
-        setEntries(entriesData);
+      if (Array.isArray(upcomingData)) {
+        setUpcomingStaffingData(upcomingData);
       } else {
-        console.error('Invalid entries data:', entriesData);
-        setEntries([]);
+        console.error('Invalid upcoming staffing data:', upcomingData);
+        setUpcomingStaffingData([]);
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -119,6 +131,46 @@ export default function Home() {
   const recentEntries = [...entries]
     .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime())
     .slice(0, 10);
+
+  // Compute upcoming staffing for the next 5 days
+  // Uses dedicated endpoint that returns all employees' staffing data
+  const upcomingStaffing = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const next5Days: { date: Date; dateStr: string; dayName: string; entries: { firstName: string; lastName: string; entries: { timeCode: string; hours: number }[]; totalHours: number }[] }[] = [];
+
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+      // Group entries by employee
+      const entriesByEmployee = upcomingStaffingData
+        .filter(entry => entry.entry_date === dateStr)
+        .reduce((acc, entry) => {
+          const key = `${entry.first_name}-${entry.last_name}`;
+          if (!acc[key]) {
+            acc[key] = {
+              firstName: entry.first_name,
+              lastName: entry.last_name,
+              entries: [],
+              totalHours: 0,
+            };
+          }
+          acc[key].entries.push({ timeCode: entry.time_code, hours: entry.hours });
+          acc[key].totalHours += entry.hours;
+          return acc;
+        }, {} as Record<string, { firstName: string; lastName: string; entries: { timeCode: string; hours: number }[]; totalHours: number }>);
+
+      const dayEntries = Object.values(entriesByEmployee);
+
+      next5Days.push({ date, dateStr, dayName, entries: dayEntries });
+    }
+
+    return next5Days;
+  })();
 
   if (authLoading || loading) {
     return (
@@ -227,6 +279,38 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base">Upcoming Staffing (Next 5 Days)</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              {upcomingStaffing.map(day => (
+                <div key={day.dateStr} className="border rounded-lg p-3">
+                  <div className="font-medium text-sm mb-2">{day.dayName}</div>
+                  {day.entries.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No entries</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {day.entries.map((entry, idx) => (
+                        <div key={`${entry.firstName}-${entry.lastName}-${idx}`} className="text-xs">
+                          <span className="font-medium">{entry.firstName} {entry.lastName.charAt(0)}.</span>
+                          <span className="ml-1 text-muted-foreground">
+                            {entry.entries.length === 1
+                              ? `(${entry.entries[0].timeCode}${entry.entries[0].hours})`
+                              : `(*${entry.totalHours})`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <Card>
