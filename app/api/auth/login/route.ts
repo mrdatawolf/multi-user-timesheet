@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, generateToken, getClientIP, getUserAgent } from '@/lib/middleware/auth';
+import { authenticateUser, generateToken, getClientIP, getUserAgent, verifyPassword } from '@/lib/middleware/auth';
 import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-auth';
 import { logAudit } from '@/lib/queries-auth';
+import { authDb } from '@/lib/db-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,44 @@ export async function POST(request: NextRequest) {
     // Authenticate user
     const user = await authenticateUser(username, password);
     if (!user) {
+      // In development, provide more detailed error info for debugging
+      if (process.env.NODE_ENV === 'development') {
+        // Check if user exists at all (including inactive)
+        const anyUser = await authDb.execute({
+          sql: 'SELECT id, username, is_active, password_hash FROM users WHERE username = ? COLLATE NOCASE',
+          args: [username],
+        });
+
+        if (anyUser.rows.length === 0) {
+          console.log(`Login failed: User '${username}' not found in database`);
+          return NextResponse.json(
+            { error: 'Invalid username or password', debug: 'User not found' },
+            { status: 401 }
+          );
+        }
+
+        const foundUser = anyUser.rows[0] as any;
+        if (foundUser.is_active !== 1) {
+          console.log(`Login failed: User '${username}' is inactive (is_active=${foundUser.is_active})`);
+          return NextResponse.json(
+            { error: 'Invalid username or password', debug: 'User is inactive' },
+            { status: 401 }
+          );
+        }
+
+        // Check password
+        const passwordValid = await verifyPassword(password, foundUser.password_hash);
+        if (!passwordValid) {
+          console.log(`Login failed: Password mismatch for user '${username}'`);
+          return NextResponse.json(
+            { error: 'Invalid username or password', debug: 'Password mismatch' },
+            { status: 401 }
+          );
+        }
+
+        console.log(`Login failed: Unknown reason for user '${username}'`);
+      }
+
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }

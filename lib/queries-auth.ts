@@ -65,7 +65,7 @@ export interface GroupPermission {
 // User queries
 export async function getUserByUsername(username: string): Promise<User | null> {
   const result = await db.execute({
-    sql: 'SELECT * FROM users WHERE username = ? AND is_active = 1',
+    sql: 'SELECT * FROM users WHERE username = ? COLLATE NOCASE AND is_active = 1',
     args: [username],
   });
   return (result.rows[0] as unknown as User) || null;
@@ -447,6 +447,10 @@ export async function canUserCreateInGroup(userId: number, groupId: number): Pro
   // Superuser can do anything
   if (await isSuperuser(userId)) return true;
 
+  // Users can always create in their own group
+  const user = await getUserById(userId);
+  if (user && user.group_id === groupId) return true;
+
   const permission = await getUserGroupPermission(userId, groupId);
   return permission?.can_create === 1;
 }
@@ -457,6 +461,10 @@ export async function canUserCreateInGroup(userId: number, groupId: number): Pro
 export async function canUserReadGroup(userId: number, groupId: number): Promise<boolean> {
   // Superuser can do anything
   if (await isSuperuser(userId)) return true;
+
+  // Users can always read their own group
+  const user = await getUserById(userId);
+  if (user && user.group_id === groupId) return true;
 
   const permission = await getUserGroupPermission(userId, groupId);
   return permission?.can_read === 1;
@@ -469,6 +477,10 @@ export async function canUserUpdateInGroup(userId: number, groupId: number): Pro
   // Superuser can do anything
   if (await isSuperuser(userId)) return true;
 
+  // Users can always update their own group
+  const user = await getUserById(userId);
+  if (user && user.group_id === groupId) return true;
+
   const permission = await getUserGroupPermission(userId, groupId);
   return permission?.can_update === 1;
 }
@@ -479,6 +491,10 @@ export async function canUserUpdateInGroup(userId: number, groupId: number): Pro
 export async function canUserDeleteInGroup(userId: number, groupId: number): Promise<boolean> {
   // Superuser can do anything
   if (await isSuperuser(userId)) return true;
+
+  // Users can always delete in their own group
+  const user = await getUserById(userId);
+  if (user && user.group_id === groupId) return true;
 
   const permission = await getUserGroupPermission(userId, groupId);
   return permission?.can_delete === 1;
@@ -495,7 +511,15 @@ export async function getUserReadableGroups(userId: number): Promise<number[]> {
   }
 
   const permissions = await getUserGroupPermissions(userId);
-  return permissions.filter(p => p.can_read === 1).map(p => p.group_id);
+  const readableGroupIds = permissions.filter(p => p.can_read === 1).map(p => p.group_id);
+
+  // Always include user's own group
+  const user = await getUserById(userId);
+  if (user && user.group_id && !readableGroupIds.includes(user.group_id)) {
+    readableGroupIds.push(user.group_id);
+  }
+
+  return readableGroupIds;
 }
 
 /**

@@ -1,22 +1,36 @@
 import { NextResponse } from 'next/server';
-import { getAllTimeCodes } from '@/lib/queries-sqlite';
+import { getAllTimeCodes, syncTimeCodesFromJson } from '@/lib/queries-sqlite';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 
 export async function GET() {
   try {
-    // Try to load from brand-specific JSON first
-    const jsonTimeCodes = getBrandTimeCodes();
+    // Get ALL time codes (including inactive) for syncing to database
+    const allTimeCodes = getBrandTimeCodes(undefined, true);
 
-    if (jsonTimeCodes) {
-      // Transform null hours_limit to undefined for consistency with DB interface
-      const timeCodes = jsonTimeCodes.map(tc => ({
-        id: tc.id,
-        code: tc.code,
-        description: tc.description,
-        hours_limit: tc.hours_limit ?? undefined,
-        is_active: tc.is_active,
-      }));
-      return NextResponse.json(timeCodes);
+    if (allTimeCodes) {
+      // Sync ALL time codes to database (ensures is_active status is updated)
+      try {
+        const syncResult = await syncTimeCodesFromJson(allTimeCodes);
+        if (syncResult.inserted > 0 || syncResult.updated > 0) {
+          console.log(`Time codes synced: ${syncResult.inserted} inserted, ${syncResult.updated} updated`);
+        }
+      } catch (syncError) {
+        console.error('Error syncing time codes to database:', syncError);
+        // Continue even if sync fails - we can still return the JSON data
+      }
+
+      // Return only ACTIVE time codes for display
+      const activeTimeCodes = getBrandTimeCodes();
+      if (activeTimeCodes) {
+        const timeCodes = activeTimeCodes.map(tc => ({
+          id: tc.id,
+          code: tc.code,
+          description: tc.description,
+          hours_limit: tc.hours_limit ?? undefined,
+          is_active: tc.is_active,
+        }));
+        return NextResponse.json(timeCodes);
+      }
     }
 
     // Fall back to database if no JSON file exists

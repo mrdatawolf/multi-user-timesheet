@@ -1,7 +1,7 @@
 # Claude Project Summary
 
 **Quick Reference for AI Assistants**
-*Last Updated: January 22, 2026*
+*Last Updated: February 2, 2026*
 
 ---
 
@@ -32,10 +32,14 @@ app/                    # Next.js pages and API routes
   api/                  # REST endpoints
     employees/          # Employee CRUD
     attendance/         # Time entries
+    dashboard/          # Dashboard-specific endpoints
+      upcoming-staffing/ # Upcoming staffing (all users visible)
     groups/             # Group management
     job-titles/         # Job title management
+    reports/            # Report generation (permission-filtered)
     time-codes/         # Time code definitions
   attendance/           # Main attendance page
+  dashboard/            # Dashboard page with staffing overview
   employees/            # Employee management page
   settings/             # Settings page
   users/                # User management (admin)
@@ -211,6 +215,22 @@ headers: { Authorization: `Bearer ${token}` }
 6. **Time codes are configured in leaveTypes** - In `brand-features.json`, each leave type in `leaveManagement.leaveTypes` must include a `timeCode` property that maps to the actual code in the database/time-codes.json. Example: `"floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" }`. The accrual rules keys (e.g., `"PSL"`, `"FLH"`, `"V"`) must also match these time codes.
 
 7. **Employees are soft-deleted** - DELETE on employees sets `is_active = 0`, not actual deletion. Reactivation is done via PUT with `is_active: 1`. Master users can view inactive employees via "Show Inactive" toggle and reactivate them.
+
+8. **Username login is case-insensitive** - Usernames are matched using `COLLATE NOCASE` in SQLite. "Patrick", "patrick", and "PATRICK" all match the same user.
+
+9. **Users have automatic CRUD access to their own group** - Users don't need explicit `user_group_permissions` entries to CRUD employees in their own group. The permission functions (`canUserCreateInGroup`, `canUserReadGroup`, `canUserUpdateInGroup`, `canUserDeleteInGroup`) automatically return true if `groupId === user.group_id`.
+
+10. **Auto-employee creation for first user in group** - When a non-superuser accesses the employees API and there are no employees in their group, the system automatically creates an employee record for them using their user info (full_name split into first/last name, email).
+
+11. **Time codes JSON is source of truth** - Brand-specific `time-codes.json` files sync to the database on server start. Set `is_active: 0` in JSON to hide time codes from dropdowns and balance cards.
+
+12. **Users vs Employees** - These are separate entities. A User (in auth.db) is a login account. An Employee (in attendance.db) is someone whose time is tracked. They may or may not be linked.
+
+13. **Dashboard Upcoming Staffing shows ALL employees** - The `/api/dashboard/upcoming-staffing` endpoint is intentionally accessible to all authenticated users and returns ALL employees' upcoming entries. This allows everyone to see office staffing for the next 5 days. Detailed data (balances, allocations) remains protected.
+
+14. **Reports are permission-filtered** - The `/api/reports` endpoint filters data based on user's readable groups. Non-superusers only see report data for employees in their own group or groups they have explicit read permission for.
+
+15. **Dashboard entry display format** - Single entries show as `(CODE+HOURS)` like `(V8)`. Multiple entries for same person/day show as `(*TOTAL)` like `(*5)` to indicate combined hours.
 
 ---
 

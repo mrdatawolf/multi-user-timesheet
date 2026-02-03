@@ -62,9 +62,59 @@ export async function GET(request: NextRequest) {
       // Filter employees based on user's readable groups (Phase 2 permissions)
       if (!userIsSuperuser) {
         const readableGroupIds = await getUserReadableGroups(authUser.id);
+        // Always include user's own group - users can always see their own group
+        if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {
+          readableGroupIds.push(authUser.group_id);
+        }
         employees = employees.filter(emp =>
           !emp.group_id || readableGroupIds.includes(emp.group_id)
         );
+
+        // Auto-create employee for user if they're the first in their group
+        if (authUser.group_id) {
+          const employeesInUserGroup = employees.filter(emp => emp.group_id === authUser.group_id);
+          if (employeesInUserGroup.length === 0) {
+            // No employees in user's group - create one for the user
+            // Parse full_name into first_name and last_name
+            const nameParts = authUser.full_name.trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Unknown';
+            const lastName = nameParts.slice(1).join(' ') || authUser.username;
+
+            const newEmployee = await createEmployee({
+              employee_number: undefined,
+              first_name: firstName,
+              last_name: lastName,
+              email: authUser.email || undefined,
+              role: 'employee',
+              group_id: authUser.group_id,
+              date_of_hire: undefined,
+              rehire_date: undefined,
+              employment_type: 'full_time',
+              seniority_rank: undefined,
+              created_by: authUser.id,
+              is_active: 1
+            });
+
+            // Log audit entry for auto-created employee
+            await logAudit({
+              user_id: authUser.id,
+              action: 'CREATE',
+              table_name: 'employees',
+              record_id: newEmployee.id,
+              new_values: JSON.stringify({
+                first_name: newEmployee.first_name,
+                last_name: newEmployee.last_name,
+                email: newEmployee.email,
+                group_id: newEmployee.group_id,
+                auto_created: true,
+              }),
+              ip_address: getClientIP(request),
+              user_agent: getUserAgent(request),
+            });
+
+            employees.push(newEmployee);
+          }
+        }
       }
 
       return NextResponse.json(serializeBigInt(employees));

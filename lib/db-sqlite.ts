@@ -1,6 +1,7 @@
 import { createClient } from '@libsql/client';
 import { getDatabasePath } from './data-paths';
 import { isDemoMode, logDemoModeBanner } from './demo-mode';
+import { getBrandTimeCodes } from './brand-time-codes';
 
 // Uses centralized data paths for cross-platform compatibility
 const dbPath = getDatabasePath('attendance.db');
@@ -167,6 +168,38 @@ export async function initializeDatabase() {
         sql: 'UPDATE time_codes SET default_allocation = ? WHERE code = ? AND default_allocation IS NULL',
         args: [tc.default_allocation, tc.code],
       });
+    }
+  }
+
+  // Sync time codes from brand JSON (JSON is source of truth)
+  // Include inactive codes so we can update is_active status in database
+  const brandTimeCodes = getBrandTimeCodes(undefined, true);
+  if (brandTimeCodes) {
+    let synced = 0;
+    for (const tc of brandTimeCodes) {
+      const existing = await db.execute({
+        sql: 'SELECT id FROM time_codes WHERE code = ?',
+        args: [tc.code],
+      });
+
+      if (existing.rows.length === 0) {
+        // Insert new time code from brand JSON
+        await db.execute({
+          sql: `INSERT INTO time_codes (code, description, hours_limit, default_allocation, is_active)
+                VALUES (?, ?, ?, ?, ?)`,
+          args: [tc.code, tc.description, tc.hours_limit, tc.default_allocation || null, tc.is_active],
+        });
+        synced++;
+      } else {
+        // Update existing time code from brand JSON
+        await db.execute({
+          sql: `UPDATE time_codes SET description = ?, hours_limit = ?, is_active = ? WHERE code = ?`,
+          args: [tc.description, tc.hours_limit, tc.is_active, tc.code],
+        });
+      }
+    }
+    if (synced > 0) {
+      console.log(`  ✓ Synced ${synced} time codes from brand JSON`);
     }
   }
 

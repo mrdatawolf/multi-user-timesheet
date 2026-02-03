@@ -16,6 +16,18 @@ export interface LeaveTypeConfig {
   label?: string;     // Display label for UI (e.g., "Floating Holiday", "Paid Sick Leave")
 }
 
+// Company holiday configuration
+export interface CompanyHoliday {
+  date: string;  // Format: YYYY-MM-DD
+  name: string;
+}
+
+export interface CompanyHolidaysConfig {
+  enabled: boolean;
+  year?: number;
+  dates?: CompanyHoliday[];
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -27,6 +39,7 @@ export interface BrandFeatures {
     approvalWorkflows: { enabled: boolean };
     policyEnforcement: { enabled: boolean };
     accrualCalculations: { enabled: boolean };
+    companyHolidays?: CompanyHolidaysConfig;
   };
 }
 
@@ -177,4 +190,31 @@ export function getEnabledLeaveTypes(features: BrandFeatures): string[] {
 export function clearFeaturesCache(): void {
   cachedFeatures = null;
   cachedBrandId = null;
+}
+
+/**
+ * Get company holidays for a specific year
+ *
+ * @param features - The brand features configuration
+ * @param year - The year to get holidays for
+ * @returns Array of holiday dates (YYYY-MM-DD format) or empty array if disabled/no match
+ */
+export function getCompanyHolidayDates(features: BrandFeatures, year: number): Set<string> {
+  const holidaysConfig = features.features.companyHolidays;
+
+  if (!holidaysConfig?.enabled || !holidaysConfig.dates) {
+    return new Set();
+  }
+
+  // Only return holidays for the matching year
+  if (holidaysConfig.year && holidaysConfig.year !== year) {
+    return new Set();
+  }
+
+  // Return dates that match the requested year
+  const dates = holidaysConfig.dates
+    .filter(h => h.date.startsWith(`${year}-`))
+    .map(h => h.date);
+
+  return new Set(dates);
 }

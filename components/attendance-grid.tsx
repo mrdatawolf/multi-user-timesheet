@@ -25,6 +25,7 @@ interface AttendanceGridProps {
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
   onEntryChange: (date: string, entries: AttendanceEntry[]) => void;
+  companyHolidays?: Set<string>;
 }
 
 const MONTHS = [
@@ -48,6 +49,7 @@ export function AttendanceGrid({
   entries,
   timeCodes,
   onEntryChange,
+  companyHolidays = new Set(),
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -142,16 +144,19 @@ export function AttendanceGrid({
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
                   const daysInMonth = getDaysInMonth(month.num);
                   const isValidDay = day <= daysInMonth;
+                  const dateStr = `${year}-${String(month.num).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isCompanyHoliday = companyHolidays.has(dateStr);
+                  const isClickable = isValidDay && !isCompanyHoliday;
                   const entriesForDate = getEntriesForDate(month.num, day);
 
                   return (
                     <td
                       key={day}
                       className={`border px-0.5 py-px ${
-                        !isValidDay ? 'bg-muted/30' : ''
+                        !isClickable ? 'bg-muted/30' : ''
                       }`}
                     >
-                      {isValidDay && (
+                      {isClickable && (
                         <Button
                           variant="ghost"
                           className="h-5 text-xs w-full px-1 relative"

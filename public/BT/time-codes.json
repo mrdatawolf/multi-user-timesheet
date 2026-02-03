@@ -9,7 +9,7 @@
       "description": "Discipline",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 2,
@@ -17,7 +17,7 @@
       "description": "Bereavement",
       "hours_limit": 24,
       "default_allocation": 24,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 3,
@@ -25,7 +25,7 @@
       "description": "Family Emergency",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 4,
@@ -33,7 +33,7 @@
       "description": "FMLA",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 5,
@@ -41,7 +41,8 @@
       "description": "Holiday",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0,
+      "global": 0
     },
     {
       "id": 6,
@@ -49,14 +50,14 @@
       "description": "Jury Duty",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 7,
       "code": "FH",
       "description": "Floating Holiday",
-      "hours_limit": 24,
-      "default_allocation": 24,
+      "hours_limit": 80,
+      "default_allocation": 80,
       "is_active": 1
     },
     {
@@ -65,7 +66,7 @@
       "description": "Designated Person",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 9,
@@ -73,7 +74,7 @@
       "description": "Personal",
       "hours_limit": null,
       "default_allocation": 40,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 10,
@@ -81,7 +82,7 @@
       "description": "Lack of Work",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 11,
@@ -89,7 +90,8 @@
       "description": "Personal Sick Day",
       "hours_limit": 40,
       "default_allocation": 40,
-      "is_active": 1
+      "is_active": 1,
+      "global": 1
     },
     {
       "id": 12,
@@ -97,7 +99,7 @@
       "description": "Tardy",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
     },
     {
       "id": 13,
@@ -105,7 +107,8 @@
       "description": "Vacation",
       "hours_limit": null,
       "default_allocation": 80,
-      "is_active": 1
+      "is_active": 1,
+      "global": 1
     },
     {
       "id": 14,
@@ -113,7 +116,25 @@
       "description": "Workers Comp",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 0
+    },
+    {
+      "id": 15,
+      "code": "AC",
+      "description": "Time working at client's location",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1,
+      "global": 1
+    },
+    {
+      "id": 16,
+      "code": "WFH",
+      "description": "Working but at your house",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1,
+      "global": 1
     }
   ]
 }
