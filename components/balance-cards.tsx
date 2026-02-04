@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BalanceBreakdownModal } from './balance-breakdown-modal';
-import { getBrandFeatures, type LeaveTypeConfig } from '@/lib/brand-features';
+import { getBrandFeatures, getLeaveBalanceSummaryConfig, type LeaveTypeConfig } from '@/lib/brand-features';
 import { useAuth } from '@/lib/auth-context';
 
 interface AttendanceEntry {
@@ -108,6 +108,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypes>(DEFAULT_LEAVE_TYPES);
   const [leaveManagementEnabled, setLeaveManagementEnabled] = useState(true);
   const [activeTimeCodes, setActiveTimeCodes] = useState<Set<string>>(new Set());
+  const [warningThreshold, setWarningThreshold] = useState(0.9);
+  const [criticalThreshold, setCriticalThreshold] = useState(1.0);
 
   // Load brand features and active time codes
   useEffect(() => {
@@ -122,6 +124,11 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
             setLeaveTypes(loadedLeaveTypes);
           }
         }
+
+        // Load usage alert thresholds
+        const reportConfig = getLeaveBalanceSummaryConfig(features);
+        setWarningThreshold(reportConfig.warningThreshold);
+        setCriticalThreshold(reportConfig.criticalThreshold);
       } catch (error) {
         console.error('Failed to load brand features:', error);
       }
@@ -179,6 +186,27 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
     return null;
   }
 
+  // Get color classes based on usage percentage
+  const getUsageColorClasses = (used: number, limit: number): { card: string; progress: string } => {
+    if (limit <= 0) return { card: '', progress: 'bg-primary' };
+
+    const usagePercent = used / limit;
+
+    if (usagePercent >= criticalThreshold) {
+      return {
+        card: 'bg-red-50 border-red-200',
+        progress: 'bg-red-500'
+      };
+    }
+    if (usagePercent >= warningThreshold) {
+      return {
+        card: 'bg-amber-50 border-amber-200',
+        progress: 'bg-amber-500'
+      };
+    }
+    return { card: '', progress: 'bg-primary' };
+  };
+
   // Helper to render a balance card with usage tracking (shows remaining)
   const renderBalanceCard = (config: LeaveTypeConfig | undefined, key: string, defaultLabel: string) => {
     if (!config?.enabled || !config.timeCode) return null;
@@ -190,11 +218,12 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
     const used = calculateUsage(timeCode);
     const limit = getAllocatedHours(timeCode);
     const remaining = Math.max(0, limit - used);
+    const colorClasses = getUsageColorClasses(used, limit);
 
     return (
       <div
         key={key}
-        className="flex-1 min-w-[150px] border rounded-lg p-2 bg-card cursor-pointer hover:bg-accent/50 transition-colors"
+        className={`flex-1 min-w-[150px] border rounded-lg p-2 cursor-pointer hover:opacity-80 transition-all ${colorClasses.card || 'bg-card'}`}
         onClick={() => openModal(timeCode, label)}
         title="Click to see breakdown"
       >
@@ -209,9 +238,9 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
         </div>
         <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-primary transition-all"
+            className={`h-full transition-all ${colorClasses.progress}`}
             style={{
-              width: `${limit > 0 ? (used / limit) * 100 : 0}%`,
+              width: `${limit > 0 ? Math.min((used / limit) * 100, 100) : 0}%`,
             }}
           />
         </div>

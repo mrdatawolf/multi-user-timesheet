@@ -1,7 +1,7 @@
 # Claude Project Summary
 
 **Quick Reference for AI Assistants**
-*Last Updated: February 2, 2026*
+*Last Updated: February 4, 2026*
 
 ---
 
@@ -37,6 +37,7 @@ app/                    # Next.js pages and API routes
     groups/             # Group management
     job-titles/         # Job title management
     reports/            # Report generation (permission-filtered)
+      leave-balance-summary/ # Leave balance pivot report
     time-codes/         # Time code definitions
   attendance/           # Main attendance page
   dashboard/            # Dashboard page with staffing overview
@@ -46,10 +47,16 @@ app/                    # Next.js pages and API routes
 
 components/
   ui/                   # shadcn/ui base components
+  reports/              # Report components
+    leave-balance-summary.tsx  # Leave balance pivot table
+    leave-balance-export.tsx   # CSV export for leave balances
+    report-table.tsx    # Generic report table
+    report-filters.tsx  # Report filter controls
+    report-export.tsx   # Generic CSV export
   group-management.tsx  # Groups CRUD UI
   job-title-management.tsx  # Job titles CRUD UI
-  balance-cards.tsx     # Time balance display
-  attendance-grid.tsx   # Calendar grid
+  balance-cards.tsx     # Time balance display (with usage alerts)
+  attendance-grid.tsx   # Calendar grid (with company holidays)
   help-area.tsx         # Contextual help wrapper
 
 lib/
@@ -68,7 +75,9 @@ public/
   {brand}/              # Brand-specific assets (TRL, NFL, etc.)
     help-content.json   # Help tooltips content
     time-codes.json     # Time code definitions
-    brand-features.json # Feature flags
+    brand-features.json # Feature flags, holidays, report config
+    reports/
+      report-definitions.json  # Available reports for this brand
 
 databases/              # SQLite database files (gitignored)
 ```
@@ -94,9 +103,42 @@ Two separate SQLite databases:
 Multi-tenant via `public/{brand}/` folders. Each brand can have:
 - Custom time codes (`time-codes.json`)
 - Custom help content (`help-content.json`)
-- Feature flags and accrual rules (`brand-features.json`)
+- Feature flags, accrual rules, holidays, reports (`brand-features.json`)
+- Report definitions (`reports/report-definitions.json`)
 
 Brand selected at build time via `lib/brand-selection.json`.
+
+### Company Holidays
+Company-wide holidays are defined in `brand-features.json` under `features.companyHolidays`:
+```json
+"companyHolidays": {
+  "enabled": true,
+  "year": 2026,
+  "dates": [
+    { "date": "2026-01-01", "name": "New Year's Day" },
+    { "date": "2026-12-25", "name": "Christmas Day" }
+  ]
+}
+```
+- Holidays appear **greyed out** on the attendance grid (like invalid month days)
+- Employees cannot enter time on company holidays
+- Holidays must be updated yearly in the JSON file
+- Different from **Floating Holidays** which employees can use anytime
+
+### Usage Alert Thresholds
+Leave balance cards and reports show color-coded warnings when usage approaches limits:
+```json
+"reports": {
+  "leaveBalanceSummary": {
+    "enabled": true,
+    "warningThreshold": 0.9,
+    "criticalThreshold": 1.0
+  }
+}
+```
+- **Warning (amber)**: Usage >= 90% of allocation
+- **Critical (red)**: Usage >= 100% of allocation
+- Applied to both attendance page balance cards and Leave Balance Summary report
 
 ### Accrual Calculation Engine
 The system supports multiple leave accrual types defined in `brand-features.json`:
@@ -195,8 +237,11 @@ headers: { Authorization: `Bearer ${token}` }
 | Brand config | `lib/brand-selection.json` |
 | Help content | `public/{brand}/help-content.json` |
 | Time codes | `public/{brand}/time-codes.json` |
-| Accrual rules | `public/{brand}/brand-features.json` |
+| Feature flags | `public/{brand}/brand-features.json` |
+| Report definitions | `public/{brand}/reports/report-definitions.json` |
 | Accrual engine | `lib/accrual-calculations.ts` |
+| Brand features API | `lib/brand-features.ts` |
+| Brand reports API | `lib/brand-reports.ts` |
 
 ---
 
@@ -231,6 +276,14 @@ headers: { Authorization: `Bearer ${token}` }
 14. **Reports are permission-filtered** - The `/api/reports` endpoint filters data based on user's readable groups. Non-superusers only see report data for employees in their own group or groups they have explicit read permission for.
 
 15. **Dashboard entry display format** - Single entries show as `(CODE+HOURS)` like `(V8)`. Multiple entries for same person/day show as `(*TOTAL)` like `(*5)` to indicate combined hours.
+
+16. **Company Holidays vs Floating Holidays** - Company Holidays are specific dates when the office is closed (greyed out on calendar, defined in `companyHolidays`). Floating Holidays (FH) are hours employees can use anytime (tracked like vacation). Don't confuse the two.
+
+17. **Leave Balance Summary report** - A pivot-table style report showing all employees' leave balances. Uses `attendance_entries.time_code` directly (TEXT field), not a JOIN on `time_code_id`. API endpoint: `/api/reports/leave-balance-summary`.
+
+18. **Report definitions are brand-specific** - Each brand can have different reports in `public/{brand}/reports/report-definitions.json`. Falls back to Default brand if no brand-specific file exists.
+
+19. **API caching** - Report APIs use `export const dynamic = 'force-dynamic'` to prevent Next.js caching and ensure fresh data on each request.
 
 ---
 

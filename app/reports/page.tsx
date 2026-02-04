@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { config } from '@/lib/config';
 import { useHelp } from '@/lib/help-context';
@@ -90,6 +90,7 @@ const DEFAULT_COLUMNS: ReportColumn[] = [
 
 export default function ReportsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { setCurrentScreen } = useHelp();
 
@@ -129,12 +130,21 @@ export default function ReportsPage() {
     }
   }, [isAuthenticated]);
 
-  // Load report when selection changes
+  // Load report when selection changes or when navigating to page
   useEffect(() => {
     if (selectedReportId === 'leave-balance-summary' && isAuthenticated) {
       loadLeaveBalanceSummary();
     }
-  }, [selectedReportId, isAuthenticated]);
+  }, [selectedReportId, isAuthenticated, pathname]);
+
+  // Also refresh when navigating back to reports page
+  useEffect(() => {
+    if (pathname === '/reports' && selectedReportId && isAuthenticated && !initialLoading) {
+      if (selectedReportId === 'leave-balance-summary') {
+        loadLeaveBalanceSummary();
+      }
+    }
+  }, [pathname]);
 
   const loadInitialData = async () => {
     try {
@@ -312,10 +322,19 @@ export default function ReportsPage() {
               <h2 className="text-lg font-semibold">
                 {leaveBalanceData?.year || new Date().getFullYear()} Leave Balances
               </h2>
-              <LeaveBalanceExport
-                data={leaveBalanceData}
-                filename={exportFilename}
-              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={loadLeaveBalanceSummary}
+                  disabled={reportLoading}
+                >
+                  {reportLoading ? 'Loading...' : 'Refresh'}
+                </Button>
+                <LeaveBalanceExport
+                  data={leaveBalanceData}
+                  filename={exportFilename}
+                />
+              </div>
             </div>
 
             <LeaveBalanceSummary

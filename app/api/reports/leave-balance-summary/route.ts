@@ -5,6 +5,9 @@ import { db } from '@/lib/db-sqlite';
 import { getBrandFeatures, getLeaveBalanceSummaryConfig } from '@/lib/brand-features';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 
+// Force dynamic to prevent caching
+export const dynamic = 'force-dynamic';
+
 interface EmployeeBalance {
   timeCode: string;
   label: string;
@@ -152,12 +155,11 @@ export async function GET(request: NextRequest) {
     const endDate = `${year}-12-31`;
 
     const usageResult = await db.execute({
-      sql: `SELECT te.employee_id, tc.code AS time_code, SUM(te.hours) AS total_hours
-            FROM attendance_entries te
-            JOIN time_codes tc ON te.time_code_id = tc.id
-            WHERE te.employee_id IN (${allocPlaceholders})
-              AND te.entry_date >= ? AND te.entry_date <= ?
-            GROUP BY te.employee_id, tc.code`,
+      sql: `SELECT employee_id, time_code, SUM(hours) AS total_hours
+            FROM attendance_entries
+            WHERE employee_id IN (${allocPlaceholders})
+              AND entry_date >= ? AND entry_date <= ?
+            GROUP BY employee_id, time_code`,
       args: [...employeeIds, startDate, endDate],
     });
 
