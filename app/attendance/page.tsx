@@ -16,6 +16,7 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getBrandFeatures, getCompanyHolidayDates } from '@/lib/brand-features';
 
 interface Employee {
   id: number;
@@ -53,6 +54,7 @@ export default function AttendancePage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
+  const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -82,6 +84,16 @@ export default function AttendancePage() {
     }
   }, [selectedEmployeeId, year, isAuthenticated]);
 
+  // Reload company holidays when year changes
+  useEffect(() => {
+    const loadHolidays = async () => {
+      const brandFeatures = await getBrandFeatures();
+      const holidays = getCompanyHolidayDates(brandFeatures, year);
+      setCompanyHolidays(holidays);
+    };
+    loadHolidays();
+  }, [year]);
+
   // Reload data when navigating to attendance page
   useEffect(() => {
     if (pathname === '/attendance' && selectedEmployeeId && isAuthenticated) {
@@ -96,6 +108,11 @@ export default function AttendancePage() {
     }
 
     try {
+      // Load brand features for company holidays
+      const brandFeatures = await getBrandFeatures();
+      const holidays = getCompanyHolidayDates(brandFeatures, year);
+      setCompanyHolidays(holidays);
+
       const [employeesRes, timeCodesRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
@@ -318,6 +335,7 @@ export default function AttendancePage() {
                     entries={entries}
                     timeCodes={timeCodes}
                     onEntryChange={handleEntryChange}
+                    companyHolidays={companyHolidays}
                   />
                 </div>
 
@@ -351,6 +369,7 @@ export default function AttendancePage() {
                     entries={entries}
                     timeCodes={timeCodes}
                     onEntryChange={handleEntryChange}
+                    companyHolidays={companyHolidays}
                   />
                 </div>
 

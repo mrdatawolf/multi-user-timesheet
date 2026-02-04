@@ -28,6 +28,17 @@ export interface CompanyHolidaysConfig {
   dates?: CompanyHoliday[];
 }
 
+// Reports configuration
+export interface LeaveBalanceSummaryConfig {
+  enabled: boolean;
+  warningThreshold?: number;   // Default 0.9 (90%)
+  criticalThreshold?: number;  // Default 1.0 (100%)
+}
+
+export interface ReportsConfig {
+  leaveBalanceSummary?: LeaveBalanceSummaryConfig;
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -40,6 +51,7 @@ export interface BrandFeatures {
     policyEnforcement: { enabled: boolean };
     accrualCalculations: { enabled: boolean };
     companyHolidays?: CompanyHolidaysConfig;
+    reports?: ReportsConfig;
   };
 }
 
@@ -217,4 +229,24 @@ export function getCompanyHolidayDates(features: BrandFeatures, year: number): S
     .map(h => h.date);
 
   return new Set(dates);
+}
+
+/**
+ * Get leave balance summary report configuration
+ *
+ * @param features - The brand features configuration
+ * @returns Configuration with thresholds, or null if disabled
+ */
+export function getLeaveBalanceSummaryConfig(features: BrandFeatures): {
+  enabled: boolean;
+  warningThreshold: number;
+  criticalThreshold: number;
+} {
+  const config = features.features.reports?.leaveBalanceSummary;
+
+  return {
+    enabled: config?.enabled ?? false,
+    warningThreshold: config?.warningThreshold ?? 0.9,
+    criticalThreshold: config?.criticalThreshold ?? 1.0,
+  };
 }
