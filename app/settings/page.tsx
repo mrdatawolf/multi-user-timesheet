@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { BackupCard } from '@/components/backup-card';
 import { GroupManagement } from '@/components/group-management';
 import { JobTitleManagement } from '@/components/job-title-management';
+import { ColorConfigManagement } from '@/components/color-config-management';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 
@@ -140,6 +141,9 @@ export default function SettingsPage() {
 
         {/* Job Titles - Super Admin Only */}
         {isSuperAdmin && <JobTitleManagement />}
+
+        {/* Color Configuration - Super Admin Only */}
+        {isSuperAdmin && <ColorConfigManagement />}
 
         {/* Database Backups - Admin Only */}
         {isAdmin && <BackupCard />}

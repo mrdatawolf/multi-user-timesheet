@@ -4,6 +4,7 @@ import { migration as createUserGroupPermissions } from './002_create_user_group
 import { migration as addUserPreferences } from './003_add_user_preferences';
 import { migration as addRoles } from './004_add_roles';
 import { migration as seedJobTitles } from './005_seed_job_titles';
+import { migration as colorConfig } from './006_color_config';
 
 /**
  * Auth Database Migrations
@@ -23,4 +24,5 @@ export const authMigrations: Migration[] = [
   addUserPreferences,
   addRoles,
   seedJobTitles,
+  colorConfig,
 ];

@@ -20,6 +20,16 @@
     },
     "accrualCalculations": {
       "enabled": true
+    },
+    "colorCustomization": {
+      "enabled": true,
+      "allowTimeCodeColors": true,
+      "allowStatusColors": true
+    },
+    "statusColors": {
+      "warning": "amber",
+      "critical": "red",
+      "normal": "gray"
     }
   }
 }

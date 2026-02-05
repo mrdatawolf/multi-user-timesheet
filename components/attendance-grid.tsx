@@ -5,10 +5,33 @@ import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
+import { useAuth } from '@/lib/auth-context';
 
 interface TimeCode {
   code: string;
   description: string;
+}
+
+// Mapping of semantic colors to Tailwind background classes for cells
+const CELL_BG_COLOR_MAP: Record<string, string> = {
+  blue: 'bg-blue-100 hover:bg-blue-200',
+  amber: 'bg-amber-100 hover:bg-amber-200',
+  red: 'bg-red-100 hover:bg-red-200',
+  teal: 'bg-teal-100 hover:bg-teal-200',
+  purple: 'bg-purple-100 hover:bg-purple-200',
+  green: 'bg-green-100 hover:bg-green-200',
+  gray: 'bg-gray-100 hover:bg-gray-200',
+};
+
+interface TimeCodeColorInfo {
+  code: string;
+  defaultColor: string;
+}
+
+interface ColorConfig {
+  config_type: string;
+  config_key: string;
+  color_name: string;
 }
 
 export interface AttendanceEntry {
@@ -53,12 +76,52 @@ export function AttendanceGrid({
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
+  const { authFetch } = useAuth();
 
   // Store entries as Map<date, AttendanceEntry[]> to support multiple entries per day
   const [localEntries, setLocalEntries] = useState<Map<string, AttendanceEntry[]>>(new Map());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
+
+  // Time code colors state
+  const [timeCodeColors, setTimeCodeColors] = useState<Map<string, string>>(new Map());
+
+  // Fetch time code colors from the API
+  useEffect(() => {
+    const loadColorConfig = async () => {
+      try {
+        const response = await authFetch('/api/color-config');
+        if (response.ok) {
+          const data = await response.json();
+          const colorMap = new Map<string, string>();
+
+          // First, set defaults from the JSON time codes
+          if (data.timeCodes) {
+            data.timeCodes.forEach((tc: TimeCodeColorInfo) => {
+              if (tc.defaultColor) {
+                colorMap.set(tc.code, tc.defaultColor);
+              }
+            });
+          }
+
+          // Then, override with any custom configs from the database
+          if (data.colorConfigs) {
+            data.colorConfigs.forEach((config: ColorConfig) => {
+              if (config.config_type === 'time_code') {
+                colorMap.set(config.config_key, config.color_name);
+              }
+            });
+          }
+
+          setTimeCodeColors(colorMap);
+        }
+      } catch (error) {
+        console.error('Failed to load color config:', error);
+      }
+    };
+    loadColorConfig();
+  }, [authFetch]);
 
   useEffect(() => {
     // Group entries by date
@@ -119,6 +182,25 @@ export function AttendanceGrid({
     return entriesForDate.some(e => e.notes && e.notes.trim().length > 0);
   };
 
+  // Get the CSS class for cell coloring based on entries
+  const getCellColorClass = (entriesForDate: AttendanceEntry[]): string => {
+    if (entriesForDate.length === 0) {
+      return '';
+    }
+
+    // For single entry, use that time code's color
+    if (entriesForDate.length === 1) {
+      const colorName = timeCodeColors.get(entriesForDate[0].time_code);
+      if (colorName) {
+        return CELL_BG_COLOR_MAP[colorName] || '';
+      }
+    }
+
+    // For multiple entries, use a neutral color or the first entry's color
+    // Using gray for mixed entries
+    return CELL_BG_COLOR_MAP.gray || '';
+  };
+
   return (
     <div className="overflow-x-auto border rounded-lg">
       <table className="w-full border-collapse">
@@ -159,7 +241,7 @@ export function AttendanceGrid({
                       {isClickable && (
                         <Button
                           variant="ghost"
-                          className="h-5 text-xs w-full px-1 relative"
+                          className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate)}`}
                           onClick={() => handleCellClick(month.num, day)}
                         >
                           {getCellDisplay(entriesForDate)}

@@ -1,6 +1,6 @@
 {
-  "brandId": "Defalut",
-  "version": "1.0",
+  "brandId": "Default",
+  "version": "1.1",
   "description": "Time codes for Default brand. These define the available time entry types and their default annual allocations.",
   "timeCodes": [
     {
@@ -9,7 +9,8 @@
       "description": "Discipline",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 2,
@@ -17,7 +18,8 @@
       "description": "Bereavement",
       "hours_limit": 24,
       "default_allocation": 24,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 3,
@@ -25,7 +27,8 @@
       "description": "Family Emergency",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "amber"
     },
     {
       "id": 4,
@@ -33,7 +36,8 @@
       "description": "FMLA",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 5,
@@ -41,7 +45,8 @@
       "description": "Holiday",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "green"
     },
     {
       "id": 6,
@@ -49,7 +54,8 @@
       "description": "Jury Duty",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 7,
@@ -57,7 +63,8 @@
       "description": "Floating Holiday",
       "hours_limit": 24,
       "default_allocation": 24,
-      "is_active": 1
+      "is_active": 1,
+      "color": "teal"
     },
     {
       "id": 8,
@@ -65,7 +72,8 @@
       "description": "Designated Person",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 9,
@@ -73,7 +81,8 @@
       "description": "Personal",
       "hours_limit": null,
       "default_allocation": 40,
-      "is_active": 1
+      "is_active": 1,
+      "color": "purple"
     },
     {
       "id": 10,
@@ -81,7 +90,8 @@
       "description": "Lack of Work",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     },
     {
       "id": 11,
@@ -89,7 +99,8 @@
       "description": "Personal Sick Day",
       "hours_limit": 40,
       "default_allocation": 40,
-      "is_active": 1
+      "is_active": 1,
+      "color": "purple"
     },
     {
       "id": 12,
@@ -97,7 +108,8 @@
       "description": "Tardy",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "red"
     },
     {
       "id": 13,
@@ -105,7 +117,8 @@
       "description": "Vacation",
       "hours_limit": null,
       "default_allocation": 80,
-      "is_active": 1
+      "is_active": 1,
+      "color": "blue"
     },
     {
       "id": 14,
@@ -113,7 +126,8 @@
       "description": "Workers Comp",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 1
+      "is_active": 1,
+      "color": "gray"
     }
   ]
 }

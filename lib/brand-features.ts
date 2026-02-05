@@ -39,6 +39,20 @@ export interface ReportsConfig {
   leaveBalanceSummary?: LeaveBalanceSummaryConfig;
 }
 
+// Color customization configuration
+export interface ColorCustomizationConfig {
+  enabled: boolean;
+  allowTimeCodeColors?: boolean;  // Allow customizing time code colors
+  allowStatusColors?: boolean;    // Allow customizing status (warning/critical) colors
+}
+
+// Status colors configuration
+export interface StatusColorsConfig {
+  warning?: string;   // Semantic color name (e.g., 'amber')
+  critical?: string;  // Semantic color name (e.g., 'red')
+  normal?: string;    // Semantic color name (e.g., 'gray')
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -52,6 +66,8 @@ export interface BrandFeatures {
     accrualCalculations: { enabled: boolean };
     companyHolidays?: CompanyHolidaysConfig;
     reports?: ReportsConfig;
+    colorCustomization?: ColorCustomizationConfig;
+    statusColors?: StatusColorsConfig;
   };
 }
 
@@ -150,7 +166,11 @@ export function isFeatureEnabled(
   feature: keyof BrandFeatures['features']
 ): boolean {
   const featureConfig = features.features[feature];
-  return featureConfig?.enabled ?? false;
+  // Check if the feature config has an 'enabled' property (some configs like statusColors don't)
+  if (featureConfig && typeof featureConfig === 'object' && 'enabled' in featureConfig) {
+    return (featureConfig as { enabled: boolean }).enabled ?? false;
+  }
+  return false;
 }
 
 /**
@@ -248,5 +268,45 @@ export function getLeaveBalanceSummaryConfig(features: BrandFeatures): {
     enabled: config?.enabled ?? false,
     warningThreshold: config?.warningThreshold ?? 0.9,
     criticalThreshold: config?.criticalThreshold ?? 1.0,
+  };
+}
+
+/**
+ * Get color customization configuration
+ *
+ * @param features - The brand features configuration
+ * @returns Configuration for color customization feature
+ */
+export function getColorCustomizationConfig(features: BrandFeatures): {
+  enabled: boolean;
+  allowTimeCodeColors: boolean;
+  allowStatusColors: boolean;
+} {
+  const config = features.features.colorCustomization;
+
+  return {
+    enabled: config?.enabled ?? false,
+    allowTimeCodeColors: config?.allowTimeCodeColors ?? false,
+    allowStatusColors: config?.allowStatusColors ?? false,
+  };
+}
+
+/**
+ * Get status colors configuration
+ *
+ * @param features - The brand features configuration
+ * @returns Status colors for warning/critical/normal states
+ */
+export function getStatusColorsConfig(features: BrandFeatures): {
+  warning: string;
+  critical: string;
+  normal: string;
+} {
+  const config = features.features.statusColors;
+
+  return {
+    warning: config?.warning ?? 'amber',
+    critical: config?.critical ?? 'red',
+    normal: config?.normal ?? 'gray',
   };
 }

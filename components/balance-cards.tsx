@@ -98,6 +98,22 @@ const DEFAULT_LEAVE_TYPES: LeaveTypes = {
   paidHoliday: { enabled: true, timeCode: 'H', label: 'Holiday' }
 };
 
+// Mapping of semantic colors to Tailwind classes
+const COLOR_CLASS_MAP: Record<string, { card: string; progress: string }> = {
+  blue: { card: 'bg-blue-50 border-blue-200', progress: 'bg-blue-500' },
+  amber: { card: 'bg-amber-50 border-amber-200', progress: 'bg-amber-500' },
+  red: { card: 'bg-red-50 border-red-200', progress: 'bg-red-500' },
+  teal: { card: 'bg-teal-50 border-teal-200', progress: 'bg-teal-500' },
+  purple: { card: 'bg-purple-50 border-purple-200', progress: 'bg-purple-500' },
+  green: { card: 'bg-green-50 border-green-200', progress: 'bg-green-500' },
+  gray: { card: 'bg-gray-50 border-gray-200', progress: 'bg-gray-500' },
+};
+
+interface StatusColors {
+  warning: string;
+  critical: string;
+}
+
 export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   const { authFetch } = useAuth();
   const [modalState, setModalState] = useState<ModalState>({
@@ -110,6 +126,7 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
   const [activeTimeCodes, setActiveTimeCodes] = useState<Set<string>>(new Set());
   const [warningThreshold, setWarningThreshold] = useState(0.9);
   const [criticalThreshold, setCriticalThreshold] = useState(1.0);
+  const [statusColors, setStatusColors] = useState<StatusColors>({ warning: 'amber', critical: 'red' });
 
   // Load brand features and active time codes
   useEffect(() => {
@@ -152,8 +169,31 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
       }
     };
 
+    const loadColorConfig = async () => {
+      try {
+        const response = await authFetch('/api/color-config');
+        if (response.ok) {
+          const data = await response.json();
+          // Extract status colors from color configs
+          const warningConfig = data.colorConfigs?.find(
+            (c: { config_type: string; config_key: string }) => c.config_type === 'status' && c.config_key === 'warning'
+          );
+          const criticalConfig = data.colorConfigs?.find(
+            (c: { config_type: string; config_key: string }) => c.config_type === 'status' && c.config_key === 'critical'
+          );
+          setStatusColors({
+            warning: warningConfig?.color_name || 'amber',
+            critical: criticalConfig?.color_name || 'red',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load color config:', error);
+      }
+    };
+
     loadFeatures();
     loadTimeCodes();
+    loadColorConfig();
   }, [authFetch]);
 
   const openModal = (timeCode: string, title: string) => {
@@ -193,16 +233,12 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
     const usagePercent = used / limit;
 
     if (usagePercent >= criticalThreshold) {
-      return {
-        card: 'bg-red-50 border-red-200',
-        progress: 'bg-red-500'
-      };
+      const colors = COLOR_CLASS_MAP[statusColors.critical] || COLOR_CLASS_MAP.red;
+      return colors;
     }
     if (usagePercent >= warningThreshold) {
-      return {
-        card: 'bg-amber-50 border-amber-200',
-        progress: 'bg-amber-500'
-      };
+      const colors = COLOR_CLASS_MAP[statusColors.warning] || COLOR_CLASS_MAP.amber;
+      return colors;
     }
     return { card: '', progress: 'bg-primary' };
   };

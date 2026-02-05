@@ -12,13 +12,18 @@
       }
     },
     "approvalWorkflows": {
-      "enabled": false
+      "enabled": true
     },
     "policyEnforcement": {
-      "enabled": false
+      "enabled": true
     },
     "accrualCalculations": {
-      "enabled": false
+      "enabled": true
+    },
+    "colorCustomization": {
+      "enabled": true,
+      "allowTimeCodeColors": true,
+      "allowStatusColors": true
     },
     "companyHolidays": {
       "enabled": true,
