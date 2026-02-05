@@ -1,10 +1,27 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/spinner';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/lib/auth-context';
+
+// Mapping of semantic colors to Tailwind classes for cells
+const CELL_COLOR_MAP: Record<string, { cell: string; legend: string }> = {
+  blue: { cell: 'bg-blue-100 text-blue-700 font-medium', legend: 'bg-blue-100' },
+  amber: { cell: 'bg-amber-100 text-amber-800', legend: 'bg-amber-100' },
+  red: { cell: 'bg-red-100 text-red-700 font-medium', legend: 'bg-red-100' },
+  teal: { cell: 'bg-teal-100 text-teal-700 font-medium', legend: 'bg-teal-100' },
+  purple: { cell: 'bg-purple-100 text-purple-700 font-medium', legend: 'bg-purple-100' },
+  green: { cell: 'bg-green-100 text-green-700 font-medium', legend: 'bg-green-100' },
+  gray: { cell: 'bg-gray-100 text-gray-700 font-medium', legend: 'bg-gray-100' },
+};
+
+interface StatusColors {
+  warning: string;
+  critical: string;
+}
 
 interface EmployeeBalance {
   timeCode: string;
@@ -44,7 +61,34 @@ interface LeaveBalanceSummaryProps {
 }
 
 export function LeaveBalanceSummary({ data, loading }: LeaveBalanceSummaryProps) {
+  const { authFetch } = useAuth();
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [statusColors, setStatusColors] = useState<StatusColors>({ warning: 'amber', critical: 'red' });
+
+  // Fetch status colors from the color-config API
+  useEffect(() => {
+    const loadColorConfig = async () => {
+      try {
+        const response = await authFetch('/api/color-config');
+        if (response.ok) {
+          const colorData = await response.json();
+          const warningConfig = colorData.colorConfigs?.find(
+            (c: { config_type: string; config_key: string }) => c.config_type === 'status' && c.config_key === 'warning'
+          );
+          const criticalConfig = colorData.colorConfigs?.find(
+            (c: { config_type: string; config_key: string }) => c.config_type === 'status' && c.config_key === 'critical'
+          );
+          setStatusColors({
+            warning: warningConfig?.color_name || 'amber',
+            critical: criticalConfig?.color_name || 'red',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load color config:', error);
+      }
+    };
+    loadColorConfig();
+  }, [authFetch]);
 
   const sortedEmployees = useMemo(() => {
     if (!data?.employees) return [];
@@ -98,10 +142,12 @@ export function LeaveBalanceSummary({ data, loading }: LeaveBalanceSummaryProps)
     };
 
     if (usagePercent >= criticalThreshold) {
-      return 'bg-red-100 text-red-700 font-medium';
+      const colorDef = CELL_COLOR_MAP[statusColors.critical] || CELL_COLOR_MAP.red;
+      return colorDef.cell;
     }
     if (usagePercent >= warningThreshold) {
-      return 'bg-amber-100 text-amber-800';
+      const colorDef = CELL_COLOR_MAP[statusColors.warning] || CELL_COLOR_MAP.amber;
+      return colorDef.cell;
     }
     return '';
   };
@@ -184,11 +230,11 @@ export function LeaveBalanceSummary({ data, loading }: LeaveBalanceSummaryProps)
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>Legend:</span>
         <span className="flex items-center gap-1">
-          <span className="w-4 h-4 bg-amber-100 border rounded"></span>
+          <span className={`w-4 h-4 border rounded ${CELL_COLOR_MAP[statusColors.warning]?.legend || 'bg-amber-100'}`}></span>
           Warning ({((data.config.warningThreshold) * 100).toFixed(0)}%+ used)
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-4 h-4 bg-red-100 border rounded"></span>
+          <span className={`w-4 h-4 border rounded ${CELL_COLOR_MAP[statusColors.critical]?.legend || 'bg-red-100'}`}></span>
           Critical ({((data.config.criticalThreshold) * 100).toFixed(0)}%+ used)
         </span>
       </div>
