@@ -1,7 +1,7 @@
 # Product Roadmap - Multi-User Timesheet Application
 
-**Last Updated:** January 20, 2026
-**Current Status:** Phase 6 In Progress
+**Last Updated:** February 5, 2026
+**Current Status:** Phase 7 In Progress
 
 ---
 
@@ -30,32 +30,32 @@ Transform Excel-based timesheet tracking into a modern, secure web application w
 - [x] Flexible time tracking enabled (Phase 3)
 - [x] Data protection automated (Phase 4)
 - [x] White labeling & brand URI (Phase 4.5)
-- [ ] Interactive help system (Phase 6) ← **Current**
-- [ ] Approval workflows (Phase 7)
-- [ ] Policy automation (Phase 8)
+- [x] Interactive help system (Phase 6)
+- [ ] Reporting system (Phase 7) ← **Current**
+- [ ] Approval workflows (Phase 8)
+- [ ] Policy automation (Phase 9)
 
 ---
 
 ## Current Phase
 
-### Phase 6: Interactive Contextual Help System
+### Phase 7: Reporting System
 **Status:** In Progress
-**Plan:** [PHASE-6-PLAN.md](PHASE-6-PLAN.md)
+**Plan:** [PHASE-7-PLAN.md](PHASE-7-PLAN.md)
 
-Comprehensive contextual help system with modal overlays and interactive tooltips that guide users through each screen. Provides on-demand help bubbles explaining what each section does, how to use it, and how to update data.
+Flexible reporting system that supports both common reports shared across all brands and brand-specific custom reports.
 
 **Key Deliverables:**
-- ✅ Screen-level help with hover tooltips (What it is, How to use, How to update)
-- ✅ Help toggle button in navbar
-- ✅ Brand-specific help content (JSON files)
-- ✅ HelpArea component with Radix UI Popover
-- ⏳ Welcome tour for new users
-- ✅ Brand-specific time codes (move from DB to JSON)
-- ✅ Balance breakdown modals
-- ✅ Groups management in Settings (super admin only)
-- ✅ Job Titles management in Settings (super admin only)
+- ✅ Reports landing page
+- ✅ Report filters and table components
+- ✅ Leave Balance Summary report
+- ✅ CSV export functionality
+- ✅ Permission-filtered report data
+- ✅ Color customization for time codes and status indicators
+- ⏳ Additional common reports (Attendance Summary, Time-Off Calendar)
+- ⏳ Custom report engine (JSON-driven)
 
-**Impact:** Reduced support questions, improved user onboarding.
+**Impact:** Better visibility into attendance data, customizable appearance.
 
 ---
 
@@ -68,6 +68,7 @@ Comprehensive contextual help system with modal overlays and interactive tooltip
 | **Phase 3** | Multiple Entries Per Day - Split shifts, multiple time codes | [COMPLETE/PHASE-3-PLAN.md](COMPLETE/PHASE-3-PLAN.md) |
 | **Phase 4** | Automated Backups - 7-day, 4-week, 12-month retention | [COMPLETE/PHASE-4-PLAN.md](COMPLETE/PHASE-4-PLAN.md) |
 | **Phase 4.5** | White Labeling & Brand URI - Build-time brand selection with configurable API URLs | - |
+| **Phase 6** | Contextual Help & Admin Settings - Help system, groups/job titles management, color customization | [PHASE-6-PLAN.md](PHASE-6-PLAN.md) |
 
 ---
 
@@ -75,8 +76,8 @@ Comprehensive contextual help system with modal overlays and interactive tooltip
 
 These phases have been approved for development after the current phase.
 
-### Phase 7: Leave Request & Approval Workflow
-**Plan:** [ROADMAP/PHASE-7-PLAN.md](ROADMAP/PHASE-7-PLAN.md)
+### Phase 8: Leave Request & Approval Workflow
+**Plan:** [ROADMAP/PHASE-8-PLAN.md](ROADMAP/PHASE-8-PLAN.md)
 
 Core request and approval workflow allowing managers to submit and approve leave requests on behalf of employees.
 
@@ -89,8 +90,8 @@ Core request and approval workflow allowing managers to submit and approve leave
 
 ---
 
-### Phase 8: Policy Engine
-**Plan:** [ROADMAP/PHASE-8-PLAN.md](ROADMAP/PHASE-8-PLAN.md)
+### Phase 9: Policy Engine
+**Plan:** [ROADMAP/PHASE-9-PLAN.md](ROADMAP/PHASE-9-PLAN.md)
 
 Enforce organization-specific leave policies including eligibility rules, usage limits, and increment requirements.
 
@@ -121,7 +122,6 @@ Enterprise-grade features including:
 ## Future Considerations
 
 The following features may be considered for future phases:
-- Interactive help system with tooltips and guided tours
 - Employee self-service portal (read-only attendance view)
 - External system integrations (ADP, Paychex, BambooHR)
 - Mobile app for approvals
@@ -131,9 +131,9 @@ The following features may be considered for future phases:
 
 ## Architecture
 
-**Current:** Next.js web application with SQLite database, JWT authentication, responsive UI, and build-time brand configuration.
+**Current:** Next.js web application with SQLite database, JWT authentication, responsive UI, build-time brand configuration, and customizable color themes.
 
-**Phase 6+:** Leave management system, policy engine, approval workflows.
+**Phase 8+:** Leave management system, policy engine, approval workflows.
 
 ---
 
@@ -146,5 +146,5 @@ The following features may be considered for future phases:
 
 ---
 
-**Document Version:** 3.0
+**Document Version:** 4.0
 **Visibility:** Superuser Only

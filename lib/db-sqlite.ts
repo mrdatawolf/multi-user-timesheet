@@ -136,6 +136,24 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Create break_entries table for break/lunch compliance tracking
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS break_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      entry_date DATE NOT NULL,
+      break_type TEXT NOT NULL,
+      start_time TEXT,
+      end_time TEXT,
+      duration_minutes INTEGER NOT NULL,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      UNIQUE(employee_id, entry_date, break_type)
+    )
+  `);
+
   // Insert default time codes
   const timeCodes = [
     { code: 'D', description: 'Discipline', hours_limit: null, default_allocation: null },

@@ -53,6 +53,32 @@ export interface StatusColorsConfig {
   normal?: string;    // Semantic color name (e.g., 'gray')
 }
 
+// Break time window configuration
+export interface BreakWindow {
+  start: string;    // HH:MM format, e.g., "09:00"
+  end: string;      // HH:MM format, e.g., "11:00"
+  duration: number; // Required duration in minutes
+}
+
+// Break tracking feature configuration
+export interface BreakTrackingConfig {
+  enabled: boolean;
+  breaks: {
+    break_1?: BreakWindow;
+    lunch?: BreakWindow;
+    break_2?: BreakWindow;
+  };
+  requireTimeEntry?: boolean;  // If true, require start/end times (default: false)
+  graceMinutes?: number;       // Minutes of flexibility for compliance (default: 0)
+}
+
+// Office attendance forecast configuration
+export interface OfficeAttendanceForecastConfig {
+  enabled: boolean;
+  timeOffCodes?: string[];  // Time codes that indicate absence (e.g., ["V", "PTO", "PS"])
+  daysToShow?: number;      // Number of days to forecast (default: 5)
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -68,6 +94,8 @@ export interface BrandFeatures {
     reports?: ReportsConfig;
     colorCustomization?: ColorCustomizationConfig;
     statusColors?: StatusColorsConfig;
+    breakTracking?: BreakTrackingConfig;
+    officeAttendanceForecast?: OfficeAttendanceForecastConfig;
   };
 }
 
@@ -308,5 +336,48 @@ export function getStatusColorsConfig(features: BrandFeatures): {
     warning: config?.warning ?? 'amber',
     critical: config?.critical ?? 'red',
     normal: config?.normal ?? 'gray',
+  };
+}
+
+/**
+ * Get break tracking configuration
+ *
+ * @param features - The brand features configuration
+ * @returns Break tracking config if enabled, null otherwise
+ */
+export function getBreakTrackingConfig(features: BrandFeatures): BreakTrackingConfig | null {
+  const config = features.features.breakTracking;
+
+  if (!config?.enabled) {
+    return null;
+  }
+
+  return {
+    ...config,
+    requireTimeEntry: config.requireTimeEntry ?? false,
+    graceMinutes: config.graceMinutes ?? 0,
+  };
+}
+
+/**
+ * Get office attendance forecast configuration
+ *
+ * @param features - The brand features configuration
+ * @returns Attendance forecast config if enabled, null otherwise
+ */
+export function getOfficeAttendanceForecastConfig(features: BrandFeatures): OfficeAttendanceForecastConfig | null {
+  const config = features.features.officeAttendanceForecast;
+
+  if (!config?.enabled) {
+    return null;
+  }
+
+  // Default time-off codes if not specified
+  const defaultTimeOffCodes = ['V', 'PTO', 'PS', 'S', 'FM', 'B', 'JD', 'FH'];
+
+  return {
+    ...config,
+    timeOffCodes: config.timeOffCodes || defaultTimeOffCodes,
+    daysToShow: config.daysToShow ?? 5,
   };
 }

@@ -10,6 +10,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Spinner } from '@/components/spinner';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
+import { AttendanceForecastWidget } from '@/components/attendance-forecast-widget';
+import { BreakEntryWidget } from '@/components/break-entry-widget';
 
 interface Employee {
   id: number;
@@ -284,6 +286,12 @@ export default function DashboardPage() {
             </Card>
           </div>
         </HelpArea>
+
+        {/* Attendance Forecast and Break Tracking Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <AttendanceForecastWidget />
+          {employees.length > 0 && <BreakEntryWidget employeeId={employees[0].id} />}
+        </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
