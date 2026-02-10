@@ -1,52 +1,20 @@
 "use client";
 
-import { useEffect, useState, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
-import { useAuth } from '@/lib/auth-context';
+import type { AttendanceEntry, DailySummary, DailySummaryDay } from '@/lib/attendance-types';
+import { useAttendanceCell } from '@/hooks/use-attendance-cell';
+
+// Re-export types for backward compatibility
+export type { AttendanceEntry, DailySummary, DailySummaryDay };
 
 interface TimeCode {
   code: string;
   description: string;
 }
-
-// Mapping of semantic colors to Tailwind background classes for cells
-const CELL_BG_COLOR_MAP: Record<string, string> = {
-  blue: 'bg-blue-100 hover:bg-blue-200',
-  amber: 'bg-amber-100 hover:bg-amber-200',
-  red: 'bg-red-100 hover:bg-red-200',
-  teal: 'bg-teal-100 hover:bg-teal-200',
-  purple: 'bg-purple-100 hover:bg-purple-200',
-  green: 'bg-green-100 hover:bg-green-200',
-  gray: 'bg-gray-100 hover:bg-gray-200',
-};
-
-interface TimeCodeColorInfo {
-  code: string;
-  defaultColor: string;
-}
-
-interface ColorConfig {
-  config_type: string;
-  config_key: string;
-  color_name: string;
-}
-
-export interface AttendanceEntry {
-  id?: number;
-  entry_date: string;
-  time_code: string;
-  hours: number;
-  notes?: string;
-}
-
-export interface DailySummaryDay {
-  outCount: number;
-}
-
-export type DailySummary = Record<string, DailySummaryDay>;
 
 interface AttendanceGridProps {
   year: number;
@@ -77,7 +45,7 @@ const MONTHS = [
   { name: 'Dec', num: 12 },
 ];
 
-export function AttendanceGrid({
+export function AttendanceGridYear({
   year,
   employeeId,
   entries,
@@ -92,154 +60,46 @@ export function AttendanceGrid({
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
-  const { authFetch } = useAuth();
 
-  // Store entries as Map<date, AttendanceEntry[]> to support multiple entries per day
-  const [localEntries, setLocalEntries] = useState<Map<string, AttendanceEntry[]>>(new Map());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
 
-  // Time code colors state
-  const [timeCodeColors, setTimeCodeColors] = useState<Map<string, string>>(new Map());
+  const {
+    entriesByDate,
+    getEntriesForDate,
+    getCellDisplay,
+    getCellColorClass,
+    getFullnessInfo,
+    hasNotes,
+  } = useAttendanceCell({
+    entries,
+    dailySummary,
+    totalActiveEmployees,
+    maxOutOfOffice,
+    capacityWarningCount,
+    capacityCriticalCount,
+  });
 
-  // Fetch time code colors from the API
-  useEffect(() => {
-    const loadColorConfig = async () => {
-      try {
-        const response = await authFetch('/api/color-config');
-        if (response.ok) {
-          const data = await response.json();
-          const colorMap = new Map<string, string>();
-
-          // First, set defaults from the JSON time codes
-          if (data.timeCodes) {
-            data.timeCodes.forEach((tc: TimeCodeColorInfo) => {
-              if (tc.defaultColor) {
-                colorMap.set(tc.code, tc.defaultColor);
-              }
-            });
-          }
-
-          // Then, override with any custom configs from the database
-          if (data.colorConfigs) {
-            data.colorConfigs.forEach((config: ColorConfig) => {
-              if (config.config_type === 'time_code') {
-                colorMap.set(config.config_key, config.color_name);
-              }
-            });
-          }
-
-          setTimeCodeColors(colorMap);
-        }
-      } catch (error) {
-        console.error('Failed to load color config:', error);
-      }
-    };
-    loadColorConfig();
-  }, [authFetch]);
-
-  useEffect(() => {
-    // Group entries by date
-    const entriesByDate = new Map<string, AttendanceEntry[]>();
-    entries.forEach(entry => {
-      const existing = entriesByDate.get(entry.entry_date) || [];
-      existing.push(entry);
-      entriesByDate.set(entry.entry_date, existing);
-    });
-    setLocalEntries(entriesByDate);
-  }, [entries, year]);
-
-  const getEntriesForDate = (month: number, day: number): AttendanceEntry[] => {
+  const getEntriesForDay = (month: number, day: number): AttendanceEntry[] => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return localEntries.get(dateStr) || [];
+    return getEntriesForDate(dateStr);
   };
 
   const handleCellClick = (month: number, day: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const entriesForDate = getEntriesForDate(month, day);
+    const entriesForDate = getEntriesForDay(month, day);
     setSelectedDate(dateStr);
     setSelectedEntries(entriesForDate);
     setDialogOpen(true);
   };
 
   const handleSave = (date: string, updatedEntries: AttendanceEntry[]) => {
-    const newEntries = new Map(localEntries);
-    if (updatedEntries.length > 0) {
-      newEntries.set(date, updatedEntries);
-    } else {
-      newEntries.delete(date);
-    }
-    setLocalEntries(newEntries);
-
     onEntryChange(date, updatedEntries);
   };
 
   const getDaysInMonth = (month: number): number => {
     return new Date(year, month, 0).getDate();
-  };
-
-  const getCellDisplay = (entriesForDate: AttendanceEntry[]) => {
-    if (entriesForDate.length === 0) {
-      return '-';
-    }
-
-    if (entriesForDate.length === 1) {
-      const entry = entriesForDate[0];
-      return `${entry.time_code} (${entry.hours})`;
-    }
-
-    // Multiple entries: show *totalHours
-    const totalHours = entriesForDate.reduce((sum, e) => sum + e.hours, 0);
-    return `*${totalHours.toFixed(1)}`;
-  };
-
-  const hasNotes = (entriesForDate: AttendanceEntry[]) => {
-    return entriesForDate.some(e => e.notes && e.notes.trim().length > 0);
-  };
-
-  // Get the CSS class for cell coloring based on entries
-  const getCellColorClass = (entriesForDate: AttendanceEntry[]): string => {
-    if (entriesForDate.length === 0) {
-      return '';
-    }
-
-    // For single entry, use that time code's color
-    if (entriesForDate.length === 1) {
-      const colorName = timeCodeColors.get(entriesForDate[0].time_code);
-      if (colorName) {
-        return CELL_BG_COLOR_MAP[colorName] || '';
-      }
-    }
-
-    // For multiple entries, use a neutral color or the first entry's color
-    // Using gray for mixed entries
-    return CELL_BG_COLOR_MAP.gray || '';
-  };
-
-  // Get the fullness bar color and width for a date
-  // Color scheme: grey (normal) → amber/yellow (warning) → red (critical)
-  // Thresholds are based on number of employees OUT of office
-  const getFullnessInfo = (dateStr: string) => {
-    if (!dailySummary || !totalActiveEmployees || totalActiveEmployees === 0) {
-      return null;
-    }
-
-    const daySummary = dailySummary[dateStr];
-    const outCount = daySummary?.outCount ?? 0;
-    const inOfficePercent = ((totalActiveEmployees - outCount) / totalActiveEmployees) * 100;
-    const isOverLimit = maxOutOfOffice > 0 && outCount > maxOutOfOffice;
-
-    let barColor: string;
-    if (isOverLimit || (capacityCriticalCount > 0 && outCount >= capacityCriticalCount)) {
-      barColor = 'bg-red-400';
-    } else if (capacityWarningCount > 0 && outCount >= capacityWarningCount) {
-      barColor = 'bg-amber-400';
-    } else {
-      barColor = 'bg-gray-300';
-    }
-
-    return { outCount, inOfficePercent, barColor, isOverLimit };
   };
 
   return (
@@ -270,7 +130,7 @@ export function AttendanceGrid({
                   const dateStr = `${year}-${String(month.num).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const isCompanyHoliday = companyHolidays.has(dateStr);
                   const isClickable = isValidDay && !isCompanyHoliday;
-                  const entriesForDate = getEntriesForDate(month.num, day);
+                  const entriesForDate = getEntriesForDay(month.num, day);
                   const fullness = isValidDay ? getFullnessInfo(dateStr) : null;
 
                   return (
@@ -341,3 +201,6 @@ export function AttendanceGrid({
     </div>
   );
 }
+
+// Backward-compatible alias
+export const AttendanceGrid = AttendanceGridYear;

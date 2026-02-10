@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { AttendanceGrid, type AttendanceEntry, type DailySummary } from '@/components/attendance-grid';
+import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { AttendanceGridYear } from '@/components/attendance-grid';
+import { AttendanceGridMonth } from '@/components/attendance-grid-month';
+import { AttendanceGridWeek } from '@/components/attendance-grid-week';
+import { ViewToggle } from '@/components/view-toggle';
+import { PeriodNavigator } from '@/components/period-navigator';
+import type { AttendanceEntry, DailySummary, ViewType } from '@/lib/attendance-types';
+import { formatDateStr, parseDateStr, getWeekBounds, navigatePeriod, getPeriodLabel } from '@/lib/date-helpers';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { BalanceCards } from '@/components/balance-cards';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,7 +28,6 @@ import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled } f
 interface Employee {
   id: number;
   first_name: string;
-
   last_name: string;
   employee_number?: string;
   email?: string;
@@ -43,16 +49,42 @@ interface TimeAllocation {
   is_override: boolean;
 }
 
-export default function AttendancePage() {
+function getInitialView(searchParams: URLSearchParams): ViewType {
+  const urlView = searchParams.get('view') as ViewType;
+  if (urlView && ['year', 'month', 'week'].includes(urlView)) return urlView;
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('attendance_view') as ViewType;
+    if (stored && ['year', 'month', 'week'].includes(stored)) return stored;
+  }
+  return 'year';
+}
+
+function getInitialDate(searchParams: URLSearchParams): Date {
+  const monthParam = searchParams.get('month');
+  const weekParam = searchParams.get('week');
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    return parseDateStr(monthParam + '-01');
+  }
+  if (weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)) {
+    return parseDateStr(weekParam);
+  }
+  return new Date();
+}
+
+function AttendanceContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [allocations, setAllocations] = useState<TimeAllocation[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(() => {
+    const initialDate = getInitialDate(searchParams);
+    return initialDate.getFullYear();
+  });
   const [loading, setLoading] = useState(true);
   const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
@@ -65,6 +97,35 @@ export default function AttendancePage() {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
   const { setCurrentScreen } = useHelp();
+
+  // View state
+  const [view, setView] = useState<ViewType>(() => getInitialView(searchParams));
+  const [currentDate, setCurrentDate] = useState<Date>(() => getInitialDate(searchParams));
+
+  // Responsive auto-switch: year → week on small screens
+  const isSmallScreen = useMediaQuery('(max-width: 768px)');
+
+  useEffect(() => {
+    if (isSmallScreen && view === 'year') {
+      setView('week');
+    }
+  }, [isSmallScreen]);
+
+  // Sync view + period to localStorage and URL
+  useEffect(() => {
+    localStorage.setItem('attendance_view', view);
+
+    const params = new URLSearchParams();
+    params.set('view', view);
+    if (view === 'month') {
+      const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+      params.set('month', `${currentDate.getFullYear()}-${m}`);
+    } else if (view === 'week') {
+      const { start } = getWeekBounds(currentDate);
+      params.set('week', start);
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [view, currentDate, pathname, router]);
 
   // Set the current screen for help context
   useEffect(() => {
@@ -280,10 +341,56 @@ export default function AttendancePage() {
     }
   };
 
+  // Navigation handlers
+  const handleNavigate = useCallback((direction: 'prev' | 'next') => {
+    const newDate = navigatePeriod(view, currentDate, direction);
+    setCurrentDate(newDate);
+    const newYear = newDate.getFullYear();
+    if (newYear !== year) {
+      setYear(newYear);
+    }
+  }, [view, currentDate, year]);
+
+  const handleToday = useCallback(() => {
+    const today = new Date();
+    setCurrentDate(today);
+    if (today.getFullYear() !== year) {
+      setYear(today.getFullYear());
+    }
+  }, [year]);
+
+  const handleYearChange = useCallback((newYear: number) => {
+    setYear(newYear);
+    const today = new Date();
+    if (newYear === today.getFullYear()) {
+      setCurrentDate(today);
+    } else {
+      setCurrentDate(new Date(newYear, 0, 1));
+    }
+  }, []);
+
+  const handleViewChange = useCallback((newView: ViewType) => {
+    setView(newView);
+  }, []);
+
   const years = Array.from(
     { length: 5 },
     (_, i) => new Date().getFullYear() - 2 + i
   );
+
+  // Shared grid props
+  const gridProps = {
+    employeeId: selectedEmployeeId!,
+    entries,
+    timeCodes,
+    onEntryChange: handleEntryChange,
+    companyHolidays,
+    dailySummary,
+    totalActiveEmployees,
+    maxOutOfOffice,
+    capacityWarningCount,
+    capacityCriticalCount,
+  };
 
   if (authLoading || loading) {
     return (
@@ -305,8 +412,8 @@ export default function AttendancePage() {
           <h1 className="text-xl font-bold">Attendance</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Selects - inline */}
-          <div className="flex items-end gap-2 p-2 border rounded-lg bg-card">
+          {/* Selects + View controls - inline */}
+          <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
             <div className="w-64 space-y-1">
               <HelpArea helpId="employee-selector" bubblePosition="bottom">
                 <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
@@ -329,29 +436,53 @@ export default function AttendancePage() {
               </Select>
             </div>
 
-            <div className="w-20 space-y-1">
-              <HelpArea helpId="year-selector" bubblePosition="bottom">
-                <Label htmlFor="year" className="text-xs cursor-help">Year</Label>
-              </HelpArea>
-              <Select
-                value={year.toString()}
-                onValueChange={(value) => setYear(parseInt(value))}
-              >
-                <SelectTrigger id="year" className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map(y => (
-                    <SelectItem key={y} value={y.toString()}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Year selector (only in year view — month/week have it in PeriodNavigator) */}
+            {view === 'year' && (
+              <div className="w-20 space-y-1">
+                <HelpArea helpId="year-selector" bubblePosition="bottom">
+                  <Label htmlFor="year" className="text-xs cursor-help">Year</Label>
+                </HelpArea>
+                <Select
+                  value={year.toString()}
+                  onValueChange={(value) => handleYearChange(parseInt(value))}
+                >
+                  <SelectTrigger id="year" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map(y => (
+                      <SelectItem key={y} value={y.toString()}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* View toggle */}
+            <div className="space-y-1">
+              <Label className="text-xs">View</Label>
+              <ViewToggle view={view} onViewChange={handleViewChange} />
             </div>
+
+            {/* Period navigator (month/week views) */}
+            {view !== 'year' && (
+              <div className="space-y-1">
+                <Label className="text-xs">Period</Label>
+                <PeriodNavigator
+                  view={view}
+                  year={year}
+                  currentDate={currentDate}
+                  onNavigate={handleNavigate}
+                  onToday={handleToday}
+                  onYearChange={handleYearChange}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Balance Cards - 3/4 width */}
+          {/* Balance Cards */}
           {selectedEmployeeId && (
             <div className="flex-1 min-w-0">
               <BalanceCards entries={entries} allocations={allocations} />
@@ -361,85 +492,51 @@ export default function AttendancePage() {
 
         {selectedEmployeeId && (
           <>
-            {themeConfig.layout.attendance.sectionOrder === 'recordFirst' ? (
-              <>
-                {/* Attendance Record first layout */}
-                <div className="space-y-3">
-                  <HelpArea helpId="attendance-grid" bubblePosition="bottom">
-                    <h2 className="text-lg font-semibold cursor-help">
-                      Attendance Record: {year}
-                    </h2>
-                  </HelpArea>
+            <div className="space-y-3">
+              <HelpArea helpId="attendance-grid" bubblePosition="bottom">
+                <h2 className="text-lg font-semibold cursor-help">
+                  {view === 'year' && `Attendance Record: ${year}`}
+                  {view === 'month' && `Attendance: ${getPeriodLabel('month', currentDate)}`}
+                  {view === 'week' && `Attendance: ${getPeriodLabel('week', currentDate)}`}
+                </h2>
+              </HelpArea>
 
-                  <AttendanceGrid
-                    year={year}
-                    employeeId={selectedEmployeeId}
-                    entries={entries}
-                    timeCodes={timeCodes}
-                    onEntryChange={handleEntryChange}
-                    companyHolidays={companyHolidays}
-                    dailySummary={dailySummary}
-                    totalActiveEmployees={totalActiveEmployees}
-                    maxOutOfOffice={maxOutOfOffice}
-                    capacityWarningCount={capacityWarningCount}
-                    capacityCriticalCount={capacityCriticalCount}
-                  />
-                </div>
+              {view === 'year' && (
+                <AttendanceGridYear
+                  year={year}
+                  {...gridProps}
+                />
+              )}
 
-                <div className="mt-3 p-2 border rounded-lg bg-muted/50">
-                  <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
-                    {timeCodes.map(tc => (
-                      <div key={tc.code}>
-                        <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
-                        {tc.hours_limit && (
-                          <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
-                        )}
-                      </div>
-                    ))}
+              {view === 'month' && (
+                <AttendanceGridMonth
+                  year={currentDate.getFullYear()}
+                  month={currentDate.getMonth() + 1}
+                  {...gridProps}
+                />
+              )}
+
+              {view === 'week' && (
+                <AttendanceGridWeek
+                  weekStart={parseDateStr(getWeekBounds(currentDate).start)}
+                  {...gridProps}
+                />
+              )}
+            </div>
+
+            <div className="mt-3 p-2 border rounded-lg bg-muted/50">
+              <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+                {timeCodes.map(tc => (
+                  <div key={tc.code}>
+                    <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
+                    {tc.hours_limit && (
+                      <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
+                    )}
                   </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Balance Cards first layout - cards already shown above */}
-                <div className="space-y-3">
-                  <HelpArea helpId="attendance-grid" bubblePosition="bottom">
-                    <h2 className="text-lg font-semibold cursor-help">
-                      Attendance Record: {year}
-                    </h2>
-                  </HelpArea>
-
-                  <AttendanceGrid
-                    year={year}
-                    employeeId={selectedEmployeeId}
-                    entries={entries}
-                    timeCodes={timeCodes}
-                    onEntryChange={handleEntryChange}
-                    companyHolidays={companyHolidays}
-                    dailySummary={dailySummary}
-                    totalActiveEmployees={totalActiveEmployees}
-                    maxOutOfOffice={maxOutOfOffice}
-                    capacityWarningCount={capacityWarningCount}
-                    capacityCriticalCount={capacityCriticalCount}
-                  />
-                </div>
-
-                <div className="mt-3 p-2 border rounded-lg bg-muted/50">
-                  <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
-                    {timeCodes.map(tc => (
-                      <div key={tc.code}>
-                        <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
-                        {tc.hours_limit && (
-                          <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+                ))}
+              </div>
+            </div>
           </>
         )}
 
@@ -459,5 +556,17 @@ export default function AttendancePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner />
+      </div>
+    }>
+      <AttendanceContent />
+    </Suspense>
   );
 }
