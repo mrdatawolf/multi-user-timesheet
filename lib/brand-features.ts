@@ -79,6 +79,12 @@ export interface OfficeAttendanceForecastConfig {
   daysToShow?: number;      // Number of days to forecast (default: 5)
 }
 
+// Office presence tracking configuration
+// When enabled, shows toggle buttons in the navbar for tracking who's in the office
+export interface OfficePresenceTrackingConfig {
+  enabled: boolean;
+}
+
 // Global read access configuration
 // When enabled, all authenticated users can READ all employees' attendance data
 // regardless of group permissions. Write permissions are never affected.
@@ -107,6 +113,7 @@ export interface BrandFeatures {
     breakTracking?: BreakTrackingConfig;
     officeAttendanceForecast?: OfficeAttendanceForecastConfig;
     globalReadAccess?: GlobalReadAccessConfig;
+    officePresenceTracking?: OfficePresenceTrackingConfig;
   };
 }
 
@@ -401,4 +408,11 @@ export function getOfficeAttendanceForecastConfig(features: BrandFeatures): Offi
  */
 export function isGlobalReadAccessEnabled(features: BrandFeatures): boolean {
   return features.features.globalReadAccess?.enabled ?? false;
+}
+
+/**
+ * Check if office presence tracking is enabled
+ */
+export function isOfficePresenceTrackingEnabled(features: BrandFeatures): boolean {
+  return features.features.officePresenceTracking?.enabled ?? false;
 }

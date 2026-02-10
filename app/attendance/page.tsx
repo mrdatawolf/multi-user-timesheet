@@ -107,6 +107,17 @@ export default function AttendancePage() {
     }
   }, [pathname]);
 
+  // Re-fetch daily summary when office presence is toggled (via navbar buttons)
+  useEffect(() => {
+    const handlePresenceChange = () => {
+      if (selectedEmployeeId && isAuthenticated && globalReadEnabled) {
+        loadAttendanceData();
+      }
+    };
+    window.addEventListener('office-presence-changed', handlePresenceChange);
+    return () => window.removeEventListener('office-presence-changed', handlePresenceChange);
+  }, [selectedEmployeeId, isAuthenticated, globalReadEnabled]);
+
   const loadInitialData = async () => {
     if (!isAuthenticated) {
       console.warn('Cannot load initial data: not authenticated');

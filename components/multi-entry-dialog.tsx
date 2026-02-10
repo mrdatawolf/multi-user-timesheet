@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Minus, Plus, Trash2, PlusCircle } from 'lucide-react';
+import { Minus, Plus, Trash2, PlusCircle, Clock } from 'lucide-react';
 import type { AttendanceEntry } from './attendance-grid';
 import { HelpArea } from '@/components/help-area';
 
@@ -135,6 +135,12 @@ export function MultiEntryDialog({
       else newMinutes = 30;
       return { ...e, minutes: newMinutes };
     }));
+  };
+
+  const setAllDay = (tempId: string) => {
+    setEditableEntries(editableEntries.map(e =>
+      e.tempId === tempId ? { ...e, hours: 8, minutes: 0 } : e
+    ));
   };
 
   const getTotalHours = () => {
@@ -273,6 +279,18 @@ export function MultiEntryDialog({
                     className="h-8 w-8"
                   >
                     <Plus className="h-3 w-3" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAllDay(entry.tempId)}
+                    className="h-8 ml-2 gap-1 text-xs"
+                    title="Set to 8 hours (full day)"
+                  >
+                    <Clock className="h-3 w-3" />
+                    All Day
                   </Button>
                 </div>
               </div>

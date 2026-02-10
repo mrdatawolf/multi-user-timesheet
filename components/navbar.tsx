@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User, LogOut, Shield, Map, FlaskConical, Settings, HelpCircle } from 'lucide-react';
 import { useHelp } from '@/lib/help-context';
+import { OfficePresenceBar } from '@/components/office-presence-bar';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
@@ -50,16 +51,19 @@ export function Navbar() {
     <nav className="border-b sticky top-0 bg-background z-50">
       <div className="max-w-full mx-auto px-3">
         <div className="flex items-center justify-between h-8">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src={logoSrc}
-              alt={logoAlt}
-              width={32}
-              height={32}
-              className="object-contain"
-            />
-            <span className="font-bold text-lg hidden sm:inline">{appTitle}</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src={logoSrc}
+                alt={logoAlt}
+                width={32}
+                height={32}
+                className="object-contain"
+              />
+              <span className="font-bold text-lg hidden sm:inline">{appTitle}</span>
+            </Link>
+            {isAuthenticated && <OfficePresenceBar />}
+          </div>
           <div className="flex items-center space-x-4">
             {isAuthenticated && enabledItems.map(item => (
               <Link

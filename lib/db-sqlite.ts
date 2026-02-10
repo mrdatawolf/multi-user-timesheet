@@ -167,6 +167,20 @@ export async function initializeDatabase() {
     }
   }
 
+  // Create office_presence table for real-time office tracking
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS office_presence (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      is_out INTEGER NOT NULL DEFAULT 0,
+      toggled_by INTEGER,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      UNIQUE(employee_id, date)
+    )
+  `);
+
   // Insert default time codes
   const timeCodes = [
     { code: 'D', description: 'Discipline', hours_limit: null, default_allocation: null },
