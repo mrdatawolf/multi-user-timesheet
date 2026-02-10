@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Minus, Plus, Trash2, PlusCircle, Clock } from 'lucide-react';
-import type { AttendanceEntry } from './attendance-grid';
+import type { AttendanceEntry } from '@/lib/attendance-types';
 import { HelpArea } from '@/components/help-area';
 
 interface TimeCode {

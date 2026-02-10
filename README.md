@@ -5,7 +5,7 @@ A modern Next.js-based employee Attendance management system that replaces Excel
 ## Overview
 
 This application digitizes the traditional Excel-based Attendance process with:
-- **Calendar-based attendance entry** - Interactive 31 days × 12 months grid
+- **Calendar-based attendance entry** - Year, month, and week views with interactive grids
 - **Dialog-based editing** - Clean modal interface for entry management
 - **Balance tracking** - Real-time tracking of time code usage and limits
 - **Theming system** - Trinity (light) and Default (dark) themes with layout customization
@@ -88,10 +88,12 @@ The system tracks these time entry codes:
 - Progress tracking per user
 - See [PHASE-6-PLAN.md](info/PHASE-6-PLAN.md) for detailed specification
 
-### Phase 7: Employee Self-Service & Enhanced Views (Planned)
+### Phase 7: Employee Self-Service & Enhanced Views (In Progress)
+- ✅ Calendar visualization — Year, Month, and Week views with view toggle and period navigation
+- ✅ Responsive auto-switch to week view on small screens
+- ✅ URL-based view state for bookmarkable attendance views
 - Employee portal for viewing own attendance (read-only)
 - Personalized dashboards for employees, managers, and admins
-- Calendar visualization (month/week views) with color-coded time codes
 - Manager-employee relationship tracking and "My Team" views
 - Enhanced date range filtering with quick filters
 - See [PHASE-7-PLAN.md](info/PHASE-7-PLAN.md) for detailed specification
@@ -222,12 +224,18 @@ See [DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md) for complete database 
 │   ├── office-capacity-settings.tsx # Admin office capacity config
 │   ├── employee-link-settings.tsx  # User-employee link management
 │   ├── break-entry-widget.tsx      # Break/lunch logging widget
-│   └── attendance-grid.tsx      # Calendar grid component
+│   ├── attendance-grid.tsx      # Year view calendar grid component
+│   ├── attendance-grid-month.tsx # Month view calendar grid
+│   ├── attendance-grid-week.tsx  # Week view day cards
+│   ├── view-toggle.tsx          # Year/Month/Week segmented toggle
+│   └── period-navigator.tsx     # Period navigation (arrows, today, year picker)
 ├── lib/
 │   ├── config.ts                # Feature flags and settings
 │   ├── db-sqlite.ts             # Database connection
 │   ├── app-settings.ts          # App settings helpers (office capacity, etc.)
 │   ├── break-tracking.ts        # Break/lunch compliance utilities
+│   ├── attendance-types.ts      # Shared attendance type definitions
+│   ├── date-helpers.ts          # Date calculation utilities (calendar grids, week bounds)
 │   ├── queries-sqlite.ts        # Database queries
 │   ├── schema.sql               # Database schema
 │   ├── auth-context.tsx         # Authentication context provider
@@ -358,9 +366,15 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - Accessible via navbar "Settings" link
 - Clean, organized settings interface
 
-### Attendance Grid
-- Interactive 31-day × 12-month calendar
-- Click any cell to edit time entry
+### Attendance Grid & View Switching
+- **Three view modes**: Year, Month, and Week — toggled via a segmented control
+- **Year view** — Interactive 31-day × 12-month calendar (the original grid)
+- **Month view** — Traditional 7-column calendar grid (Mon–Sun) with larger day cells
+- **Week view** — 7 day-cards showing entry details, responsive stacking on mobile
+- **Period navigation** — Prev/next arrows, year picker, and "Today" button for month/week views
+- **View preference** — Saved to localStorage and synced to URL params (`?view=month&month=2026-02`) for bookmarkability
+- **Responsive auto-switch** — Screens below 768px auto-switch from year to week view
+- Click any cell/card to edit time entry via the same dialog
 - Visual indicators for entries with notes
 - Invalid dates (e.g., Feb 31) automatically disabled
 - Compact, responsive design

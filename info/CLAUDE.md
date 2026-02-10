@@ -58,10 +58,20 @@ components/
   job-title-management.tsx  # Job titles CRUD UI
   color-config-management.tsx  # Color customization UI (admin)
   balance-cards.tsx     # Time balance display (with usage alerts)
-  attendance-grid.tsx   # Calendar grid (with company holidays, time code colors)
+  attendance-grid.tsx   # Year view calendar grid (with company holidays, time code colors)
+  attendance-grid-month.tsx  # Month view (7-column calendar grid)
+  attendance-grid-week.tsx   # Week view (7 day-cards, responsive)
+  view-toggle.tsx       # Year/Month/Week segmented toggle
+  period-navigator.tsx  # Prev/next/today navigation for month/week views
   help-area.tsx         # Contextual help wrapper
 
+hooks/
+  use-attendance-cell.ts  # Shared attendance cell logic (colors, display, capacity)
+  use-media-query.ts      # SSR-safe responsive breakpoint hook
+
 lib/
+  attendance-types.ts   # Shared attendance types (AttendanceEntry, DailySummary, ViewType)
+  date-helpers.ts       # Date utilities (calendar grids, week bounds, period navigation)
   db-auth.ts            # Auth database init + migrations
   db-sqlite.ts          # Main database connection
   queries-auth.ts       # Auth-related queries
@@ -280,6 +290,10 @@ headers: { Authorization: `Bearer ${token}` }
 | Brand features API | `lib/brand-features.ts` |
 | Brand reports API | `lib/brand-reports.ts` |
 | Color config API | `lib/color-config.ts` |
+| Attendance types | `lib/attendance-types.ts` |
+| Date helpers | `lib/date-helpers.ts` |
+| Attendance cell hook | `hooks/use-attendance-cell.ts` |
+| Media query hook | `hooks/use-media-query.ts` |
 
 ---
 
@@ -326,6 +340,12 @@ headers: { Authorization: `Bearer ${token}` }
 20. **Color customization requires feature flag** - The Color Configuration section in Settings only appears if `colorCustomization.enabled: true` in brand-features.json. Admin overrides are stored in `auth.db` (color_config table), JSON files provide defaults.
 
 21. **Semantic color names** - Colors use semantic names (blue, amber, red, teal, purple, green, gray) that map to Tailwind classes on the client side via `COLOR_CLASS_MAP` objects. Don't use hex codes or Tailwind classes directly in config.
+
+22. **Attendance view switching** - The attendance page supports Year, Month, and Week views via a segmented toggle. View preference is stored in localStorage (key: `attendance_view`). The current view and period are synced to URL params (`?view=month&month=2026-02` or `?view=week&week=2026-02-02`) for bookmarkability. All three views share the same `useAttendanceCell` hook for cell display logic and the same `MultiEntryDialog` for editing. Data is always fetched as a full year — views filter client-side.
+
+23. **Responsive auto-switch** - On screens below 768px, the attendance page auto-switches from year to week view (one-way — doesn't switch back when enlarged, since the user may have manually chosen week). The `useMediaQuery` hook in `hooks/use-media-query.ts` is SSR-safe (returns false before mount).
+
+24. **Attendance page uses Suspense** - Because it uses `useSearchParams`, the attendance page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `AttendanceContent`, the default export is the Suspense wrapper.
 
 ---
 
