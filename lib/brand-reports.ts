@@ -19,6 +19,7 @@ export interface ReportDefinition {
   description: string;
   apiEndpoint: string;
   isDefault?: boolean;
+  requiredFeature?: string;
   columns: ReportColumn[];
   export: ReportExportConfig;
 }

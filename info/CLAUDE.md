@@ -1,7 +1,7 @@
 # Claude Project Summary
 
 **Quick Reference for AI Assistants**
-*Last Updated: February 4, 2026*
+*Last Updated: February 5, 2026*
 
 ---
 
@@ -32,6 +32,7 @@ app/                    # Next.js pages and API routes
   api/                  # REST endpoints
     employees/          # Employee CRUD
     attendance/         # Time entries
+    color-config/       # Color configuration (admin)
     dashboard/          # Dashboard-specific endpoints
       upcoming-staffing/ # Upcoming staffing (all users visible)
     groups/             # Group management
@@ -55,8 +56,9 @@ components/
     report-export.tsx   # Generic CSV export
   group-management.tsx  # Groups CRUD UI
   job-title-management.tsx  # Job titles CRUD UI
+  color-config-management.tsx  # Color customization UI (admin)
   balance-cards.tsx     # Time balance display (with usage alerts)
-  attendance-grid.tsx   # Calendar grid (with company holidays)
+  attendance-grid.tsx   # Calendar grid (with company holidays, time code colors)
   help-area.tsx         # Contextual help wrapper
 
 lib/
@@ -67,9 +69,11 @@ lib/
   auth-context.tsx      # Auth state provider
   help-context.tsx      # Help system provider
   accrual-calculations.ts  # Leave accrual calculation engine
+  color-config.ts       # Color configuration utilities
   migrations/           # Database migrations
     auth/               # Auth DB migrations
       005_seed_job_titles.ts  # Seeds default job titles
+      006_color_config.ts     # Color configuration table
 
 public/
   {brand}/              # Brand-specific assets (TRL, NFL, etc.)
@@ -101,9 +105,9 @@ Two separate SQLite databases:
 
 ### Brand System
 Multi-tenant via `public/{brand}/` folders. Each brand can have:
-- Custom time codes (`time-codes.json`)
+- Custom time codes with colors (`time-codes.json`)
 - Custom help content (`help-content.json`)
-- Feature flags, accrual rules, holidays, reports (`brand-features.json`)
+- Feature flags, accrual rules, holidays, reports, color config (`brand-features.json`)
 - Report definitions (`reports/report-definitions.json`)
 
 Brand selected at build time via `lib/brand-selection.json`.
@@ -139,6 +143,39 @@ Leave balance cards and reports show color-coded warnings when usage approaches 
 - **Warning (amber)**: Usage >= 90% of allocation
 - **Critical (red)**: Usage >= 100% of allocation
 - Applied to both attendance page balance cards and Leave Balance Summary report
+
+### Color Customization
+Admins can customize colors for time codes and status indicators via Settings > Color Configuration.
+
+**Feature flag** in `brand-features.json`:
+```json
+"colorCustomization": {
+  "enabled": true,
+  "allowTimeCodeColors": true,
+  "allowStatusColors": true
+}
+```
+
+**Time code colors** in `time-codes.json`:
+```json
+{
+  "code": "V",
+  "description": "Vacation",
+  "color": "blue"
+}
+```
+
+**Available colors**: blue, amber, red, teal, purple, green, gray
+
+**Resolution priority**:
+1. Database (admin customizations via Settings UI)
+2. Brand JSON defaults (`time-codes.json`, `brand-features.json`)
+3. System hardcoded defaults
+
+Colors are applied to:
+- Attendance grid cells (time code colors)
+- Balance cards (status colors for warning/critical)
+- Leave Balance Summary report cells (status colors)
 
 ### Accrual Calculation Engine
 The system supports multiple leave accrual types defined in `brand-features.json`:
@@ -242,6 +279,7 @@ headers: { Authorization: `Bearer ${token}` }
 | Accrual engine | `lib/accrual-calculations.ts` |
 | Brand features API | `lib/brand-features.ts` |
 | Brand reports API | `lib/brand-reports.ts` |
+| Color config API | `lib/color-config.ts` |
 
 ---
 
@@ -284,6 +322,10 @@ headers: { Authorization: `Bearer ${token}` }
 18. **Report definitions are brand-specific** - Each brand can have different reports in `public/{brand}/reports/report-definitions.json`. Falls back to Default brand if no brand-specific file exists.
 
 19. **API caching** - Report APIs use `export const dynamic = 'force-dynamic'` to prevent Next.js caching and ensure fresh data on each request.
+
+20. **Color customization requires feature flag** - The Color Configuration section in Settings only appears if `colorCustomization.enabled: true` in brand-features.json. Admin overrides are stored in `auth.db` (color_config table), JSON files provide defaults.
+
+21. **Semantic color names** - Colors use semantic names (blue, amber, red, teal, purple, green, gray) that map to Tailwind classes on the client side via `COLOR_CLASS_MAP` objects. Don't use hex codes or Tailwind classes directly in config.
 
 ---
 

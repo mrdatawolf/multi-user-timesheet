@@ -825,3 +825,135 @@ Added a reactivate button that appears for inactive employees when viewing with 
 
 **Files Modified:**
 - `app/employees/page.tsx` - Added RotateCcw import, handleReactivate function, and reactivate button UI
+
+### Phase 6.12: Color Configuration ✅ COMPLETE
+Super admins can customize colors for time codes and status indicators (warning/critical thresholds).
+
+**Purpose:**
+- Allow brand differentiation through custom color schemes
+- Enable status highlighting customization (warning at 90%, critical at 100%)
+- Time code identification with distinct colors in calendar grid
+- Consistent color application across attendance grid, balance cards, and reports
+
+**Architecture:**
+```
+Color Resolution Priority:
+1. Database (admin customizations) - HIGHEST PRIORITY
+2. Brand JSON defaults (public/{brand}/)
+3. System defaults (hardcoded fallback)
+```
+
+**Feature Flag Required:**
+```json
+// In brand-features.json
+"colorCustomization": {
+  "enabled": true,
+  "allowTimeCodeColors": true,
+  "allowStatusColors": true
+}
+```
+- If `colorCustomization.enabled = false`: No admin UI shown, only brand JSON defaults used
+- If `allowTimeCodeColors = false`: Hide time code color section in admin UI
+- If `allowStatusColors = false`: Hide status color section in admin UI
+
+**Implementation:**
+
+1. ✅ Created `color_config` database table in auth.db
+   - Migration: `lib/migrations/auth/006_color_config.ts`
+   - Fields: id, config_type, config_key, color_name, created_at, updated_at
+   - UNIQUE constraint on (config_type, config_key)
+
+2. ✅ Created `lib/color-config.ts` with utilities:
+   - `getTimeCodeColor(code)` - returns resolved color (DB → JSON → default)
+   - `getStatusColor(status)` - returns warning/critical colors
+   - `saveColorConfig()` / `deleteColorConfig()` - CRUD operations
+   - `isColorCustomizationEnabled()` - checks feature flag
+   - `getAvailableColors()` - returns palette options
+
+3. ✅ Created `/api/color-config` endpoint (`app/api/color-config/route.ts`):
+   - `GET` - returns feature config, color configs, time codes with defaults, available colors
+   - `POST` - create/update color config (admin only)
+   - `DELETE` - remove custom config, reverts to default (admin only)
+   - Includes audit logging for all changes
+
+4. ✅ Created `ColorConfigManagement` component (`components/color-config-management.tsx`):
+   - Two sections: "Time Code Colors" and "Status Colors"
+   - Dropdown to select color from palette (blue, amber, red, teal, purple, green, gray)
+   - Color swatch preview next to each item
+   - "Reset to Default" button per item (only visible when customized)
+
+5. ✅ Added Color Configuration to Settings page (super admin only)
+
+6. ✅ Updated `balance-cards.tsx`:
+   - Added `COLOR_CLASS_MAP` for semantic colors to Tailwind classes
+   - Fetches status colors from `/api/color-config`
+   - Dynamic warning/critical threshold colors
+
+7. ✅ Updated `leave-balance-summary.tsx`:
+   - Added `CELL_COLOR_MAP` for cell and legend styling
+   - Fetches status colors from `/api/color-config`
+   - Dynamic threshold colors in getCellStyle() and legend
+
+8. ✅ Updated `attendance-grid.tsx`:
+   - Added `CELL_BG_COLOR_MAP` for background colors
+   - Fetches time code colors from `/api/color-config`
+   - Added `getCellColorClass()` function
+   - Calendar cells colored based on time code
+
+9. ✅ Added default colors to `public/Default/time-codes.json`:
+   - V=blue, S=red, PS=purple, H=green, FH=teal, PTO=purple, etc.
+
+10. ✅ Added colorCustomization and statusColors to `public/Default/brand-features.json`
+
+**Available Color Palette:**
+| Color  | Light BG | Light Text | Use Case |
+|--------|----------|------------|----------|
+| blue   | #dbeafe  | #1e40af    | Vacation, general leave |
+| amber  | #fef3c7  | #92400e    | Warning status (90%+) |
+| red    | #fee2e2  | #991b1b    | Critical status (100%+), sick |
+| teal   | #ccfbf1  | #115e59    | Floating holiday |
+| purple | #f3e8ff  | #6b21a8    | Personal sick, PTO |
+| green  | #dcfce7  | #166534    | Holiday, positive |
+| gray   | #f3f4f6  | #374151    | Default/neutral |
+
+**UI Layout:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Color Configuration                              [Admin Only]│
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ TIME CODE COLORS                                             │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Code      Description      Color       Actions         │  │
+│ │ ──────────────────────────────────────────────────────│  │
+│ │ V         Vacation         [■ Blue ▼]  [Reset]        │  │
+│ │ PS        Personal Sick    [■ Purple▼] [Reset]        │  │
+│ │ FH        Floating Holiday [■ Teal  ▼] [Reset]        │  │
+│ │ H         Holiday          [■ Green ▼] [Reset]        │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│ STATUS COLORS                                                │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Status    Threshold   Color         Actions            │  │
+│ │ ──────────────────────────────────────────────────────│  │
+│ │ Warning   90%+        [■ Amber ▼]   [Reset]           │  │
+│ │ Critical  100%+       [■ Red   ▼]   [Reset]           │  │
+│ └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Files Created:**
+- `lib/migrations/auth/006_color_config.ts` - Database migration
+- `lib/color-config.ts` - Color utilities and DB operations
+- `app/api/color-config/route.ts` - CRUD API endpoint
+- `components/color-config-management.tsx` - Admin UI component
+
+**Files Modified:**
+- `lib/brand-features.ts` - Added ColorCustomizationConfig, StatusColorsConfig interfaces
+- `lib/brand-time-codes.ts` - Added `color?: string` to BrandTimeCode interface
+- `public/Default/time-codes.json` - Added default colors to all time codes
+- `public/Default/brand-features.json` - Added colorCustomization and statusColors
+- `components/balance-cards.tsx` - Dynamic status colors
+- `components/reports/leave-balance-summary.tsx` - Dynamic status colors
+- `components/attendance-grid.tsx` - Time code colors in calendar cells
+- `app/settings/page.tsx` - Added ColorConfigManagement for super admins

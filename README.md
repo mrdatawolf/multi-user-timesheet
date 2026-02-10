@@ -200,8 +200,12 @@ See [DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md) for complete database 
 │   │   ├── employee-allocations/ # Employee time allocation endpoints
 │   │   ├── reports/             # Report generation endpoint
 │   │   ├── time-codes/          # Time code endpoints
-│   │   └── attendance/          # Attendance entry endpoints
+│   │   ├── app-settings/       # Admin app settings (office capacity, etc.)
+│   │   ├── break-entries/      # Break/lunch entry CRUD
+│   │   ├── user-employee-link/ # User-to-employee linking API
+│   │   └── attendance/          # Attendance entries + daily-summary
 │   ├── dashboard/               # Dashboard page (optional)
+│   ├── link-employee/           # Employee linking page (forced for unlinked users)
 │   ├── reports/                 # Reports page (optional)
 │   ├── settings/                # Settings page (theme selection, preferences)
 │   ├── attendance/              # Main Attendance page
@@ -215,10 +219,15 @@ See [DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md) for complete database 
 │   ├── employee-allocations-dialog.tsx  # Employee time allocation management
 │   ├── navbar.tsx               # Navigation bar
 │   ├── providers.tsx            # Context providers (Auth, Theme)
+│   ├── office-capacity-settings.tsx # Admin office capacity config
+│   ├── employee-link-settings.tsx  # User-employee link management
+│   ├── break-entry-widget.tsx      # Break/lunch logging widget
 │   └── attendance-grid.tsx      # Calendar grid component
 ├── lib/
 │   ├── config.ts                # Feature flags and settings
 │   ├── db-sqlite.ts             # Database connection
+│   ├── app-settings.ts          # App settings helpers (office capacity, etc.)
+│   ├── break-tracking.ts        # Break/lunch compliance utilities
 │   ├── queries-sqlite.ts        # Database queries
 │   ├── schema.sql               # Database schema
 │   ├── auth-context.tsx         # Authentication context provider
@@ -249,13 +258,18 @@ The database includes the following tables:
 - `attendance_entries` - Daily time entries
 - `employee_time_allocations` - Custom time off allocations per employee per year
 
-**Authentication & Security Tables:**
-- `users` - User accounts with encrypted passwords and role assignments
+**Break Tracking Tables:**
+- `break_entries` - Break/lunch entries with compliance tracking and override flags
+
+**Authentication & Security Tables (auth.db):**
+- `users` - User accounts with encrypted passwords, role assignments, and `employee_id` link
 - `roles` - Role definitions with action permissions (Administrator, Manager, Editor, etc.)
 - `groups` - User groups controlling data visibility (Master, Managers, HR, Employees)
 - `group_permissions` - Granular group-to-group permissions
 - `user_group_permissions` - Per-user permissions to specific groups
 - `audit_log` - Complete change tracking for all modifications
+- `app_settings` - Key-value admin settings (office capacity thresholds, etc.)
+- `color_config` - Custom color overrides for time codes and statuses
 
 See [AUTH-SYSTEM.md](info/AUTH-SYSTEM.md) for detailed schema documentation.
 
@@ -280,6 +294,35 @@ When features are disabled:
 - Navigation links are hidden
 - Landing page cards are hidden
 - Direct access shows a "feature disabled" message
+
+### Brand-Level Feature Flags (`brand-features.json`)
+
+Brand-specific features are configured in `public/{brand}/brand-features.json`:
+
+```json
+{
+  "globalReadAccess": {
+    "enabled": true,
+    "maxOutOfOffice": 5,
+    "capacityWarningCount": 3,
+    "capacityCriticalCount": 5
+  },
+  "breakTracking": {
+    "enabled": true,
+    "breaks": {
+      "break_1": { "start": "09:00", "end": "09:30", "duration": 10 },
+      "lunch":   { "start": "11:30", "end": "13:00", "duration": 30 },
+      "break_2": { "start": "14:00", "end": "14:30", "duration": 10 }
+    },
+    "graceMinutes": 5
+  }
+}
+```
+
+- **`globalReadAccess`** — When enabled, all users see all attendance data (read-only). Office capacity bars, badges, and who's-out popovers appear on the grid. When disabled, none of these features appear.
+- **`breakTracking`** — Break/lunch compliance tracking
+- **`officeAttendanceForecast`** — Upcoming days out forecast widget
+- **`colorCustomization`** — Admin UI for customizing time code and status colors
 
 See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
@@ -351,6 +394,54 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - **Reactivate deactivated employees** - Master users can view inactive employees and reactivate them with a single click
 - Group-based visibility controls
 - Custom time allocations per employee
+
+### User-Employee Linking
+Each user account is linked to an employee profile via `employee_id` on the users table. This enables:
+- **Automatic default selection** — the attendance grid defaults to the logged-in user's own employee
+- **Forced linking at login** — non-master-admin users without a linked employee are redirected to `/link-employee` to select or create one
+- **Settings page management** — all users can view, change, or create their employee link in **Settings > Employee Profile Link**
+- **Master admin exemption** — users in the Master group are never forced to link (they manage all employees)
+- **Auto-link on creation** — when an employee is auto-created for a new user's group, the link is set automatically
+
+### Global Read Access & Office Capacity
+When the `globalReadAccess` feature flag is enabled in `brand-features.json`, every authenticated user can see all employees' attendance data on their own attendance grid (read-only — write permissions are never affected).
+
+Each cell in the attendance grid shows:
+- **Capacity bar** (2px at bottom) — color indicates office staffing level:
+  - **Grey** — normal, few people out
+  - **Amber/Yellow** — warning threshold reached (configurable # of people out)
+  - **Red** — critical threshold reached, or over the hard max-out-of-office limit
+- **Badge count** (top-left corner) — number of employees out that day
+- **Who's-out popover** — click the badge to see employee names, time codes, and hours
+
+Thresholds are expressed as **people counts** (not percentages), so admins see exactly how many people out triggers each color. Three admin-configurable settings control the behavior:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `maxOutOfOffice` | Hard cap — badge turns red when exceeded (0 = no limit) | 0 |
+| `capacityWarningCount` | # of people out that turns bar yellow | 3 |
+| `capacityCriticalCount` | # of people out that turns bar red | 5 |
+
+**Setting resolution chain:** Admin DB override → `brand-features.json` default → hardcoded default
+
+Admins configure these in **Settings > Office Capacity**. Settings are stored in the `app_settings` table in `auth.db`.
+
+When `globalReadAccess` is **disabled** (e.g., Default brand), none of these features appear — the attendance grid works exactly as before with no bars, badges, or popovers.
+
+**Key files:**
+- Feature flag: `public/{brand}/brand-features.json` → `globalReadAccess`
+- Daily summary API: `app/api/attendance/daily-summary/route.ts`
+- Settings helpers: `lib/app-settings.ts`
+- Admin UI: `components/office-capacity-settings.tsx`
+- Grid rendering: `components/attendance-grid.tsx`
+
+### Break/Lunch Compliance Tracking
+When the `breakTracking` feature flag is enabled in `brand-features.json`, the system tracks employee break and lunch compliance:
+- **Dashboard widget** — employees log breaks (Break 1, Lunch, Break 2) with one-click buttons
+- **Compliance checking** — each break is checked against configured time windows and minimum durations
+- **Self-override** — if a break is flagged as non-compliant, the employee can confirm they took it properly
+- **Break Compliance Report** — HR can view compliance status across all employees for a date range, with CSV export
+- **Configurable windows** — each break type has a start time, end time, required duration, and grace period
 
 ### Brand-Specific Time Codes
 - Time codes are configured per brand in `brand-features.json`

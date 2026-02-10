@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/middleware/auth';
 import { getUserReadableGroups, isSuperuser } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
+import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,8 +25,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
     }
 
-    // Check if user is superuser
+    // Check if user is superuser or has global read access
     const userIsSuperuser = await isSuperuser(authUser.id);
+    const brandFeatures = await getBrandFeatures();
+    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
 
     // Build query with permission filtering
     let sql = `
@@ -44,8 +47,8 @@ export async function GET(request: NextRequest) {
 
     const args: any[] = [startDate, endDate];
 
-    // Filter by user's readable groups if not superuser
-    if (!userIsSuperuser) {
+    // Filter by user's readable groups if not superuser and global read not enabled
+    if (!userIsSuperuser && !globalRead) {
       const readableGroupIds = await getUserReadableGroups(authUser.id);
       // Always include user's own group
       if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {

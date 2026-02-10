@@ -13,6 +13,8 @@ import { BackupCard } from '@/components/backup-card';
 import { GroupManagement } from '@/components/group-management';
 import { JobTitleManagement } from '@/components/job-title-management';
 import { ColorConfigManagement } from '@/components/color-config-management';
+import { OfficeCapacitySettings } from '@/components/office-capacity-settings';
+import { EmployeeLinkSettings } from '@/components/employee-link-settings';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 
@@ -136,6 +138,9 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Employee Profile Link - All Users */}
+        <EmployeeLinkSettings />
+
         {/* Groups Management - Super Admin Only */}
         {isSuperAdmin && <GroupManagement />}
 
@@ -144,6 +149,9 @@ export default function SettingsPage() {
 
         {/* Color Configuration - Super Admin Only */}
         {isSuperAdmin && <ColorConfigManagement />}
+
+        {/* Office Capacity Settings - Super Admin Only */}
+        {isSuperAdmin && <OfficeCapacitySettings />}
 
         {/* Database Backups - Admin Only */}
         {isAdmin && <BackupCard />}

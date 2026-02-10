@@ -42,6 +42,12 @@ export interface AttendanceEntry {
   notes?: string;
 }
 
+export interface DailySummaryDay {
+  outCount: number;
+}
+
+export type DailySummary = Record<string, DailySummaryDay>;
+
 interface AttendanceGridProps {
   year: number;
   employeeId: number;
@@ -49,6 +55,11 @@ interface AttendanceGridProps {
   timeCodes: TimeCode[];
   onEntryChange: (date: string, entries: AttendanceEntry[]) => void;
   companyHolidays?: Set<string>;
+  dailySummary?: DailySummary | null;
+  totalActiveEmployees?: number;
+  maxOutOfOffice?: number;
+  capacityWarningCount?: number;
+  capacityCriticalCount?: number;
 }
 
 const MONTHS = [
@@ -73,6 +84,11 @@ export function AttendanceGrid({
   timeCodes,
   onEntryChange,
   companyHolidays = new Set(),
+  dailySummary,
+  totalActiveEmployees,
+  maxOutOfOffice = 0,
+  capacityWarningCount = 3,
+  capacityCriticalCount = 5,
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -201,6 +217,31 @@ export function AttendanceGrid({
     return CELL_BG_COLOR_MAP.gray || '';
   };
 
+  // Get the fullness bar color and width for a date
+  // Color scheme: grey (normal) → amber/yellow (warning) → red (critical)
+  // Thresholds are based on number of employees OUT of office
+  const getFullnessInfo = (dateStr: string) => {
+    if (!dailySummary || !totalActiveEmployees || totalActiveEmployees === 0) {
+      return null;
+    }
+
+    const daySummary = dailySummary[dateStr];
+    const outCount = daySummary?.outCount ?? 0;
+    const inOfficePercent = ((totalActiveEmployees - outCount) / totalActiveEmployees) * 100;
+    const isOverLimit = maxOutOfOffice > 0 && outCount > maxOutOfOffice;
+
+    let barColor: string;
+    if (isOverLimit || (capacityCriticalCount > 0 && outCount >= capacityCriticalCount)) {
+      barColor = 'bg-red-400';
+    } else if (capacityWarningCount > 0 && outCount >= capacityWarningCount) {
+      barColor = 'bg-amber-400';
+    } else {
+      barColor = 'bg-gray-300';
+    }
+
+    return { outCount, inOfficePercent, barColor, isOverLimit };
+  };
+
   return (
     <div className="overflow-x-auto border rounded-lg">
       <table className="w-full border-collapse">
@@ -230,6 +271,7 @@ export function AttendanceGrid({
                   const isCompanyHoliday = companyHolidays.has(dateStr);
                   const isClickable = isValidDay && !isCompanyHoliday;
                   const entriesForDate = getEntriesForDate(month.num, day);
+                  const fullness = isValidDay ? getFullnessInfo(dateStr) : null;
 
                   return (
                     <td
@@ -239,16 +281,40 @@ export function AttendanceGrid({
                       }`}
                     >
                       {isClickable && (
-                        <Button
-                          variant="ghost"
-                          className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate)}`}
-                          onClick={() => handleCellClick(month.num, day)}
-                        >
-                          {getCellDisplay(entriesForDate)}
-                          {hasNotes(entriesForDate) && (
-                            <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>
+                        <div className="relative">
+                          <Button
+                            variant="ghost"
+                            className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate)}`}
+                            onClick={() => handleCellClick(month.num, day)}
+                          >
+                            {getCellDisplay(entriesForDate)}
+                            {hasNotes(entriesForDate) && (
+                              <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>
+                            )}
+                          </Button>
+                          {/* Out-of-office count badge */}
+                          {fullness && fullness.outCount > 0 && (
+                            <span
+                              className={`absolute top-0 left-0 text-[8px] leading-none font-bold rounded-br px-0.5 py-px z-10 ${
+                                fullness.isOverLimit
+                                  ? 'bg-red-200 text-red-700'
+                                  : 'bg-sky-200 text-sky-700'
+                              }`}
+                              title={`${fullness.outCount}${maxOutOfOffice > 0 ? `/${maxOutOfOffice}` : ''} out of office`}
+                            >
+                              {fullness.outCount}
+                            </span>
                           )}
-                        </Button>
+                          {/* Fullness bar */}
+                          {fullness && (
+                            <div className="h-[2px] w-full bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${fullness.barColor} transition-all`}
+                                style={{ width: `${Math.max(fullness.inOfficePercent, 2)}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                   );

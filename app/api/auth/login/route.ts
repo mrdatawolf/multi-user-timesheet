@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         group_id: user.group_id,
         role_id: user.role_id,
+        employee_id: user.employee_id,
         is_superuser: user.is_superuser, // Deprecated
         group: group,
         role: role,

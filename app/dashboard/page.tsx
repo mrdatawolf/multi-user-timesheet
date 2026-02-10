@@ -10,12 +10,15 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Spinner } from '@/components/spinner';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
+import { AttendanceForecastWidget } from '@/components/attendance-forecast-widget';
+import { BreakEntryWidget } from '@/components/break-entry-widget';
 
 interface Employee {
   id: number;
   first_name: string;
   last_name: string;
   employee_number?: string;
+  group_id?: number;
 }
 
 interface AttendanceEntry {
@@ -51,7 +54,7 @@ interface UpcomingStaffingEntry {
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, authFetch, user } = useAuth();
   const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
@@ -284,6 +287,17 @@ export default function DashboardPage() {
             </Card>
           </div>
         </HelpArea>
+
+        {/* Attendance Forecast and Break Tracking Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <AttendanceForecastWidget />
+          {(() => {
+            const myEmployee = user?.group_id
+              ? employees.find(e => e.group_id === user.group_id)
+              : employees[0];
+            return myEmployee ? <BreakEntryWidget employeeId={myEmployee.id} /> : null;
+          })()}
+        </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

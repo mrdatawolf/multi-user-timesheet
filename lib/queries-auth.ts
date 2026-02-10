@@ -24,6 +24,7 @@ export interface User {
   is_active: number;
   is_superuser?: number; // Deprecated, use role_id instead
   role_id?: number;
+  employee_id?: number;
   color_mode?: 'light' | 'dark' | 'system';
   last_login?: string;
   created_at: string;
@@ -185,6 +186,13 @@ export async function updateUserLastLogin(userId: number): Promise<void> {
   await db.execute({
     sql: 'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
     args: [userId],
+  });
+}
+
+export async function setUserEmployeeId(userId: number, employeeId: number): Promise<void> {
+  await db.execute({
+    sql: 'UPDATE users SET employee_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    args: [employeeId, userId],
   });
 }
 

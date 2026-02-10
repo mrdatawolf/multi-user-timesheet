@@ -11,6 +11,7 @@ import {
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
+import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,10 +30,14 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
 
-    // If no employeeId is provided, return all entries (only for superusers)
+    // Check if global read access is enabled
+    const brandFeatures = await getBrandFeatures();
+    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
+
+    // If no employeeId is provided, return all entries (superusers or global read)
     if (!employeeIdParam) {
       const userIsSuperuser = await isSuperuser(authUser.id);
-      if (!userIsSuperuser) {
+      if (!userIsSuperuser && !globalRead) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to view all attendance entries' },
           { status: 403 }
@@ -50,8 +55,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions using Phase 2 CRUD permissions
-    if (employee.group_id) {
+    // Check permissions using Phase 2 CRUD permissions (skip if global read enabled)
+    if (employee.group_id && !globalRead) {
       const canView = await canUserReadGroup(authUser.id, employee.group_id);
       if (!canView) {
         return NextResponse.json(

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getBrandReportDefinitions, getReportDefinitionById } from '@/lib/brand-reports';
+import { getBrandFeatures, isFeatureEnabled } from '@/lib/brand-features';
+import type { BrandFeatures } from '@/lib/brand-features';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -15,8 +19,13 @@ export async function GET(request: Request) {
       return NextResponse.json(report);
     }
 
-    // Return all report definitions
-    const reports = getBrandReportDefinitions();
+    // Return all report definitions, filtering out those whose required feature is disabled
+    const allReports = getBrandReportDefinitions();
+    const brandFeatures = await getBrandFeatures();
+    const reports = allReports.filter(report => {
+      if (!report.requiredFeature) return true;
+      return isFeatureEnabled(brandFeatures, report.requiredFeature as keyof BrandFeatures['features']);
+    });
     return NextResponse.json(reports);
   } catch (error) {
     console.error('Error fetching report definitions:', error);

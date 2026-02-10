@@ -9,9 +9,11 @@ import {
   canUserUpdateInGroup,
   canUserDeleteInGroup,
   isSuperuser,
+  setUserEmployeeId,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
+import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,14 +30,18 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get('id');
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
+    // Check if global read access is enabled (all users can read all data)
+    const brandFeatures = await getBrandFeatures();
+    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
+
     if (employeeId) {
       const employee = await getEmployeeById(parseInt(employeeId));
       if (!employee) {
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
       }
 
-      // Check permissions using Phase 2 CRUD permissions
-      if (employee.group_id) {
+      // Check permissions using Phase 2 CRUD permissions (skip if global read enabled)
+      if (employee.group_id && !globalRead) {
         const canView = await canUserReadGroup(authUser.id, employee.group_id);
         if (!canView) {
           return NextResponse.json(
@@ -60,7 +66,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Filter employees based on user's readable groups (Phase 2 permissions)
-      if (!userIsSuperuser) {
+      // Skip filtering if global read access is enabled
+      if (!userIsSuperuser && !globalRead) {
         const readableGroupIds = await getUserReadableGroups(authUser.id);
         // Always include user's own group - users can always see their own group
         if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {
@@ -69,51 +76,60 @@ export async function GET(request: NextRequest) {
         employees = employees.filter(emp =>
           !emp.group_id || readableGroupIds.includes(emp.group_id)
         );
+      }
 
-        // Auto-create employee for user if they're the first in their group
-        if (authUser.group_id) {
-          const employeesInUserGroup = employees.filter(emp => emp.group_id === authUser.group_id);
-          if (employeesInUserGroup.length === 0) {
-            // No employees in user's group - create one for the user
-            // Parse full_name into first_name and last_name
-            const nameParts = authUser.full_name.trim().split(/\s+/);
-            const firstName = nameParts[0] || 'Unknown';
-            const lastName = nameParts.slice(1).join(' ') || authUser.username;
+      // Auto-create employee for user if they're the first in their group
+      // This runs regardless of globalRead since it's a write-side effect for the user's own group
+      if (!userIsSuperuser && authUser.group_id) {
+        const employeesInUserGroup = employees.filter(emp => emp.group_id === authUser.group_id);
+        if (employeesInUserGroup.length === 0) {
+          // No employees in user's group - create one for the user
+          // Parse full_name into first_name and last_name
+          const nameParts = authUser.full_name.trim().split(/\s+/);
+          const firstName = nameParts[0] || 'Unknown';
+          const lastName = nameParts.slice(1).join(' ') || authUser.username;
 
-            const newEmployee = await createEmployee({
-              employee_number: undefined,
-              first_name: firstName,
-              last_name: lastName,
-              email: authUser.email || undefined,
-              role: 'employee',
-              group_id: authUser.group_id,
-              date_of_hire: undefined,
-              rehire_date: undefined,
-              employment_type: 'full_time',
-              seniority_rank: undefined,
-              created_by: authUser.id,
-              is_active: 1
-            });
+          const newEmployee = await createEmployee({
+            employee_number: undefined,
+            first_name: firstName,
+            last_name: lastName,
+            email: authUser.email || undefined,
+            role: 'employee',
+            group_id: authUser.group_id,
+            date_of_hire: undefined,
+            rehire_date: undefined,
+            employment_type: 'full_time',
+            seniority_rank: undefined,
+            created_by: authUser.id,
+            is_active: 1
+          });
 
-            // Log audit entry for auto-created employee
-            await logAudit({
-              user_id: authUser.id,
-              action: 'CREATE',
-              table_name: 'employees',
-              record_id: newEmployee.id,
-              new_values: JSON.stringify({
-                first_name: newEmployee.first_name,
-                last_name: newEmployee.last_name,
-                email: newEmployee.email,
-                group_id: newEmployee.group_id,
-                auto_created: true,
-              }),
-              ip_address: getClientIP(request),
-              user_agent: getUserAgent(request),
-            });
-
-            employees.push(newEmployee);
+          // Link the auto-created employee to the user
+          try {
+            await setUserEmployeeId(authUser.id, newEmployee.id);
+          } catch (linkError) {
+            console.error('Failed to link auto-created employee to user (non-critical):', linkError);
           }
+
+          // Log audit entry for auto-created employee
+          await logAudit({
+            user_id: authUser.id,
+            action: 'CREATE',
+            table_name: 'employees',
+            record_id: newEmployee.id,
+            new_values: JSON.stringify({
+              first_name: newEmployee.first_name,
+              last_name: newEmployee.last_name,
+              email: newEmployee.email,
+              group_id: newEmployee.group_id,
+              auto_created: true,
+              linked_to_user: authUser.id,
+            }),
+            ip_address: getClientIP(request),
+            user_agent: getUserAgent(request),
+          });
+
+          employees.push(newEmployee);
         }
       }
 
