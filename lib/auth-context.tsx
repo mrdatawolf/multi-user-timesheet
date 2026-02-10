@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface User {
   id: number;
@@ -11,6 +11,7 @@ interface User {
   group_id: number;
   is_superuser?: number; // Deprecated, use role instead
   role_id?: number;
+  employee_id?: number;
   role?: {
     id: number;
     name: string;
@@ -55,6 +56,9 @@ interface AuthContextType {
   canDelete: boolean;             // Can delete records
   canManageUsers: boolean;        // Can create/edit user accounts
   canAccessAllGroups: boolean;    // Role grants access to all groups (overrides group restrictions)
+
+  // EMPLOYEE LINKING
+  needsEmployeeLink: boolean;     // User needs to link to an employee before proceeding
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Load auth state from localStorage on mount
   useEffect(() => {
@@ -211,6 +216,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return response;
   };
 
+  // Redirect unlinked non-master users to the employee linking page
+  const needsEmployeeLink = !!user && !user.employee_id && user.group?.is_master !== 1;
+
+  useEffect(() => {
+    if (!isLoading && needsEmployeeLink && pathname !== '/link-employee' && pathname !== '/login') {
+      router.push('/link-employee');
+    }
+  }, [isLoading, needsEmployeeLink, pathname, router]);
+
   const value: AuthContextType = {
     user,
     token,
@@ -232,6 +246,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canDelete: user?.role?.can_delete === 1,
     canManageUsers: user?.role?.can_manage_users === 1,
     canAccessAllGroups: user?.role?.can_access_all_groups === 1,
+    // Employee linking
+    needsEmployeeLink,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

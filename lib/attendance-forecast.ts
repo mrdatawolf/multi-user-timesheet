@@ -88,7 +88,7 @@ export async function generateAttendanceForecast(days?: number): Promise<Attenda
     });
 
     const employeesOut: EmployeeOut[] = outResult.rows.map((row) => {
-      const r = row as { id: number; first_name: string; last_name: string; time_code: string; hours: number };
+      const r = row as unknown as { id: number; first_name: string; last_name: string; time_code: string; hours: number };
       return {
         id: r.id,
         firstName: r.first_name,

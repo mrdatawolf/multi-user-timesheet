@@ -15,6 +15,7 @@ export interface AuthUser {
   group_id: number;
   is_superuser?: number; // Deprecated, use role instead
   role_id?: number;
+  employee_id?: number;
   group?: Group;
   role?: Role;
 }
@@ -89,6 +90,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     group_id: user.group_id,
     is_superuser: user.is_superuser,
     role_id: user.role_id,
+    employee_id: user.employee_id,
     group: group || undefined,
     role: role || undefined,
   };

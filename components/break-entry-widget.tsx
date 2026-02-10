@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/spinner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Coffee, UtensilsCrossed, Clock, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
@@ -86,6 +96,7 @@ export function BreakEntryWidget({ employeeId }: BreakEntryWidgetProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<BreakType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [compliancePrompt, setCompliancePrompt] = useState<{ breakType: BreakType; reason: string } | null>(null);
 
   const loadBreakEntries = useCallback(async () => {
     if (!employeeId) return;
@@ -137,7 +148,14 @@ export function BreakEntryWidget({ employeeId }: BreakEntryWidgetProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setEntries(data.entries || []);
+        const updatedEntries: BreakEntry[] = data.entries || [];
+        setEntries(updatedEntries);
+
+        // Check if the entry we just logged is non-compliant
+        const loggedEntry = updatedEntries.find(e => e.break_type === breakType);
+        if (loggedEntry && loggedEntry.compliance && !loggedEntry.compliance.compliant) {
+          setCompliancePrompt({ breakType, reason: loggedEntry.compliance.reason });
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to log break');
@@ -147,6 +165,31 @@ export function BreakEntryWidget({ employeeId }: BreakEntryWidgetProps) {
       setError('Failed to log break');
     } finally {
       setSaving(null);
+    }
+  };
+
+  const handleConfirmCompliance = async () => {
+    if (!compliancePrompt) return;
+
+    try {
+      const response = await authFetch('/api/break-entries', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          breakType: compliancePrompt.breakType,
+          complianceOverride: true,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEntries(data.entries || []);
+      }
+    } catch (err) {
+      console.error('Failed to set compliance override:', err);
+    } finally {
+      setCompliancePrompt(null);
     }
   };
 
@@ -270,6 +313,26 @@ export function BreakEntryWidget({ employeeId }: BreakEntryWidgetProps) {
           </span>
         </div>
       </CardContent>
+
+      <AlertDialog open={!!compliancePrompt} onOpenChange={(open) => !open && setCompliancePrompt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Break Compliance Check</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your {compliancePrompt ? BREAK_LABELS[compliancePrompt.breakType] : ''} entry was flagged
+              as out of compliance: {compliancePrompt?.reason}.
+              <br /><br />
+              Did you actually take this break within the proper timeframe?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCompliance}>
+              Yes, I did
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

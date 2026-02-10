@@ -147,12 +147,25 @@ export async function initializeDatabase() {
       end_time TEXT,
       duration_minutes INTEGER NOT NULL,
       notes TEXT,
+      compliance_override INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
       UNIQUE(employee_id, entry_date, break_type)
     )
   `);
+
+  // Add compliance_override column if missing (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE break_entries ADD COLUMN compliance_override INTEGER DEFAULT 0`);
+    console.log('  ✓ Added compliance_override column to break_entries table');
+  } catch (error: any) {
+    // Column already exists — ignore; log other errors
+    const msg = String(error?.message || error || '');
+    if (!msg.includes('duplicate column') && !msg.includes('already exists')) {
+      console.error('  ⚠ Failed to add compliance_override column:', msg);
+    }
+  }
 
   // Insert default time codes
   const timeCodes = [

@@ -6,7 +6,7 @@
  * - Compliance checking against configured time windows
  */
 
-import { db } from './db-sqlite';
+import { db, ensureInitialized } from './db-sqlite';
 import { getBrandFeatures, getBreakTrackingConfig, BreakTrackingConfig, BreakWindow } from './brand-features';
 
 export interface BreakEntry {
@@ -18,6 +18,7 @@ export interface BreakEntry {
   end_time: string | null;
   duration_minutes: number;
   notes: string | null;
+  compliance_override: number;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ export async function isBreakTrackingEnabled(): Promise<BreakTrackingConfig | nu
  * Get break entries for an employee on a specific date
  */
 export async function getBreakEntries(employeeId: number, date: string): Promise<BreakEntry[]> {
+  await ensureInitialized();
   const result = await db.execute({
     sql: 'SELECT * FROM break_entries WHERE employee_id = ? AND entry_date = ? ORDER BY break_type',
     args: [employeeId, date],
@@ -59,6 +61,7 @@ export async function getBreakEntries(employeeId: number, date: string): Promise
       end_time: r.end_time ? String(r.end_time) : null,
       duration_minutes: Number(r.duration_minutes),
       notes: r.notes ? String(r.notes) : null,
+      compliance_override: Number(r.compliance_override || 0),
       created_at: String(r.created_at),
       updated_at: String(r.updated_at),
     };
@@ -88,6 +91,7 @@ export async function getBreakEntryById(id: number): Promise<BreakEntry | null> 
     end_time: r.end_time ? String(r.end_time) : null,
     duration_minutes: Number(r.duration_minutes),
     notes: r.notes ? String(r.notes) : null,
+    compliance_override: Number(r.compliance_override || 0),
     created_at: String(r.created_at),
     updated_at: String(r.updated_at),
   };
@@ -104,16 +108,18 @@ export async function saveBreakEntry(entry: {
   end_time?: string | null;
   duration_minutes: number;
   notes?: string | null;
+  compliance_override?: number;
 }): Promise<number> {
   const result = await db.execute({
     sql: `
-      INSERT INTO break_entries (employee_id, entry_date, break_type, start_time, end_time, duration_minutes, notes, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO break_entries (employee_id, entry_date, break_type, start_time, end_time, duration_minutes, notes, compliance_override, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(employee_id, entry_date, break_type) DO UPDATE SET
         start_time = excluded.start_time,
         end_time = excluded.end_time,
         duration_minutes = excluded.duration_minutes,
         notes = excluded.notes,
+        compliance_override = excluded.compliance_override,
         updated_at = CURRENT_TIMESTAMP
     `,
     args: [
@@ -124,10 +130,27 @@ export async function saveBreakEntry(entry: {
       entry.end_time ?? null,
       entry.duration_minutes,
       entry.notes ?? null,
+      entry.compliance_override ?? 0,
     ],
   });
 
   return Number(result.lastInsertRowid);
+}
+
+/**
+ * Set compliance override on an existing break entry
+ */
+export async function setComplianceOverride(
+  employeeId: number,
+  date: string,
+  breakType: string,
+  override: boolean
+): Promise<void> {
+  await db.execute({
+    sql: `UPDATE break_entries SET compliance_override = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE employee_id = ? AND entry_date = ? AND break_type = ?`,
+    args: [override ? 1 : 0, employeeId, date, breakType],
+  });
 }
 
 /**
@@ -215,7 +238,9 @@ export async function getBreakEntriesWithCompliance(
     const breakConfig = config.breaks[entry.break_type as keyof typeof config.breaks];
 
     let compliance: BreakComplianceResult;
-    if (breakConfig) {
+    if (entry.compliance_override) {
+      compliance = { compliant: true, reason: 'Employee confirmed compliance' };
+    } else if (breakConfig) {
       compliance = checkBreakCompliance(entry, breakConfig, graceMinutes);
     } else {
       // No config for this break type, assume compliant if logged

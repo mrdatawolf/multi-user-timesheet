@@ -48,6 +48,7 @@ interface ReportDefinition {
   apiEndpoint: string;
   type?: string;
   isDefault?: boolean;
+  requiredFeature?: string;
   columns?: ReportColumn[];
   export: {
     csv: boolean;
@@ -130,21 +131,18 @@ export default function ReportsPage() {
     }
   }, [isAuthenticated]);
 
-  // Load report when selection changes or when navigating to page
+  // Auto-generate report when selection changes or on initial load
   useEffect(() => {
-    if (selectedReportId === 'leave-balance-summary' && isAuthenticated) {
-      loadLeaveBalanceSummary();
-    }
-  }, [selectedReportId, isAuthenticated, pathname]);
+    if (!selectedReportId || !isAuthenticated || initialLoading) return;
 
-  // Also refresh when navigating back to reports page
-  useEffect(() => {
-    if (pathname === '/reports' && selectedReportId && isAuthenticated && !initialLoading) {
-      if (selectedReportId === 'leave-balance-summary') {
-        loadLeaveBalanceSummary();
-      }
+    if (selectedReportId === 'leave-balance-summary') {
+      loadLeaveBalanceSummary();
+    } else {
+      // Auto-generate table-based reports with current filters
+      setAttendanceData([]);
+      handleGenerateAttendanceReport();
     }
-  }, [pathname]);
+  }, [selectedReportId, isAuthenticated, initialLoading]);
 
   const loadInitialData = async () => {
     try {
@@ -221,12 +219,18 @@ export default function ReportsPage() {
     try {
       const params = new URLSearchParams({
         employeeId: selectedEmployeeId,
-        timeCode: selectedTimeCode,
         startDate: formatDateForApi(startDate),
         endDate: formatDateForApi(endDate),
       });
 
-      const res = await authFetch(`/api/reports?${params.toString()}`);
+      // Only include timeCode for reports that use it
+      if (selectedReportId !== 'break-compliance') {
+        params.set('timeCode', selectedTimeCode);
+      }
+
+      // Use the apiEndpoint from the selected report definition
+      const endpoint = selectedReport?.apiEndpoint || '/api/reports';
+      const res = await authFetch(`${endpoint}?${params.toString()}`);
 
       if (res.status === 401) {
         return;
@@ -249,6 +253,7 @@ export default function ReportsPage() {
 
   const selectedReport = reportDefinitions.find(r => r.id === selectedReportId);
   const isLeaveBalanceSummary = selectedReportId === 'leave-balance-summary';
+  const isBreakCompliance = selectedReportId === 'break-compliance';
 
   // Use report definition values or fall back to defaults
   const columns = selectedReport?.columns || DEFAULT_COLUMNS;
@@ -358,6 +363,7 @@ export default function ReportsPage() {
               onEndDateChange={setEndDate}
               onGenerate={handleGenerateAttendanceReport}
               loading={reportLoading}
+              hideTimeCode={isBreakCompliance}
               actionButtons={
                 <ReportExport
                   data={attendanceData}

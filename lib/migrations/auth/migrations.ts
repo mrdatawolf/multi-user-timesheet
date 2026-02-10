@@ -5,6 +5,8 @@ import { migration as addUserPreferences } from './003_add_user_preferences';
 import { migration as addRoles } from './004_add_roles';
 import { migration as seedJobTitles } from './005_seed_job_titles';
 import { migration as colorConfig } from './006_color_config';
+import { migration as appSettings } from './007_app_settings';
+import { migration as addEmployeeIdToUsers } from './008_add_employee_id_to_users';
 
 /**
  * Auth Database Migrations
@@ -25,4 +27,6 @@ export const authMigrations: Migration[] = [
   addRoles,
   seedJobTitles,
   colorConfig,
+  appSettings,
+  addEmployeeIdToUsers,
 ];

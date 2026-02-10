@@ -9,10 +9,12 @@ import {
   saveBreakEntry,
   deleteBreakEntry,
   getBreakEntryById,
+  setComplianceOverride,
   getTodayFormatted,
   getCurrentTimeFormatted,
 } from '@/lib/break-tracking';
 import { serializeBigInt } from '@/lib/utils';
+import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +70,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    if (employee.group_id) {
+    // Check permissions (skip if global read enabled)
+    const brandFeatures = await getBrandFeatures();
+    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
+
+    if (employee.group_id && !globalRead) {
       const canView = await canUserReadGroup(authUser.id, employee.group_id);
       if (!canView) {
         return NextResponse.json(
@@ -141,6 +147,7 @@ export async function POST(request: NextRequest) {
       endTime,
       durationMinutes,
       notes,
+      complianceOverride,
     } = body;
 
     // Validate required fields
@@ -169,7 +176,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    if (employee.group_id) {
+    // Users can always log breaks for employees in their own group;
+    // for other groups, require explicit UPDATE permission
+    if (employee.group_id && employee.group_id !== authUser.group_id) {
       const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
       if (!canUpdate) {
         return NextResponse.json(
@@ -195,6 +204,7 @@ export async function POST(request: NextRequest) {
       end_time: endTime || null,
       duration_minutes: durationMinutes,
       notes: notes || null,
+      compliance_override: complianceOverride ? 1 : 0,
     });
 
     // Audit log
@@ -231,6 +241,102 @@ export async function POST(request: NextRequest) {
     console.error('Error saving break entry:', error);
     return NextResponse.json(
       { error: 'Failed to save break entry' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/break-entries
+ *
+ * Set compliance override on a break entry.
+ *
+ * Body:
+ * - employeeId: Employee ID
+ * - date: Date in YYYY-MM-DD format (defaults to today)
+ * - breakType: 'break_1', 'lunch', or 'break_2'
+ * - complianceOverride: boolean
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const config = await isBreakTrackingEnabled();
+    if (!config) {
+      return NextResponse.json(
+        { error: 'Break tracking feature is not enabled' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      employeeId,
+      date = getTodayFormatted(),
+      breakType,
+      complianceOverride,
+    } = body;
+
+    if (!employeeId || !breakType) {
+      return NextResponse.json(
+        { error: 'employeeId and breakType are required' },
+        { status: 400 }
+      );
+    }
+
+    const employee = await getEmployeeById(employeeId);
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // Users can always manage breaks in their own group
+    if (employee.group_id && employee.group_id !== authUser.group_id) {
+      const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
+      if (!canUpdate) {
+        return NextResponse.json(
+          { error: 'Forbidden: You do not have permission to update this employee\'s breaks' },
+          { status: 403 }
+        );
+      }
+    }
+
+    await setComplianceOverride(employeeId, date, breakType, !!complianceOverride);
+
+    // Audit log
+    try {
+      await logAudit({
+        user_id: authUser.id,
+        action: 'UPDATE',
+        table_name: 'break_entries',
+        record_id: 0,
+        old_values: undefined,
+        new_values: JSON.stringify({
+          employee_id: employeeId,
+          entry_date: date,
+          break_type: breakType,
+          compliance_override: complianceOverride,
+        }),
+        ip_address: getClientIP(request),
+        user_agent: getUserAgent(request),
+      });
+    } catch (auditError) {
+      console.error('Failed to log audit (non-critical):', auditError);
+    }
+
+    // Return updated entries
+    const updatedEntries = await getBreakEntriesWithCompliance(employeeId, date);
+
+    return NextResponse.json({
+      success: true,
+      entries: serializeBigInt(updatedEntries),
+    });
+  } catch (error) {
+    console.error('Error updating compliance override:', error);
+    return NextResponse.json(
+      { error: 'Failed to update compliance override' },
       { status: 500 }
     );
   }
@@ -278,9 +384,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Break entry not found' }, { status: 404 });
     }
 
-    // Check permission
+    // Check permission — users can always manage breaks in their own group
     const employee = await getEmployeeById(entry.employee_id);
-    if (employee?.group_id) {
+    if (employee?.group_id && employee.group_id !== authUser.group_id) {
       const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
       if (!canUpdate) {
         return NextResponse.json(

@@ -79,6 +79,16 @@ export interface OfficeAttendanceForecastConfig {
   daysToShow?: number;      // Number of days to forecast (default: 5)
 }
 
+// Global read access configuration
+// When enabled, all authenticated users can READ all employees' attendance data
+// regardless of group permissions. Write permissions are never affected.
+export interface GlobalReadAccessConfig {
+  enabled: boolean;
+  maxOutOfOffice?: number;  // Max employees allowed out at once (0 = no limit)
+  capacityWarningCount?: number;  // # of people out that triggers yellow bar (default 3)
+  capacityCriticalCount?: number;  // # of people out that triggers red bar (default 5)
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -96,6 +106,7 @@ export interface BrandFeatures {
     statusColors?: StatusColorsConfig;
     breakTracking?: BreakTrackingConfig;
     officeAttendanceForecast?: OfficeAttendanceForecastConfig;
+    globalReadAccess?: GlobalReadAccessConfig;
   };
 }
 
@@ -380,4 +391,14 @@ export function getOfficeAttendanceForecastConfig(features: BrandFeatures): Offi
     timeOffCodes: config.timeOffCodes || defaultTimeOffCodes,
     daysToShow: config.daysToShow ?? 5,
   };
+}
+
+/**
+ * Check if global read access is enabled for the current brand.
+ * When enabled, all authenticated users can READ all employees'
+ * attendance data regardless of group permissions.
+ * Write permissions are never affected by this flag.
+ */
+export function isGlobalReadAccessEnabled(features: BrandFeatures): boolean {
+  return features.features.globalReadAccess?.enabled ?? false;
 }

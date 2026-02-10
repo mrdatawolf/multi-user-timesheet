@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/middleware/auth';
 import { getUserReadableGroups, isSuperuser } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
-import { getBrandFeatures, getLeaveBalanceSummaryConfig } from '@/lib/brand-features';
+import { getBrandFeatures, getLeaveBalanceSummaryConfig, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 
 // Force dynamic to prevent caching
@@ -78,8 +78,9 @@ export async function GET(request: NextRequest) {
       brandTimeCodes.map(tc => [tc.code, tc.default_allocation])
     );
 
-    // Check if user is superuser for permission filtering
+    // Check if user is superuser or has global read access for permission filtering
     const userIsSuperuser = await isSuperuser(authUser.id);
+    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
 
     // Build employee query with permission filtering
     let employeeSql = `
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
     `;
     const employeeArgs: any[] = [];
 
-    if (!userIsSuperuser) {
+    if (!userIsSuperuser && !globalRead) {
       const readableGroupIds = await getUserReadableGroups(authUser.id);
       if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {
         readableGroupIds.push(authUser.group_id);
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
       args: employeeArgs,
     });
 
-    const employees = employeesResult.rows as Array<{
+    const employees = employeesResult.rows as unknown as Array<{
       id: number;
       first_name: string;
       last_name: string;
@@ -139,7 +140,7 @@ export async function GET(request: NextRequest) {
 
     // Build allocation lookup: Map<employeeId, Map<timeCode, hours>>
     const allocationsMap = new Map<number, Map<string, number>>();
-    for (const row of allocationsResult.rows as Array<{
+    for (const row of allocationsResult.rows as unknown as Array<{
       employee_id: number;
       time_code: string;
       allocated_hours: number;
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     // Build usage lookup: Map<employeeId, Map<timeCode, hours>>
     const usageMap = new Map<number, Map<string, number>>();
-    for (const row of usageResult.rows as Array<{
+    for (const row of usageResult.rows as unknown as Array<{
       employee_id: number;
       time_code: string;
       total_hours: number;

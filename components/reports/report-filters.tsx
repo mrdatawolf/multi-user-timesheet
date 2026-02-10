@@ -32,6 +32,7 @@ interface ReportFiltersProps {
   onGenerate: () => void;
   loading: boolean;
   actionButtons?: React.ReactNode;
+  hideTimeCode?: boolean;
 }
 
 export function ReportFilters({
@@ -48,6 +49,7 @@ export function ReportFilters({
   onGenerate,
   loading,
   actionButtons,
+  hideTimeCode,
 }: ReportFiltersProps) {
   return (
     <HelpArea helpId="report-filters" bubblePosition="bottom">
@@ -69,22 +71,24 @@ export function ReportFilters({
           </Select>
         </div>
 
-        <div className="flex-1 min-w-[200px] space-y-1">
-          <label className="text-xs">Time Code</label>
-          <Select value={selectedTimeCode} onValueChange={onTimeCodeChange}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Time Codes</SelectItem>
-              {timeCodes.map(tc => (
-                <SelectItem key={tc.code} value={tc.code}>
-                  {tc.code} - {tc.description}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!hideTimeCode && (
+          <div className="flex-1 min-w-[200px] space-y-1">
+            <label className="text-xs">Time Code</label>
+            <Select value={selectedTimeCode} onValueChange={onTimeCodeChange}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time Codes</SelectItem>
+                {timeCodes.map(tc => (
+                  <SelectItem key={tc.code} value={tc.code}>
+                    {tc.code} - {tc.description}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex-1 min-w-[200px] space-y-1">
           <label className="text-xs">Start Date</label>

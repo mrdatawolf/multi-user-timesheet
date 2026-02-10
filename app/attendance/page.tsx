@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AttendanceGrid, type AttendanceEntry } from '@/components/attendance-grid';
+import { AttendanceGrid, type AttendanceEntry, type DailySummary } from '@/components/attendance-grid';
 import { BalanceCards } from '@/components/balance-cards';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +16,7 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getBrandFeatures, getCompanyHolidayDates } from '@/lib/brand-features';
+import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 interface Employee {
   id: number;
@@ -46,7 +46,7 @@ interface TimeAllocation {
 export default function AttendancePage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
@@ -55,6 +55,12 @@ export default function AttendancePage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [totalActiveEmployees, setTotalActiveEmployees] = useState<number>(0);
+  const [maxOutOfOffice, setMaxOutOfOffice] = useState<number>(0);
+  const [capacityWarningCount, setCapacityWarningCount] = useState<number>(3);
+  const [capacityCriticalCount, setCapacityCriticalCount] = useState<number>(5);
+  const [globalReadEnabled, setGlobalReadEnabled] = useState(false);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -108,10 +114,11 @@ export default function AttendancePage() {
     }
 
     try {
-      // Load brand features for company holidays
+      // Load brand features for company holidays and global read access
       const brandFeatures = await getBrandFeatures();
       const holidays = getCompanyHolidayDates(brandFeatures, year);
       setCompanyHolidays(holidays);
+      setGlobalReadEnabled(isGlobalReadAccessEnabled(brandFeatures));
 
       const [employeesRes, timeCodesRes] = await Promise.all([
         authFetch('/api/employees'),
@@ -130,7 +137,11 @@ export default function AttendancePage() {
       if (Array.isArray(employeesData)) {
         setEmployees(employeesData);
         if (employeesData.length > 0 && !selectedEmployeeId) {
-          setSelectedEmployeeId(employeesData[0].id);
+          // Prefer the user's linked employee, fall back to first in list
+          const linkedEmployee = user?.employee_id
+            ? employeesData.find((e: Employee) => e.id === user.employee_id)
+            : null;
+          setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : employeesData[0].id);
         }
       } else {
         console.error('Invalid employees data:', employeesData);
@@ -156,10 +167,20 @@ export default function AttendancePage() {
     if (!selectedEmployeeId || !isAuthenticated) return;
 
     try {
-      const [attendanceRes, allocationsRes] = await Promise.all([
+      // Build parallel fetch list
+      const fetches: Promise<Response>[] = [
         authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
-        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`)
-      ]);
+        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`),
+      ];
+
+      // Also fetch daily summary if global read access is enabled
+      if (globalReadEnabled) {
+        fetches.push(authFetch(`/api/attendance/daily-summary?year=${year}`));
+      }
+
+      const results = await Promise.all(fetches);
+      const [attendanceRes, allocationsRes] = results;
+      const summaryRes = globalReadEnabled ? results[2] : null;
 
       // If redirected to login due to expired session, stop processing
       if (attendanceRes.status === 401 || allocationsRes.status === 401) {
@@ -183,6 +204,16 @@ export default function AttendancePage() {
       } else {
         console.error('Invalid allocations data:', allocationsData);
         setAllocations([]);
+      }
+
+      // Process daily summary if available
+      if (summaryRes && summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        setDailySummary(summaryData.dailySummary || null);
+        setTotalActiveEmployees(summaryData.totalActiveEmployees || 0);
+        setMaxOutOfOffice(summaryData.maxOutOfOffice || 0);
+        setCapacityWarningCount(summaryData.capacityWarningCount ?? 3);
+        setCapacityCriticalCount(summaryData.capacityCriticalCount ?? 5);
       }
     } catch (error) {
       console.error('Failed to load attendance:', error);
@@ -336,6 +367,11 @@ export default function AttendancePage() {
                     timeCodes={timeCodes}
                     onEntryChange={handleEntryChange}
                     companyHolidays={companyHolidays}
+                    dailySummary={dailySummary}
+                    totalActiveEmployees={totalActiveEmployees}
+                    maxOutOfOffice={maxOutOfOffice}
+                    capacityWarningCount={capacityWarningCount}
+                    capacityCriticalCount={capacityCriticalCount}
                   />
                 </div>
 
@@ -370,6 +406,11 @@ export default function AttendancePage() {
                     timeCodes={timeCodes}
                     onEntryChange={handleEntryChange}
                     companyHolidays={companyHolidays}
+                    dailySummary={dailySummary}
+                    totalActiveEmployees={totalActiveEmployees}
+                    maxOutOfOffice={maxOutOfOffice}
+                    capacityWarningCount={capacityWarningCount}
+                    capacityCriticalCount={capacityCriticalCount}
                   />
                 </div>
 
