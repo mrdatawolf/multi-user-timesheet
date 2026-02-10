@@ -3,6 +3,7 @@ import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import { setUserEmployeeId, logAudit } from '@/lib/queries-auth';
 import { authDb } from '@/lib/db-auth';
 import { getAllEmployees, createEmployee } from '@/lib/queries-sqlite';
+import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,9 @@ export async function GET(request: NextRequest) {
     let employees = await getAllEmployees();
     employees = employees.filter(emp => emp.is_active === 1);
 
-    // Filter to user's group if they have one
+    // Filter to user's group if they have one (also include unassigned employees)
     if (authUser.group_id) {
-      employees = employees.filter(emp => emp.group_id === authUser.group_id);
+      employees = employees.filter(emp => !emp.group_id || emp.group_id === authUser.group_id);
     }
 
     // Get employee IDs already linked to other users
@@ -87,11 +88,81 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const resolvedEmail = email || authUser.email || undefined;
+
+      // Check for a soft-deleted employee with the same email — reactivate instead of failing
+      if (resolvedEmail) {
+        const existing = await db.execute({
+          sql: 'SELECT id FROM employees WHERE email = ? AND is_active = 0',
+          args: [resolvedEmail],
+        });
+
+        if (existing.rows.length > 0) {
+          // Reactivate the soft-deleted employee
+          const existingId = Number((existing.rows[0] as unknown as { id: number }).id);
+          await db.execute({
+            sql: `UPDATE employees
+                  SET first_name = ?, last_name = ?, email = ?, group_id = ?,
+                      is_active = 1, created_by = ?, updated_at = CURRENT_TIMESTAMP
+                  WHERE id = ?`,
+            args: [firstName, lastName, resolvedEmail, authUser.group_id, authUser.id, existingId],
+          });
+          employeeId = existingId;
+
+          await logAudit({
+            user_id: authUser.id,
+            action: 'REACTIVATE',
+            table_name: 'employees',
+            record_id: employeeId,
+            new_values: JSON.stringify({
+              first_name: firstName,
+              last_name: lastName,
+              email: resolvedEmail,
+              group_id: authUser.group_id,
+              linked_to_user: authUser.id,
+            }),
+            ip_address: getClientIP(request),
+            user_agent: getUserAgent(request),
+          });
+
+          // Link and return early
+          await setUserEmployeeId(authUser.id, employeeId);
+
+          await logAudit({
+            user_id: authUser.id,
+            action: 'UPDATE',
+            table_name: 'users',
+            record_id: authUser.id,
+            old_values: JSON.stringify({ employee_id: authUser.employee_id }),
+            new_values: JSON.stringify({ employee_id: employeeId }),
+            ip_address: getClientIP(request),
+            user_agent: getUserAgent(request),
+          });
+
+          return NextResponse.json({
+            success: true,
+            employee_id: employeeId,
+            user: {
+              id: authUser.id,
+              username: authUser.username,
+              full_name: authUser.full_name,
+              email: authUser.email,
+              group_id: authUser.group_id,
+              role_id: authUser.role_id,
+              employee_id: employeeId,
+              is_superuser: authUser.is_superuser,
+              group: authUser.group,
+              role: authUser.role,
+            },
+          });
+        }
+      }
+
       const newEmployee = await createEmployee({
         employee_number: undefined,
         first_name: firstName,
         last_name: lastName,
-        email: email || authUser.email || undefined,
+        email: resolvedEmail,
         role: 'employee',
         group_id: authUser.group_id,
         date_of_hire: undefined,
@@ -112,7 +183,7 @@ export async function POST(request: NextRequest) {
         new_values: JSON.stringify({
           first_name: firstName,
           last_name: lastName,
-          email: email || authUser.email,
+          email: resolvedEmail,
           group_id: authUser.group_id,
           linked_to_user: authUser.id,
         }),

@@ -13,7 +13,8 @@ interface DailySummaryDay {
 /**
  * GET /api/attendance/daily-summary?year=2026
  *
- * Returns a per-day summary of all employees' attendance entries for a year.
+ * Returns a per-day summary of employees out of office for a year.
+ * Combines attendance entries AND office_presence toggles (UNION of both sources).
  * Only available when globalReadAccess is enabled.
  */
 export async function GET(request: NextRequest) {
@@ -38,18 +39,28 @@ export async function GET(request: NextRequest) {
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
 
-    // Get count of distinct employees out per date
+    // Count distinct employees out per date from BOTH sources:
+    // 1. attendance_entries (time-off codes like V, PS, etc.)
+    // 2. office_presence (real-time toggle for "out of office" / "at client")
     const entriesResult = await db.execute({
-      sql: `SELECT
-              ae.entry_date,
-              COUNT(DISTINCT ae.employee_id) AS out_count
-            FROM attendance_entries ae
-            JOIN employees e ON ae.employee_id = e.id
-            WHERE ae.entry_date >= ? AND ae.entry_date <= ?
-              AND e.is_active = 1
-            GROUP BY ae.entry_date
-            ORDER BY ae.entry_date`,
-      args: [startDate, endDate],
+      sql: `SELECT out_date, COUNT(DISTINCT employee_id) AS out_count
+            FROM (
+              SELECT ae.entry_date AS out_date, ae.employee_id
+              FROM attendance_entries ae
+              JOIN employees e ON ae.employee_id = e.id
+              WHERE ae.entry_date >= ? AND ae.entry_date <= ?
+                AND e.is_active = 1
+              UNION
+              SELECT op.date AS out_date, op.employee_id
+              FROM office_presence op
+              JOIN employees e ON op.employee_id = e.id
+              WHERE op.date >= ? AND op.date <= ?
+                AND op.is_out = 1
+                AND e.is_active = 1
+            )
+            GROUP BY out_date
+            ORDER BY out_date`,
+      args: [startDate, endDate, startDate, endDate],
     });
 
     // Count total active employees
@@ -69,11 +80,11 @@ export async function GET(request: NextRequest) {
 
     for (const row of entriesResult.rows) {
       const r = row as unknown as {
-        entry_date: string;
+        out_date: string;
         out_count: number;
       };
 
-      dailySummary[r.entry_date] = { outCount: Number(r.out_count) };
+      dailySummary[r.out_date] = { outCount: Number(r.out_count) };
     }
 
     return NextResponse.json({
