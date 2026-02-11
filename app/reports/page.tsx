@@ -11,6 +11,8 @@ import { ReportTable } from '@/components/reports/report-table';
 import { ReportExport } from '@/components/reports/report-export';
 import { LeaveBalanceSummary } from '@/components/reports/leave-balance-summary';
 import { LeaveBalanceExport } from '@/components/reports/leave-balance-export';
+import { AttendanceManagementReport, type AttendanceManagementData } from '@/components/reports/attendance-management-report';
+import { AttendanceManagementExport } from '@/components/reports/attendance-management-export';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -111,6 +113,9 @@ export default function ReportsPage() {
   // Leave Balance Summary state
   const [leaveBalanceData, setLeaveBalanceData] = useState<LeaveBalanceSummaryData | null>(null);
 
+  // Attendance Management Report state
+  const [attendanceManagementData, setAttendanceManagementData] = useState<AttendanceManagementData | null>(null);
+
   // Loading states
   const [initialLoading, setInitialLoading] = useState(true);
   const [reportLoading, setReportLoading] = useState(false);
@@ -137,6 +142,9 @@ export default function ReportsPage() {
 
     if (selectedReportId === 'leave-balance-summary') {
       loadLeaveBalanceSummary();
+    } else if (selectedReportId === 'attendance-management') {
+      // Don't auto-generate — user must pick an employee and click Generate
+      setAttendanceManagementData(null);
     } else {
       // Auto-generate table-based reports with current filters
       setAttendanceData([]);
@@ -209,6 +217,39 @@ export default function ReportsPage() {
     }
   };
 
+  const loadAttendanceManagement = async () => {
+    if (selectedEmployeeId === 'all') {
+      setAttendanceManagementData(null);
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const params = new URLSearchParams({
+        employeeId: selectedEmployeeId,
+        startDate: formatDateForApi(startDate),
+        endDate: formatDateForApi(endDate),
+      });
+      const res = await authFetch(`/api/reports/attendance-management?${params.toString()}`);
+
+      if (res.status === 401) {
+        return;
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        setAttendanceManagementData(data);
+      } else {
+        console.error('Failed to load attendance management report');
+        setAttendanceManagementData(null);
+      }
+    } catch (error) {
+      console.error('Failed to load attendance management report:', error);
+      setAttendanceManagementData(null);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const formatDateForApi = (date: Date | undefined): string => {
     if (!date) return '';
     return date.toISOString().split('T')[0];
@@ -253,6 +294,7 @@ export default function ReportsPage() {
 
   const selectedReport = reportDefinitions.find(r => r.id === selectedReportId);
   const isLeaveBalanceSummary = selectedReportId === 'leave-balance-summary';
+  const isAttendanceManagement = selectedReportId === 'attendance-management';
   const isBreakCompliance = selectedReportId === 'break-compliance';
 
   // Use report definition values or fall back to defaults
@@ -347,6 +389,36 @@ export default function ReportsPage() {
               loading={reportLoading}
             />
           </div>
+        ) : isAttendanceManagement ? (
+          /* Attendance Management Report (per-employee) */
+          <>
+            <ReportFilters
+              employees={employees}
+              timeCodes={timeCodes}
+              selectedEmployeeId={selectedEmployeeId}
+              onEmployeeChange={setSelectedEmployeeId}
+              selectedTimeCode={selectedTimeCode}
+              onTimeCodeChange={setSelectedTimeCode}
+              startDate={startDate}
+              onStartDateChange={setStartDate}
+              endDate={endDate}
+              onEndDateChange={setEndDate}
+              onGenerate={loadAttendanceManagement}
+              loading={reportLoading}
+              hideTimeCode={true}
+              actionButtons={
+                <AttendanceManagementExport
+                  data={attendanceManagementData}
+                  filename={exportFilename}
+                />
+              }
+            />
+
+            <AttendanceManagementReport
+              data={attendanceManagementData}
+              loading={reportLoading}
+            />
+          </>
         ) : (
           /* Attendance Summary Report (and other table-based reports) */
           <>
