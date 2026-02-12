@@ -47,6 +47,8 @@ interface Employee {
   rehire_date?: string;
   employment_type?: string;
   seniority_rank?: number;
+  abbreviation?: string;
+  show_in_office_presence?: number;
   created_by?: number;
   is_active: number;
 }
@@ -80,6 +82,8 @@ export default function UsersPage() {
 
   // Check if leave management is enabled for this brand
   const leaveManagementEnabled = brandFeatures?.features?.leaveManagement?.enabled ?? false;
+  const officePresenceEnabled = brandFeatures?.features?.officePresenceTracking?.enabled ?? false;
+  const isAdmin = user?.group?.is_master === 1 || user?.role_id === 1;
 
   // Set the current screen for help context
   const { setCurrentScreen } = useHelp();
@@ -98,6 +102,8 @@ export default function UsersPage() {
     rehire_date: '',
     employment_type: 'full_time',
     seniority_rank: '',
+    abbreviation: '',
+    show_in_office_presence: '1',
   });
 
   useEffect(() => {
@@ -186,6 +192,8 @@ export default function UsersPage() {
         rehire_date: employee.rehire_date || '',
         employment_type: employee.employment_type || 'full_time',
         seniority_rank: employee.seniority_rank?.toString() || '',
+        abbreviation: employee.abbreviation || '',
+        show_in_office_presence: (employee.show_in_office_presence ?? 1).toString(),
       });
     } else {
       setEditingEmployee(null);
@@ -200,6 +208,8 @@ export default function UsersPage() {
         rehire_date: '',
         employment_type: 'full_time',
         seniority_rank: '',
+        abbreviation: '',
+        show_in_office_presence: '1',
       });
     }
     setIsDialogOpen(true);
@@ -220,6 +230,8 @@ export default function UsersPage() {
       rehire_date: formData.rehire_date || null,
       employment_type: formData.employment_type || 'full_time',
       seniority_rank: formData.seniority_rank ? parseInt(formData.seniority_rank) : null,
+      abbreviation: formData.abbreviation || null,
+      show_in_office_presence: parseInt(formData.show_in_office_presence),
     };
 
     try {
@@ -239,7 +251,8 @@ export default function UsersPage() {
         if (response.status === 401) return;
 
         if (!response.ok) {
-          throw new Error('Failed to update employee');
+          const errData = await response.json().catch(() => null);
+          throw new Error(errData?.error || 'Failed to update employee');
         }
       } else {
         // Create employee
@@ -254,15 +267,16 @@ export default function UsersPage() {
         if (response.status === 401) return;
 
         if (!response.ok) {
-          throw new Error('Failed to create employee');
+          const errData = await response.json().catch(() => null);
+          throw new Error(errData?.error || 'Failed to create employee');
         }
       }
 
       handleCloseDialog();
       loadEmployees();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save employee:', error);
-      alert('Failed to save employee');
+      alert(error.message || 'Failed to save employee');
     }
   };
 
@@ -432,6 +446,7 @@ export default function UsersPage() {
             <TableRow>
               <TableHead>Employee #</TableHead>
               <TableHead>Name</TableHead>
+              {officePresenceEnabled && <TableHead>Abbrev</TableHead>}
               <TableHead>Email</TableHead>
               <TableHead>Job Title</TableHead>
               <TableHead>Group</TableHead>
@@ -443,7 +458,7 @@ export default function UsersPage() {
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={leaveManagementEnabled ? 8 : 7} className="text-center text-muted-foreground">
+                <TableCell colSpan={7 + (leaveManagementEnabled ? 1 : 0) + (officePresenceEnabled ? 1 : 0)} className="text-center text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>
@@ -462,6 +477,11 @@ export default function UsersPage() {
                   <TableCell className="font-medium">
                     {employee.first_name} {employee.last_name}
                   </TableCell>
+                  {officePresenceEnabled && (
+                    <TableCell className="font-mono text-xs">
+                      {employee.abbreviation || '-'}
+                    </TableCell>
+                  )}
                   <TableCell>{employee.email || '-'}</TableCell>
                   <TableCell className="capitalize">{employee.role}</TableCell>
                   <TableCell>
@@ -632,6 +652,45 @@ export default function UsersPage() {
                 placeholder="Optional"
               />
             </div>
+
+            {officePresenceEnabled && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="abbreviation">Abbreviation</Label>
+                  <Input
+                    id="abbreviation"
+                    value={formData.abbreviation}
+                    onChange={(e) =>
+                      setFormData({ ...formData, abbreviation: e.target.value.toUpperCase().slice(0, 3) })
+                    }
+                    maxLength={3}
+                    placeholder="e.g. JDS"
+                  />
+                  <p className="text-xs text-muted-foreground">Unique 1-3 character ID for office presence bar</p>
+                </div>
+
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="show_in_office_presence">Show in Office Presence</Label>
+                    <Select
+                      value={formData.show_in_office_presence}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, show_in_office_presence: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Shown</SelectItem>
+                        <SelectItem value="0">Hidden</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Hide C-suite or remote employees from office bar</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

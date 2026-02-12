@@ -17,6 +17,10 @@
     "policyEnforcement": {
       "enabled": true
     },
+    "attendanceManagement": {
+      "enabled": true,
+      "timeCodeOrder": ["V", "PSL", "FLH", "BR", "FMLAUP", "HL", "JD", "PERS", "SUP", "WCP", "WCUP", "VUP", "VTO"]
+    },
     "accrualCalculations": {
       "enabled": true,
       "rules": {

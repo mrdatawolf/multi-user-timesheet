@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { getUserById, getUserByUsername, type User, type Group, type Role, getGroupById, getUserRole } from '../queries-auth';
+import { db } from '../db-sqlite';
 
 // JWT secret - In production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -16,6 +17,7 @@ export interface AuthUser {
   is_superuser?: number; // Deprecated, use role instead
   role_id?: number;
   employee_id?: number;
+  employee_abbreviation?: string;
   group?: Group;
   role?: Role;
 }
@@ -82,6 +84,20 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const group = await getGroupById(user.group_id);
   const role = await getUserRole(user.id);
 
+  // Look up employee abbreviation from attendance.db if user is linked
+  let employee_abbreviation: string | undefined;
+  if (user.employee_id) {
+    try {
+      const empResult = await db.execute({
+        sql: 'SELECT abbreviation FROM employees WHERE id = ?',
+        args: [user.employee_id],
+      });
+      employee_abbreviation = (empResult.rows[0] as any)?.abbreviation || undefined;
+    } catch {
+      // Non-fatal: attendance DB may not be available
+    }
+  }
+
   return {
     id: user.id,
     username: user.username,
@@ -91,6 +107,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     is_superuser: user.is_superuser,
     role_id: user.role_id,
     employee_id: user.employee_id,
+    employee_abbreviation,
     group: group || undefined,
     role: role || undefined,
   };

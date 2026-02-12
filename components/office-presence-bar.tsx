@@ -8,7 +8,7 @@ interface PresenceEmployee {
   id: number;
   firstName: string;
   lastName: string;
-  initials: string;
+  abbreviation: string;
   isOut: boolean;
 }
 
@@ -103,7 +103,7 @@ export function OfficePresenceBar() {
               canToggle ? 'cursor-pointer' : 'cursor-default opacity-70'
             )}
           >
-            {emp.initials}
+            {emp.abbreviation}
           </button>
         );
       })}

@@ -161,7 +161,7 @@ export function LeaveBalanceSummary({ data, loading }: LeaveBalanceSummaryProps)
 
   if (loading) {
     return (
-      <div className="border rounded-lg p-8 flex justify-center">
+      <div className="border rounded-lg p-2 flex justify-center">
         <Spinner />
       </div>
     );
@@ -169,7 +169,7 @@ export function LeaveBalanceSummary({ data, loading }: LeaveBalanceSummaryProps)
 
   if (!data || data.employees.length === 0) {
     return (
-      <div className="border rounded-lg p-8 text-center text-muted-foreground">
+      <div className="border rounded-lg p-2 text-center text-muted-foreground">
         No employees found.
       </div>
     );

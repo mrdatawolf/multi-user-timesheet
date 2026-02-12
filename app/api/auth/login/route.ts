@@ -3,6 +3,7 @@ import { authenticateUser, generateToken, getClientIP, getUserAgent, verifyPassw
 import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-auth';
 import { logAudit } from '@/lib/queries-auth';
 import { authDb } from '@/lib/db-auth';
+import { db } from '@/lib/db-sqlite';
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +75,20 @@ export async function POST(request: NextRequest) {
     const group = await getGroupById(user.group_id);
     const role = await getUserRole(user.id);
 
+    // Look up employee abbreviation from attendance.db if user is linked
+    let employee_abbreviation: string | undefined;
+    if (user.employee_id) {
+      try {
+        const empResult = await db.execute({
+          sql: 'SELECT abbreviation FROM employees WHERE id = ?',
+          args: [user.employee_id],
+        });
+        employee_abbreviation = (empResult.rows[0] as any)?.abbreviation || undefined;
+      } catch {
+        // Non-fatal
+      }
+    }
+
     // Log audit entry
     await logAudit({
       user_id: user.id,
@@ -94,6 +109,7 @@ export async function POST(request: NextRequest) {
         group_id: user.group_id,
         role_id: user.role_id,
         employee_id: user.employee_id,
+        employee_abbreviation,
         is_superuser: user.is_superuser, // Deprecated
         group: group,
         role: role,

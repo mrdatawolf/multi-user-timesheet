@@ -10,6 +10,7 @@
       "apiEndpoint": "/api/reports/attendance-management",
       "type": "custom",
       "isDefault": true,
+      "requiredFeature": "attendanceManagement",
       "export": {
         "csv": true,
         "pdf": false,

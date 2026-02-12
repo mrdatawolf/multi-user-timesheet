@@ -32,11 +32,13 @@ export async function GET(request: NextRequest) {
               e.id,
               e.first_name,
               e.last_name,
+              e.abbreviation,
               COALESCE(op.is_out, 0) AS is_out
             FROM employees e
             LEFT JOIN office_presence op
               ON e.id = op.employee_id AND op.date = ?
             WHERE e.is_active = 1
+              AND COALESCE(e.show_in_office_presence, 1) = 1
             ORDER BY e.first_name, e.last_name`,
       args: [today],
     });
@@ -45,12 +47,13 @@ export async function GET(request: NextRequest) {
       id: number;
       first_name: string;
       last_name: string;
+      abbreviation: string | null;
       is_out: number;
     }>).map(row => ({
       id: row.id,
       firstName: row.first_name,
       lastName: row.last_name,
-      initials: `${row.first_name[0] || ''}${row.last_name[0] || ''}`.toUpperCase(),
+      abbreviation: row.abbreviation || `${row.first_name[0] || ''}${row.last_name[0] || ''}`.toUpperCase(),
       isOut: row.is_out === 1,
     }));
 

@@ -42,7 +42,7 @@ function formatDate(dateStr: string): string {
 export function AttendanceManagementReport({ data, loading }: AttendanceManagementReportProps) {
   if (loading) {
     return (
-      <div className="border rounded-lg p-8 flex justify-center">
+      <div className="border rounded-lg p-2 flex justify-center">
         <Spinner />
       </div>
     );
@@ -50,7 +50,7 @@ export function AttendanceManagementReport({ data, loading }: AttendanceManageme
 
   if (!data) {
     return (
-      <div className="border rounded-lg p-8 text-center text-muted-foreground">
+      <div className="border rounded-lg p-2 text-center text-muted-foreground">
         Select an employee and click Generate Report.
       </div>
     );
@@ -60,12 +60,12 @@ export function AttendanceManagementReport({ data, loading }: AttendanceManageme
   const totalEntries = dayOrder.reduce((sum, day) => sum + (data.dayOfWeekBreakdown[day] || 0), 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Report Title */}
       <h2 className="text-xl font-bold text-center">Attendance Management Report</h2>
 
       {/* Header Section */}
-      <div className="border rounded-lg p-4">
+      <div className="border rounded-lg p-2">
         <table className="w-auto">
           <tbody>
             <tr>
@@ -89,7 +89,7 @@ export function AttendanceManagementReport({ data, loading }: AttendanceManageme
       </div>
 
       {/* Summary Row: Time Code Summary + Day-of-Week Breakdown */}
-      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-2">
         {/* Left Panel: Time Code Summary */}
         <div className="flex-1 border rounded-lg overflow-x-auto">
           <Table>

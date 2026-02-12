@@ -12,6 +12,7 @@ interface User {
   is_superuser?: number; // Deprecated, use role instead
   role_id?: number;
   employee_id?: number;
+  employee_abbreviation?: string;
   role?: {
     id: number;
     name: string;
@@ -59,6 +60,7 @@ interface AuthContextType {
 
   // EMPLOYEE LINKING
   needsEmployeeLink: boolean;     // User needs to link to an employee before proceeding
+  needsAbbreviation: boolean;     // User needs to set their office abbreviation
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -218,12 +220,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Redirect unlinked non-master users to the employee linking page
   const needsEmployeeLink = !!user && !user.employee_id && user.group?.is_master !== 1;
+  // Redirect linked users without abbreviation to set it (master admins exempt)
+  const needsAbbreviation = !!user && !!user.employee_id && !user.employee_abbreviation && user.group?.is_master !== 1;
 
   useEffect(() => {
     if (!isLoading && needsEmployeeLink && pathname !== '/link-employee' && pathname !== '/login') {
       router.push('/link-employee');
+    } else if (!isLoading && needsAbbreviation && pathname !== '/set-abbreviation' && pathname !== '/link-employee' && pathname !== '/login') {
+      router.push('/set-abbreviation');
     }
-  }, [isLoading, needsEmployeeLink, pathname, router]);
+  }, [isLoading, needsEmployeeLink, needsAbbreviation, pathname, router]);
 
   const value: AuthContextType = {
     user,
@@ -248,6 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canAccessAllGroups: user?.role?.can_access_all_groups === 1,
     // Employee linking
     needsEmployeeLink,
+    needsAbbreviation,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

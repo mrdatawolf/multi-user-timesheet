@@ -81,6 +81,19 @@ export async function GET(request: NextRequest) {
     const brandTimeCodes = getBrandTimeCodes() || [];
     const activeTimeCodes = brandTimeCodes.filter(tc => tc.is_active === 1);
 
+    // Sort by configured timeCodeOrder if present, otherwise use brand JSON order
+    const timeCodeOrder = brandFeatures.features.attendanceManagement?.timeCodeOrder;
+    if (timeCodeOrder && timeCodeOrder.length > 0) {
+      activeTimeCodes.sort((a, b) => {
+        const aIdx = timeCodeOrder.indexOf(a.code);
+        const bIdx = timeCodeOrder.indexOf(b.code);
+        // Codes not in the order list go to the end
+        const aOrder = aIdx === -1 ? timeCodeOrder.length : aIdx;
+        const bOrder = bIdx === -1 ? timeCodeOrder.length : bIdx;
+        return aOrder - bOrder;
+      });
+    }
+
     // Get allocations for this employee for the year
     const year = new Date(startDate).getFullYear();
     const allocResult = await db.execute({

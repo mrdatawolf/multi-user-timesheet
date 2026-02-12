@@ -1,15 +1,14 @@
 {
-  "brandId": "BT",
+  "brandId": "Default",
   "version": "1.0",
-  "description": "Report definitions for BT brand",
+  "description": "Report definitions for Default brand",
   "reports": [
     {
       "id": "attendance-summary",
       "name": "Attendance Summary",
       "description": "View attendance entries filtered by employee, time code, and date range",
       "apiEndpoint": "/api/reports",
-      "type": "table",
-      "isDefault": false,
+      "isDefault": true,
       "columns": [
         { "key": "employee_name", "header": "Employee" },
         { "key": "entry_date", "header": "Date" },
@@ -21,33 +20,6 @@
         "csv": true,
         "pdf": false,
         "filename": "attendance_report"
-      }
-    },
-    {
-      "id": "leave-balance-summary",
-      "name": "Leave Balance Summary",
-      "description": "Overview of all employees' leave balances for the current year",
-      "apiEndpoint": "/api/reports/leave-balance-summary",
-      "type": "pivot",
-      "isDefault": true,
-      "export": {
-        "csv": true,
-        "pdf": false,
-        "filename": "leave_balance_summary"
-      }
-    },
-    {
-      "id": "attendance-management",
-      "name": "Attendance Management Report",
-      "description": "Per-employee attendance summary with time code usage, day-of-week breakdown, and detailed entries",
-      "apiEndpoint": "/api/reports/attendance-management",
-      "type": "custom",
-      "isDefault": false,
-      "requiredFeature": "attendanceManagement",
-      "export": {
-        "csv": true,
-        "pdf": false,
-        "filename": "attendance_management_report"
       }
     },
     {

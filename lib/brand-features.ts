@@ -114,6 +114,10 @@ export interface BrandFeatures {
     officeAttendanceForecast?: OfficeAttendanceForecastConfig;
     globalReadAccess?: GlobalReadAccessConfig;
     officePresenceTracking?: OfficePresenceTrackingConfig;
+    attendanceManagement?: {
+      enabled: boolean;
+      timeCodeOrder?: string[];  // Display order for summary rows (time code strings). Unlisted codes appear at the end.
+    };
   };
 }
 
