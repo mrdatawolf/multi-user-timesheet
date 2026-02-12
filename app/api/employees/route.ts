@@ -165,6 +165,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate abbreviation if provided
+    if (body.abbreviation) {
+      const abbr = String(body.abbreviation).toUpperCase().trim();
+      if (abbr.length > 3) {
+        return NextResponse.json({ error: 'Abbreviation must be 3 characters or less' }, { status: 400 });
+      }
+      const existing = await db.execute({
+        sql: 'SELECT id FROM employees WHERE abbreviation = ? COLLATE NOCASE',
+        args: [abbr],
+      });
+      if (existing.rows.length > 0) {
+        return NextResponse.json({ error: 'Abbreviation is already taken' }, { status: 400 });
+      }
+      body.abbreviation = abbr;
+    }
+
     const newEmployee = await createEmployee({
       employee_number: body.employee_number,
       first_name: body.first_name,
@@ -176,6 +192,8 @@ export async function POST(request: NextRequest) {
       rehire_date: body.rehire_date,
       employment_type: body.employment_type || 'full_time',
       seniority_rank: body.seniority_rank,
+      abbreviation: body.abbreviation,
+      show_in_office_presence: body.show_in_office_presence,
       created_by: authUser.id,
       is_active: 1
     });
@@ -197,6 +215,8 @@ export async function POST(request: NextRequest) {
         rehire_date: newEmployee.rehire_date,
         employment_type: newEmployee.employment_type,
         seniority_rank: newEmployee.seniority_rank,
+        abbreviation: newEmployee.abbreviation,
+        show_in_office_presence: newEmployee.show_in_office_presence,
       }),
       ip_address: getClientIP(request),
       user_agent: getUserAgent(request),
@@ -237,7 +257,12 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check permissions for the old group (Phase 2 CRUD permissions)
-    if (oldEmployee.group_id) {
+    // Allow self-service abbreviation update (user updating their own linked employee's abbreviation)
+    const isSelfAbbreviationUpdate = authUser.employee_id === employeeId
+      && body.abbreviation !== undefined
+      && Object.keys(body).filter(k => k !== 'id' && k !== 'abbreviation').length === 0;
+
+    if (!isSelfAbbreviationUpdate && oldEmployee.group_id) {
       const canUpdate = await canUserUpdateInGroup(authUser.id, oldEmployee.group_id);
       if (!canUpdate) {
         return NextResponse.json(
@@ -268,7 +293,7 @@ export async function PUT(request: NextRequest) {
 
     if (body.email !== undefined) {
       updates.push('email = ?');
-      args.push(body.email);
+      args.push(body.email || null);
     }
 
     if (body.role !== undefined) {
@@ -299,6 +324,29 @@ export async function PUT(request: NextRequest) {
     if (body.seniority_rank !== undefined) {
       updates.push('seniority_rank = ?');
       args.push(body.seniority_rank);
+    }
+
+    if (body.abbreviation !== undefined) {
+      const abbr = body.abbreviation ? String(body.abbreviation).toUpperCase().trim() : null;
+      if (abbr && abbr.length > 3) {
+        return NextResponse.json({ error: 'Abbreviation must be 3 characters or less' }, { status: 400 });
+      }
+      if (abbr) {
+        const existing = await db.execute({
+          sql: 'SELECT id FROM employees WHERE abbreviation = ? COLLATE NOCASE AND id != ?',
+          args: [abbr, employeeId],
+        });
+        if (existing.rows.length > 0) {
+          return NextResponse.json({ error: 'Abbreviation is already taken' }, { status: 400 });
+        }
+      }
+      updates.push('abbreviation = ?');
+      args.push(abbr);
+    }
+
+    if (body.show_in_office_presence !== undefined) {
+      updates.push('show_in_office_presence = ?');
+      args.push(body.show_in_office_presence);
     }
 
     if (body.is_active !== undefined) {
@@ -341,6 +389,8 @@ export async function PUT(request: NextRequest) {
         rehire_date: oldEmployee.rehire_date,
         employment_type: oldEmployee.employment_type,
         seniority_rank: oldEmployee.seniority_rank,
+        abbreviation: oldEmployee.abbreviation,
+        show_in_office_presence: oldEmployee.show_in_office_presence,
         is_active: oldEmployee.is_active,
       }),
       new_values: JSON.stringify({
@@ -354,6 +404,8 @@ export async function PUT(request: NextRequest) {
         rehire_date: updatedEmployee?.rehire_date,
         employment_type: updatedEmployee?.employment_type,
         seniority_rank: updatedEmployee?.seniority_rank,
+        abbreviation: updatedEmployee?.abbreviation,
+        show_in_office_presence: updatedEmployee?.show_in_office_presence,
         is_active: updatedEmployee?.is_active,
       }),
       ip_address: getClientIP(request),

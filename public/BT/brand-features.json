@@ -68,6 +68,9 @@
     },
     "officePresenceTracking": {
       "enabled": true
+    },
+    "attendanceManagement": {
+      "enabled": true
     }
   }
 }

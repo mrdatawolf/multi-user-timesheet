@@ -26,6 +26,8 @@ export async function initializeDatabase() {
       rehire_date DATE,
       employment_type TEXT DEFAULT 'full_time',
       seniority_rank INTEGER,
+      abbreviation TEXT,
+      show_in_office_presence INTEGER DEFAULT 1,
       created_by INTEGER,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -77,6 +79,22 @@ export async function initializeDatabase() {
   try {
     await db.execute(`ALTER TABLE employees ADD COLUMN seniority_rank INTEGER`);
     console.log('  ✓ Added seniority_rank column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add abbreviation column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN abbreviation TEXT`);
+    console.log('  ✓ Added abbreviation column to employees table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add show_in_office_presence column if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE employees ADD COLUMN show_in_office_presence INTEGER DEFAULT 1`);
+    console.log('  ✓ Added show_in_office_presence column to employees table');
   } catch (error) {
     // Column already exists, ignore error
   }

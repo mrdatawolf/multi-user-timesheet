@@ -12,6 +12,8 @@ export interface Employee {
   rehire_date?: string;
   employment_type?: string;  // 'full_time' | 'part_time'
   seniority_rank?: number;   // 1-5 (tiebreaker for same hire dates)
+  abbreviation?: string;     // 1-3 char unique identifier for office presence
+  show_in_office_presence?: number; // 1 = shown (default), 0 = hidden
   created_by?: number;
   is_active: number;
 }
@@ -50,8 +52,8 @@ export async function getEmployeeById(id: number): Promise<Employee | null> {
 
 export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
   const result = await db.execute({
-    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, rehire_date, employment_type, seniority_rank, created_by, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO employees (employee_number, first_name, last_name, email, role, group_id, date_of_hire, rehire_date, employment_type, seniority_rank, abbreviation, show_in_office_presence, created_by, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       employee.employee_number || null,
       employee.first_name,
@@ -63,6 +65,8 @@ export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Em
       employee.rehire_date || null,
       employee.employment_type || 'full_time',
       employee.seniority_rank || null,
+      employee.abbreviation || null,
+      employee.show_in_office_presence ?? 1,
       employee.created_by || null,
       employee.is_active,
     ],

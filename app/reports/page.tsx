@@ -143,6 +143,12 @@ export default function ReportsPage() {
     if (selectedReportId === 'leave-balance-summary') {
       loadLeaveBalanceSummary();
     } else if (selectedReportId === 'attendance-management') {
+      // Default dates to previous month
+      const now = new Date();
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      setStartDate(prevMonthStart);
+      setEndDate(prevMonthEnd);
       // Don't auto-generate — user must pick an employee and click Generate
       setAttendanceManagementData(null);
     } else {
@@ -365,7 +371,7 @@ export default function ReportsPage() {
         {isLeaveBalanceSummary ? (
           /* Leave Balance Summary Report */
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2 border rounded-lg bg-muted">
               <h2 className="text-lg font-semibold">
                 {leaveBalanceData?.year || new Date().getFullYear()} Leave Balances
               </h2>
@@ -384,10 +390,12 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <LeaveBalanceSummary
-              data={leaveBalanceData}
-              loading={reportLoading}
-            />
+            <div className="w-4/5 mx-auto space-y-2 [&_td]:py-1 [&_th]:py-1 [&_th]:h-auto">
+              <LeaveBalanceSummary
+                data={leaveBalanceData}
+                loading={reportLoading}
+              />
+            </div>
           </div>
         ) : isAttendanceManagement ? (
           /* Attendance Management Report (per-employee) */
@@ -414,10 +422,12 @@ export default function ReportsPage() {
               }
             />
 
-            <AttendanceManagementReport
-              data={attendanceManagementData}
-              loading={reportLoading}
-            />
+            <div className="w-3/5 mx-auto space-y-2 [&_td]:py-1 [&_th]:py-1 [&_th]:h-auto">
+              <AttendanceManagementReport
+                data={attendanceManagementData}
+                loading={reportLoading}
+              />
+            </div>
           </>
         ) : (
           /* Attendance Summary Report (and other table-based reports) */
@@ -444,11 +454,13 @@ export default function ReportsPage() {
               }
             />
 
-            <ReportTable
-              columns={columns}
-              data={attendanceData}
-              loading={reportLoading}
-            />
+            <div className="w-4/5 mx-auto space-y-2 [&_td]:py-1 [&_th]:py-1 [&_th]:h-auto">
+              <ReportTable
+                columns={columns}
+                data={attendanceData}
+                loading={reportLoading}
+              />
+            </div>
           </>
         )}
       </div>

@@ -53,7 +53,7 @@ export function ReportFilters({
 }: ReportFiltersProps) {
   return (
     <HelpArea helpId="report-filters" bubblePosition="bottom">
-      <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
+      <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-muted">
         <div className="flex-1 min-w-[200px] space-y-1">
           <label className="text-xs">Employee</label>
           <Select value={selectedEmployeeId} onValueChange={onEmployeeChange}>
