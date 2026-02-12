@@ -48,6 +48,32 @@
     },
     "globalReadAccess": {
       "enabled": false
-    }
+    },
+    "companyHolidays": {
+      "enabled": true,
+      "year": 2026,
+      "dates": [
+        { "date": "2026-01-01", "name": "New Year's Day" },
+        { "date": "2026-05-25", "name": "Memorial Day" },
+        { "date": "2026-07-04", "name": "Independence Day" },
+        { "date": "2026-09-07", "name": "Labor Day" },
+        { "date": "2026-11-26", "name": "Thanksgiving" },
+        { "date": "2026-12-25", "name": "Christmas Day" }
+      ]
+    },
+    "reports": {
+      "leaveBalanceSummary": {
+        "enabled": true,
+        "warningThreshold": 0.9,
+        "criticalThreshold": 1.0
+      }
+    },
+    "officePresenceTracking": {
+      "enabled": true
+    },
+    "attendanceManagement": {
+      "enabled": true
+    },
+    "attendanceYearLayout": "table"
   }
 }

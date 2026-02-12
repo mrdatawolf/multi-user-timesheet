@@ -3,6 +3,9 @@ const path = require('path');
 
 console.log('Packaging standalone server for distribution...');
 
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+const version = packageJson.version;
+
 const distDir = path.join(__dirname, '..', 'dist-server');
 // Next.js standalone creates a nested folder with the project name
 const standaloneDir = path.join(__dirname, '..', '.next', 'standalone', 'multi-user-timesheet');
@@ -100,7 +103,7 @@ const startScript = `@echo off
 title Attendance Server
 echo.
 echo ========================================
-echo   Attendance Management Server
+echo   Attendance Management Server v${version}
 echo ========================================
 echo.
 echo Starting server on port 6029...

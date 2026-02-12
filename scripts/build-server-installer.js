@@ -184,7 +184,7 @@ title Attendance Server
 cd /d "%~dp0server"
 echo.
 echo ========================================
-echo   Attendance Management Server
+echo   Attendance Management Server v${version}
 echo ========================================
 echo.
 echo Starting server on port 6029...

@@ -118,6 +118,7 @@ export interface BrandFeatures {
       enabled: boolean;
       timeCodeOrder?: string[];  // Display order for summary rows (time code strings). Unlisted codes appear at the end.
     };
+    attendanceYearLayout?: 'table' | 'calendar';  // Year view layout: 'table' (default 12x31 grid) or 'calendar' (12 month cards)
   };
 }
 
@@ -419,4 +420,12 @@ export function isGlobalReadAccessEnabled(features: BrandFeatures): boolean {
  */
 export function isOfficePresenceTrackingEnabled(features: BrandFeatures): boolean {
   return features.features.officePresenceTracking?.enabled ?? false;
+}
+
+/**
+ * Get the attendance year view layout style.
+ * Returns 'table' (default 12x31 grid) or 'calendar' (12 month cards).
+ */
+export function getAttendanceYearLayout(features: BrandFeatures): 'table' | 'calendar' {
+  return features.features.attendanceYearLayout ?? 'table';
 }

@@ -71,6 +71,12 @@
     },
     "attendanceManagement": {
       "enabled": true
-    }
+    },
+    "statusColors": {
+      "warning": "amber",
+      "critical": "red",
+      "normal": "gray"
+    },
+    "attendanceYearLayout": "table"
   }
 }
