@@ -224,7 +224,8 @@ See [DATABASE-MANAGEMENT.md](info/DATABASE-MANAGEMENT.md) for complete database 
 │   ├── office-capacity-settings.tsx # Admin office capacity config
 │   ├── employee-link-settings.tsx  # User-employee link management
 │   ├── break-entry-widget.tsx      # Break/lunch logging widget
-│   ├── attendance-grid.tsx      # Year view calendar grid component
+│   ├── attendance-grid.tsx      # Year view table grid component (default)
+│   ├── attendance-grid-year-calendar.tsx # Year view calendar card layout (brand option)
 │   ├── attendance-grid-month.tsx # Month view calendar grid
 │   ├── attendance-grid-week.tsx  # Week view day cards
 │   ├── view-toggle.tsx          # Year/Month/Week segmented toggle
@@ -305,32 +306,45 @@ When features are disabled:
 
 ### Brand-Level Feature Flags (`brand-features.json`)
 
-Brand-specific features are configured in `public/{brand}/brand-features.json`:
+Brand-specific features are configured in `public/{brand}/brand-features.json`. All brands should include all feature keys — set `"enabled": false` to make a feature available but inactive.
 
 ```json
 {
-  "globalReadAccess": {
-    "enabled": true,
-    "maxOutOfOffice": 5,
-    "capacityWarningCount": 3,
-    "capacityCriticalCount": 5
-  },
-  "breakTracking": {
-    "enabled": true,
-    "breaks": {
-      "break_1": { "start": "09:00", "end": "09:30", "duration": 10 },
-      "lunch":   { "start": "11:30", "end": "13:00", "duration": 30 },
-      "break_2": { "start": "14:00", "end": "14:30", "duration": 10 }
-    },
-    "graceMinutes": 5
-  }
+  "leaveManagement": { "enabled": true, "leaveTypes": { ... } },
+  "approvalWorkflows": { "enabled": true },
+  "policyEnforcement": { "enabled": true },
+  "accrualCalculations": { "enabled": true },
+  "colorCustomization": { "enabled": true, "allowTimeCodeColors": true, "allowStatusColors": true },
+  "statusColors": { "warning": "amber", "critical": "red", "normal": "gray" },
+  "companyHolidays": { "enabled": true, "year": 2026, "dates": [...] },
+  "reports": { "leaveBalanceSummary": { "enabled": true } },
+  "breakTracking": { "enabled": true, "breaks": { ... }, "graceMinutes": 5 },
+  "officeAttendanceForecast": { "enabled": true, "timeOffCodes": [...], "daysToShow": 5 },
+  "globalReadAccess": { "enabled": true, "maxOutOfOffice": 5, "capacityWarningCount": 3, "capacityCriticalCount": 5 },
+  "officePresenceTracking": { "enabled": true },
+  "attendanceManagement": { "enabled": true, "timeCodeOrder": [...] },
+  "attendanceYearLayout": "table"
 }
 ```
 
-- **`globalReadAccess`** — When enabled, all users see all attendance data (read-only). Office capacity bars, badges, and who's-out popovers appear on the grid. When disabled, none of these features appear.
-- **`breakTracking`** — Break/lunch compliance tracking
-- **`officeAttendanceForecast`** — Upcoming days out forecast widget
-- **`colorCustomization`** — Admin UI for customizing time code and status colors
+| Feature | Description |
+|---------|-------------|
+| `leaveManagement` | Leave type definitions mapping to time codes |
+| `approvalWorkflows` | Approval workflows and submission system |
+| `policyEnforcement` | Policy enforcement rules |
+| `accrualCalculations` | Leave accrual calculation rules |
+| `colorCustomization` | Admin UI for customizing time code and status colors |
+| `statusColors` | Default semantic colors for warning/critical/normal states |
+| `companyHolidays` | Company holiday dates (greyed out in attendance grids) |
+| `reports` | Report configurations (leave balance summary thresholds) |
+| `breakTracking` | Break/lunch compliance tracking with configurable windows |
+| `officeAttendanceForecast` | Upcoming days-out forecast widget |
+| `globalReadAccess` | All users see all attendance data (read-only) with capacity bars |
+| `officePresenceTracking` | Navbar toggle buttons for in-office/out-of-office status |
+| `attendanceManagement` | Attendance summary with configurable time code display order |
+| `attendanceYearLayout` | Year view layout: `"table"` (default 12x31 grid) or `"calendar"` (12 month cards in a 3-column grid) |
+
+**Brand defaults:** Default and BT have most features enabled. Other brands have all keys present but new features disabled.
 
 See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
@@ -340,6 +354,8 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 - `npm run build` - Build for production
 - `npm run start` - Start production server on port 6029
 - `npm run start:standalone` - Run standalone server from .next/standalone
+- `npm run server:package` - Package standalone server for distribution (includes version in startup banner)
+- `npm run server:installer` - Build NSIS installer with bundled Node.js (includes version in startup banner)
 - `npm run lint` - Run ESLint
 - `npm run db:reset` - Reset database with authentication tables (recommended)
 - `npm run db:init` - Initialize database with schema and seed data (legacy)
@@ -368,7 +384,8 @@ See [lib/CONFIG.md](lib/CONFIG.md) for detailed configuration documentation.
 
 ### Attendance Grid & View Switching
 - **Three view modes**: Year, Month, and Week — toggled via a segmented control
-- **Year view** — Interactive 31-day × 12-month calendar (the original grid)
+- **Year view (table)** — Interactive 31-day × 12-month grid (the default layout)
+- **Year view (calendar)** — 12 month cards in a 3-column grid, each with a 7-column Mon–Sun calendar. Enabled via `"attendanceYearLayout": "calendar"` in `brand-features.json`
 - **Month view** — Traditional 7-column calendar grid (Mon–Sun) with larger day cells
 - **Week view** — 7 day-cards showing entry details, responsive stacking on mobile
 - **Period navigation** — Prev/next arrows, year picker, and "Today" button for month/week views

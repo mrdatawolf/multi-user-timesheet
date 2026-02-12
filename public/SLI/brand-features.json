@@ -48,6 +48,25 @@
     },
     "globalReadAccess": {
       "enabled": false
-    }
+    },
+    "companyHolidays": {
+      "enabled": false,
+      "year": 2026,
+      "dates": []
+    },
+    "reports": {
+      "leaveBalanceSummary": {
+        "enabled": false,
+        "warningThreshold": 0.9,
+        "criticalThreshold": 1.0
+      }
+    },
+    "officePresenceTracking": {
+      "enabled": false
+    },
+    "attendanceManagement": {
+      "enabled": false
+    },
+    "attendanceYearLayout": "table"
   }
 }

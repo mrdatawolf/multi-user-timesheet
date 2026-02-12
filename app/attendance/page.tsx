@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { AttendanceGridYear } from '@/components/attendance-grid';
 import { AttendanceGridMonth } from '@/components/attendance-grid-month';
 import { AttendanceGridWeek } from '@/components/attendance-grid-week';
+import { AttendanceGridYearCalendar } from '@/components/attendance-grid-year-calendar';
 import { ViewToggle } from '@/components/view-toggle';
 import { PeriodNavigator } from '@/components/period-navigator';
 import type { AttendanceEntry, DailySummary, ViewType } from '@/lib/attendance-types';
@@ -23,7 +24,7 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled } from '@/lib/brand-features';
+import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled, getAttendanceYearLayout } from '@/lib/brand-features';
 
 interface Employee {
   id: number;
@@ -93,6 +94,7 @@ function AttendanceContent() {
   const [capacityWarningCount, setCapacityWarningCount] = useState<number>(3);
   const [capacityCriticalCount, setCapacityCriticalCount] = useState<number>(5);
   const [globalReadEnabled, setGlobalReadEnabled] = useState(false);
+  const [yearLayout, setYearLayout] = useState<'table' | 'calendar'>('table');
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -191,6 +193,7 @@ function AttendanceContent() {
       const holidays = getCompanyHolidayDates(brandFeatures, year);
       setCompanyHolidays(holidays);
       setGlobalReadEnabled(isGlobalReadAccessEnabled(brandFeatures));
+      setYearLayout(getAttendanceYearLayout(brandFeatures));
 
       const [employeesRes, timeCodesRes] = await Promise.all([
         authFetch('/api/employees'),
@@ -501,7 +504,14 @@ function AttendanceContent() {
                 </h2>
               </HelpArea>
 
-              {view === 'year' && (
+              {view === 'year' && yearLayout === 'calendar' && (
+                <AttendanceGridYearCalendar
+                  year={year}
+                  {...gridProps}
+                />
+              )}
+
+              {view === 'year' && yearLayout !== 'calendar' && (
                 <AttendanceGridYear
                   year={year}
                   {...gridProps}

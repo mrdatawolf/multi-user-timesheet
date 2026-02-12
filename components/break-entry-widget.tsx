@@ -322,7 +322,7 @@ export function BreakEntryWidget({ employeeId }: BreakEntryWidgetProps) {
               Your {compliancePrompt ? BREAK_LABELS[compliancePrompt.breakType] : ''} entry was flagged
               as out of compliance: {compliancePrompt?.reason}.
               <br /><br />
-              Did you actually take this break within the proper timeframe?
+              You either took the break or are aware we want you to take a break during that time?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
