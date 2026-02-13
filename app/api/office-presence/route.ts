@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
-import { getBrandFeatures, isOfficePresenceTrackingEnabled } from '@/lib/brand-features';
+import { getBrandFeatures, isOfficePresenceTrackingEnabled, getOfficePresenceConfig } from '@/lib/brand-features';
+import { getEffectiveDateForPresence } from '@/lib/date-helpers';
 import { db } from '@/lib/db-sqlite';
 import { logAudit } from '@/lib/queries-auth';
 
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Office presence tracking is not enabled' }, { status: 403 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const presenceConfig = getOfficePresenceConfig(brandFeatures);
+    const today = getEffectiveDateForPresence(presenceConfig?.resetTime);
 
     const result = await db.execute({
       sql: `SELECT
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You can only toggle your own status' }, { status: 403 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const presenceConfig = getOfficePresenceConfig(brandFeatures);
+    const today = getEffectiveDateForPresence(presenceConfig?.resetTime);
 
     // Get current status
     const existing = await db.execute({

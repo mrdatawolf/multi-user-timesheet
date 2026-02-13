@@ -8,6 +8,7 @@
 
 import { db } from './db-sqlite';
 import { getBrandFeatures, getOfficeAttendanceForecastConfig } from './brand-features';
+import { formatDateStr } from './date-helpers';
 
 export interface EmployeeOut {
   id: number;
@@ -69,7 +70,7 @@ export async function generateAttendanceForecast(days?: number): Promise<Attenda
   for (let i = 0; i < daysToShow; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateStr(date);
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
     // Get employees with time-off entries for this date

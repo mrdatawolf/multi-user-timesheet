@@ -83,6 +83,7 @@ export interface OfficeAttendanceForecastConfig {
 // When enabled, shows toggle buttons in the navbar for tracking who's in the office
 export interface OfficePresenceTrackingConfig {
   enabled: boolean;
+  resetTime?: string;  // HH:MM (24h), default "17:00". When reached, presence buttons reset for the next day.
 }
 
 // Global read access configuration
@@ -420,6 +421,25 @@ export function isGlobalReadAccessEnabled(features: BrandFeatures): boolean {
  */
 export function isOfficePresenceTrackingEnabled(features: BrandFeatures): boolean {
   return features.features.officePresenceTracking?.enabled ?? false;
+}
+
+/**
+ * Get office presence tracking configuration with defaults applied.
+ *
+ * @param features - The brand features configuration
+ * @returns Presence tracking config if enabled, null otherwise
+ */
+export function getOfficePresenceConfig(features: BrandFeatures): OfficePresenceTrackingConfig | null {
+  const config = features.features.officePresenceTracking;
+
+  if (!config?.enabled) {
+    return null;
+  }
+
+  return {
+    ...config,
+    resetTime: config.resetTime ?? '17:00',
+  };
 }
 
 /**

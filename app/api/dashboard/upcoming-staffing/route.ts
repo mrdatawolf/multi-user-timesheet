@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/middleware/auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
+import { formatDateStr } from '@/lib/date-helpers';
 
 /**
  * GET /api/dashboard/upcoming-staffing
@@ -32,11 +33,11 @@ export async function GET(request: NextRequest) {
     // Calculate date range (today + next N days)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const startDate = today.toISOString().split('T')[0];
+    const startDate = formatDateStr(today);
 
     const endDate = new Date(today);
     endDate.setDate(today.getDate() + days - 1);
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const endDateStr = formatDateStr(endDate);
 
     // Fetch entries with employee names for the date range
     // Only return basic info needed for staffing view
