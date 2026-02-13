@@ -141,6 +141,40 @@ export function getPeriodLabel(view: ViewType, date: Date): string {
   }
 }
 
+/** Get today's date as YYYY-MM-DD in the server's local timezone. */
+export function getLocalToday(): string {
+  return formatDateStr(new Date());
+}
+
+/**
+ * Get the "effective date" for office presence tracking.
+ *
+ * Before the reset time: returns today's date.
+ * After the reset time: returns tomorrow's date.
+ *
+ * This causes presence buttons to "reset" at the configured time
+ * because the system queries for the new effective date, finds no rows,
+ * and every employee defaults to "in office."
+ *
+ * @param resetTime - HH:MM string (24-hour), e.g., "17:00". Defaults to "17:00".
+ * @returns YYYY-MM-DD string in local timezone
+ */
+export function getEffectiveDateForPresence(resetTime: string = '17:00'): string {
+  const now = new Date();
+  const [resetHour, resetMinute] = resetTime.split(':').map(Number);
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const resetMinutes = resetHour * 60 + resetMinute;
+
+  if (currentMinutes >= resetMinutes) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return formatDateStr(tomorrow);
+  }
+
+  return formatDateStr(now);
+}
+
 /** Check if a date is today. */
 export function isToday(date: Date): boolean {
   const now = new Date();

@@ -67,7 +67,8 @@
       "capacityCriticalCount": 5
     },
     "officePresenceTracking": {
-      "enabled": true
+      "enabled": true,
+      "resetTime": "17:00"
     },
     "attendanceManagement": {
       "enabled": true

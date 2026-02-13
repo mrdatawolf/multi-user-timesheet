@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/spinner';
+import { formatDateStr } from '@/lib/date-helpers';
 
 interface Employee {
   id: number;
@@ -258,7 +259,7 @@ export default function ReportsPage() {
 
   const formatDateForApi = (date: Date | undefined): string => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    return formatDateStr(date);
   };
 
   const handleGenerateAttendanceReport = async () => {

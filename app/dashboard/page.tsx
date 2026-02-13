@@ -12,6 +12,7 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import { AttendanceForecastWidget } from '@/components/attendance-forecast-widget';
 import { BreakEntryWidget } from '@/components/break-entry-widget';
+import { formatDateStr } from '@/lib/date-helpers';
 
 interface Employee {
   id: number;
@@ -169,7 +170,7 @@ export default function DashboardPage() {
     for (let i = 0; i < 5; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatDateStr(date);
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
       // Group entries by employee

@@ -8,6 +8,7 @@
 
 import { db, ensureInitialized } from './db-sqlite';
 import { getBrandFeatures, getBreakTrackingConfig, BreakTrackingConfig, BreakWindow } from './brand-features';
+import { getLocalToday } from './date-helpers';
 
 export interface BreakEntry {
   id: number;
@@ -268,5 +269,5 @@ export function getCurrentTimeFormatted(): string {
  * Get today's date formatted as YYYY-MM-DD
  */
 export function getTodayFormatted(): string {
-  return new Date().toISOString().split('T')[0];
+  return getLocalToday();
 }

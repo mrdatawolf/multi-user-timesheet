@@ -347,6 +347,10 @@ headers: { Authorization: `Bearer ${token}` }
 
 24. **Attendance page uses Suspense** - Because it uses `useSearchParams`, the attendance page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `AttendanceContent`, the default export is the Suspense wrapper.
 
+25. **Dates must use local time, not UTC** - Never use `new Date().toISOString().split('T')[0]` for "today" calculations. `.toISOString()` returns UTC which shifts the date at the wrong local time (e.g., 4 PM PST). Use `getLocalToday()` from `lib/date-helpers.ts` for today's date, or `formatDateStr(date)` for any Date object. For office presence, use `getEffectiveDateForPresence(resetTime)` which applies the configurable reset time.
+
+26. **Office presence reset time** - The office presence buttons reset at a configurable time (default 17:00) instead of midnight. Configure via `officePresenceTracking.resetTime` in `brand-features.json` (HH:MM 24h format). The `getOfficePresenceConfig()` getter in `lib/brand-features.ts` applies the default. The `getEffectiveDateForPresence()` helper in `lib/date-helpers.ts` returns today's date before the reset time and tomorrow's date after it, which naturally resets all presence buttons.
+
 ---
 
 ## Related Documentation

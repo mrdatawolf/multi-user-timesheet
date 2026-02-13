@@ -9,6 +9,7 @@ import { getTheme } from '@/lib/themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Calendar, Clock, TrendingUp, LogIn, CalendarDays } from 'lucide-react';
+import { formatDateStr } from '@/lib/date-helpers';
 
 interface Employee {
   id: number;
@@ -143,7 +144,7 @@ export default function Home() {
     for (let i = 0; i < 5; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatDateStr(date);
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
       // Group entries by employee
