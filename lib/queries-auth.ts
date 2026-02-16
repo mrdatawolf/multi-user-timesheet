@@ -196,6 +196,13 @@ export async function setUserEmployeeId(userId: number, employeeId: number): Pro
   });
 }
 
+export async function clearEmployeeIdByEmployee(employeeId: number): Promise<void> {
+  await db.execute({
+    sql: 'UPDATE users SET employee_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE employee_id = ?',
+    args: [employeeId],
+  });
+}
+
 // Group queries
 export async function getAllGroups(): Promise<Group[]> {
   const result = await db.execute('SELECT * FROM groups ORDER BY name');

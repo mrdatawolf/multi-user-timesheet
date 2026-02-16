@@ -1,7 +1,8 @@
 import { createClient } from '@libsql/client';
-import { getDatabasePath } from './data-paths';
+import { getDatabasePath, getDataDirectory } from './data-paths';
 import { isDemoMode, logDemoModeBanner } from './demo-mode';
 import { getBrandTimeCodes } from './brand-time-codes';
+import packageJson from '../package.json';
 
 // Uses centralized data paths for cross-platform compatibility
 const dbPath = getDatabasePath('attendance.db');
@@ -426,6 +427,11 @@ export function ensureInitialized() {
  * Initialize database with demo mode support
  */
 async function initializeDatabaseWithDemoMode() {
+  console.log(`========================================`);
+  console.log(`  Multi-User Attendance v${packageJson.version}`);
+  console.log(`  Data directory: ${getDataDirectory()}`);
+  console.log(`========================================`);
+
   // Log demo mode banner if enabled
   logDemoModeBanner();
 

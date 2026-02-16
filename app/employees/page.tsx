@@ -34,6 +34,7 @@ import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dia
 import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
+import { parseDateStr } from '@/lib/date-helpers';
 
 interface Employee {
   id: number;
@@ -266,6 +267,30 @@ export default function UsersPage() {
 
         if (response.status === 401) return;
 
+        if (response.status === 409) {
+          const errData = await response.json().catch(() => null);
+          if (errData?.error === 'inactive_duplicate' && errData.existingEmployee) {
+            const existing = errData.existingEmployee;
+            const reactivate = confirm(
+              `An inactive employee with this email already exists: ${existing.first_name} ${existing.last_name}.\n\nWould you like to reactivate them instead?`
+            );
+            if (reactivate) {
+              const reactivateResponse = await authFetch('/api/employees', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: existing.id, is_active: 1 }),
+              });
+              if (reactivateResponse.ok) {
+                handleCloseDialog();
+                loadEmployees();
+              } else {
+                throw new Error('Failed to reactivate employee');
+              }
+            }
+            return;
+          }
+        }
+
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
           throw new Error(errData?.error || 'Failed to create employee');
@@ -330,6 +355,32 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Failed to reactivate employee:', error);
       alert('Failed to reactivate employee');
+    }
+  };
+
+  const handlePermanentDelete = async (employee: Employee) => {
+    if (!confirm(
+      `PERMANENTLY delete ${employee.first_name} ${employee.last_name}?\n\nThis will remove all their attendance records and cannot be undone.`
+    )) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/employees?id=${employee.id}&permanent=true`, {
+        method: 'DELETE',
+      });
+
+      if (response.status === 401) return;
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to permanently delete employee');
+      }
+
+      loadEmployees();
+    } catch (error: any) {
+      console.error('Failed to permanently delete employee:', error);
+      alert(error.message || 'Failed to permanently delete employee');
     }
   };
 
@@ -496,7 +547,7 @@ export default function UsersPage() {
                   )}
                   <TableCell>
                     {employee.date_of_hire
-                      ? new Date(employee.date_of_hire).toLocaleDateString()
+                      ? parseDateStr(employee.date_of_hire).toLocaleDateString()
                       : '-'}
                   </TableCell>
                   <TableCell className="text-right">
@@ -546,6 +597,17 @@ export default function UsersPage() {
                           title="Reactivate Employee"
                         >
                           <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {employee.is_active === 0 && user?.group?.is_master && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePermanentDelete(employee)}
+                          className="text-red-600 hover:text-red-700"
+                          title="Permanently Delete Employee"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                       {employee.is_active === 0 && !canDeleteEmployee(employee) && (

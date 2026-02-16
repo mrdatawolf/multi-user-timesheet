@@ -10,6 +10,7 @@ import {
   canUserDeleteInGroup,
   isSuperuser,
   setUserEmployeeId,
+  clearEmployeeIdByEmployee,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
@@ -172,13 +173,62 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Abbreviation must be 3 characters or less' }, { status: 400 });
       }
       const existing = await db.execute({
-        sql: 'SELECT id FROM employees WHERE abbreviation = ? COLLATE NOCASE',
+        sql: 'SELECT id, is_active, first_name, last_name FROM employees WHERE abbreviation = ? COLLATE NOCASE',
         args: [abbr],
       });
       if (existing.rows.length > 0) {
-        return NextResponse.json({ error: 'Abbreviation is already taken' }, { status: 400 });
+        const match = existing.rows[0];
+        if (match.is_active === 0) {
+          return NextResponse.json(
+            {
+              error: 'inactive_duplicate',
+              message: `An inactive employee with this abbreviation already exists: ${match.first_name} ${match.last_name}. Reactivate or permanently delete them first.`,
+              existingEmployee: { id: match.id, first_name: match.first_name, last_name: match.last_name },
+            },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json({ error: 'Abbreviation is already taken by an active employee' }, { status: 400 });
       }
       body.abbreviation = abbr;
+    }
+
+    // Check for inactive employees with the same email
+    if (body.email) {
+      const existingInactive = await db.execute({
+        sql: 'SELECT id, first_name, last_name, email FROM employees WHERE email = ? AND is_active = 0',
+        args: [body.email],
+      });
+      if (existingInactive.rows.length > 0) {
+        const existing = existingInactive.rows[0];
+        return NextResponse.json(
+          {
+            error: 'inactive_duplicate',
+            message: `An inactive employee with this email already exists: ${existing.first_name} ${existing.last_name}`,
+            existingEmployee: { id: existing.id, first_name: existing.first_name, last_name: existing.last_name, email: existing.email },
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Check for inactive employees with the same employee number
+    if (body.employee_number) {
+      const existingInactive = await db.execute({
+        sql: 'SELECT id, first_name, last_name, employee_number FROM employees WHERE employee_number = ? AND is_active = 0',
+        args: [body.employee_number],
+      });
+      if (existingInactive.rows.length > 0) {
+        const existing = existingInactive.rows[0];
+        return NextResponse.json(
+          {
+            error: 'inactive_duplicate',
+            message: `An inactive employee with this employee number already exists: ${existing.first_name} ${existing.last_name}`,
+            existingEmployee: { id: existing.id, first_name: existing.first_name, last_name: existing.last_name },
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const newEmployee = await createEmployee({
@@ -277,6 +327,23 @@ export async function PUT(request: NextRequest) {
     const args: any[] = [];
 
     if (body.employee_number !== undefined) {
+      // Check for unique constraint collision with inactive employee
+      if (body.employee_number) {
+        const existing = await db.execute({
+          sql: 'SELECT id, first_name, last_name, is_active FROM employees WHERE employee_number = ? AND id != ?',
+          args: [body.employee_number, employeeId],
+        });
+        if (existing.rows.length > 0) {
+          const match = existing.rows[0];
+          if (match.is_active === 0) {
+            return NextResponse.json(
+              { error: `Employee number already belongs to inactive employee: ${match.first_name} ${match.last_name}. Reactivate or permanently delete them first.` },
+              { status: 409 }
+            );
+          }
+          return NextResponse.json({ error: 'Employee number is already taken' }, { status: 400 });
+        }
+      }
       updates.push('employee_number = ?');
       args.push(body.employee_number);
     }
@@ -292,6 +359,23 @@ export async function PUT(request: NextRequest) {
     }
 
     if (body.email !== undefined) {
+      // Check for unique constraint collision with inactive employee
+      if (body.email) {
+        const existing = await db.execute({
+          sql: 'SELECT id, first_name, last_name, is_active FROM employees WHERE email = ? AND id != ?',
+          args: [body.email, employeeId],
+        });
+        if (existing.rows.length > 0) {
+          const match = existing.rows[0];
+          if (match.is_active === 0) {
+            return NextResponse.json(
+              { error: `Email already belongs to inactive employee: ${match.first_name} ${match.last_name}. Reactivate or permanently delete them first.` },
+              { status: 409 }
+            );
+          }
+          return NextResponse.json({ error: 'Email is already taken' }, { status: 400 });
+        }
+      }
       updates.push('email = ?');
       args.push(body.email || null);
     }
@@ -333,10 +417,17 @@ export async function PUT(request: NextRequest) {
       }
       if (abbr) {
         const existing = await db.execute({
-          sql: 'SELECT id FROM employees WHERE abbreviation = ? COLLATE NOCASE AND id != ?',
+          sql: 'SELECT id, first_name, last_name, is_active FROM employees WHERE abbreviation = ? COLLATE NOCASE AND id != ?',
           args: [abbr, employeeId],
         });
         if (existing.rows.length > 0) {
+          const match = existing.rows[0];
+          if (match.is_active === 0) {
+            return NextResponse.json(
+              { error: `Abbreviation already belongs to inactive employee: ${match.first_name} ${match.last_name}. Reactivate or permanently delete them first.` },
+              { status: 409 }
+            );
+          }
           return NextResponse.json({ error: 'Abbreviation is already taken' }, { status: 400 });
         }
       }
@@ -457,30 +548,75 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Don't actually delete, just deactivate
-    await db.execute({
-      sql: 'UPDATE employees SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      args: [employeeId],
-    });
+    const permanent = searchParams.get('permanent') === 'true';
 
-    // Log audit entry
-    await logAudit({
-      user_id: authUser.id,
-      action: 'DELETE',
-      table_name: 'employees',
-      record_id: parseInt(employeeId),
-      old_values: JSON.stringify({
-        employee_number: employee.employee_number,
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        is_active: employee.is_active,
-      }),
-      new_values: JSON.stringify({
-        is_active: 0,
-      }),
-      ip_address: getClientIP(request),
-      user_agent: getUserAgent(request),
-    });
+    if (permanent) {
+      // Permanent delete: master admin only, employee must be inactive
+      const userIsSuperuser = authUser.is_superuser === 1 || authUser.group?.is_master;
+      if (!userIsSuperuser) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only master admins can permanently delete employees' },
+          { status: 403 }
+        );
+      }
+      if (employee.is_active === 1) {
+        return NextResponse.json(
+          { error: 'Cannot permanently delete an active employee. Deactivate them first.' },
+          { status: 400 }
+        );
+      }
+
+      // Clear employee_id link on any auth user referencing this employee
+      await clearEmployeeIdByEmployee(parseInt(employeeId));
+
+      // Hard delete — CASCADE handles attendance_entries, employee_allocations, break_entries, office_presence
+      await db.execute({
+        sql: 'DELETE FROM employees WHERE id = ?',
+        args: [employeeId],
+      });
+
+      // Log audit entry
+      await logAudit({
+        user_id: authUser.id,
+        action: 'PERMANENT_DELETE',
+        table_name: 'employees',
+        record_id: parseInt(employeeId),
+        old_values: JSON.stringify({
+          employee_number: employee.employee_number,
+          first_name: employee.first_name,
+          last_name: employee.last_name,
+          email: employee.email,
+          is_active: employee.is_active,
+        }),
+        ip_address: getClientIP(request),
+        user_agent: getUserAgent(request),
+      });
+    } else {
+      // Soft delete: just deactivate
+      await db.execute({
+        sql: 'UPDATE employees SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        args: [employeeId],
+      });
+
+      // Log audit entry
+      await logAudit({
+        user_id: authUser.id,
+        action: 'DELETE',
+        table_name: 'employees',
+        record_id: parseInt(employeeId),
+        old_values: JSON.stringify({
+          employee_number: employee.employee_number,
+          first_name: employee.first_name,
+          last_name: employee.last_name,
+          is_active: employee.is_active,
+        }),
+        new_values: JSON.stringify({
+          is_active: 0,
+        }),
+        ip_address: getClientIP(request),
+        user_agent: getUserAgent(request),
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -55,3 +55,4 @@ nul
 /.node-portable
 /distribute
 /distribute_server
+package-lock.json
