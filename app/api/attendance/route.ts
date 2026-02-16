@@ -3,15 +3,14 @@ import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmp
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
   logAudit,
-  canUserReadGroup,
-  canUserUpdateInGroup,
-  canUserDeleteInGroup,
+  canUserExplicitlyReadGroup,
+  canUserExplicitlyUpdateGroup,
+  canUserExplicitlyDeleteGroup,
   isSuperuser,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
-import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,14 +29,15 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
 
-    // Check if global read access is enabled
-    const brandFeatures = await getBrandFeatures();
-    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
+    // Permission helpers
+    const userIsSuperuser = await isSuperuser(authUser.id);
+    const hasFullAccess = userIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
 
-    // If no employeeId is provided, return all entries (superusers or global read)
+    // If no employeeId is provided, return all entries (full-access users only)
     if (!employeeIdParam) {
-      const userIsSuperuser = await isSuperuser(authUser.id);
-      if (!userIsSuperuser && !globalRead) {
+      if (!hasFullAccess) {
         return NextResponse.json(
           { error: 'Forbidden: You do not have permission to view all attendance entries' },
           { status: 403 }
@@ -55,14 +55,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions using Phase 2 CRUD permissions (skip if global read enabled)
-    if (employee.group_id && !globalRead) {
-      const canView = await canUserReadGroup(authUser.id, employee.group_id);
-      if (!canView) {
-        return NextResponse.json(
-          { error: 'Forbidden: You do not have permission to view this employee\'s attendance' },
-          { status: 403 }
-        );
+    // Permission check: own employee, full access, or explicit group permission
+    if (!hasFullAccess && employee.group_id) {
+      const isOwnEmployee = authUser.employee_id === employeeId;
+      if (!isOwnEmployee) {
+        const canView = await canUserExplicitlyReadGroup(authUser.id, employee.group_id);
+        if (!canView) {
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have permission to view this employee\'s attendance' },
+            { status: 403 }
+          );
+        }
       }
     }
 
@@ -107,33 +110,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check permissions using Phase 2 CRUD permissions
-    if (body.action === 'delete') {
-      // Check delete permission for delete action
-      if (employee.group_id) {
-        const canDelete = await canUserDeleteInGroup(authUser.id, employee.group_id);
+    // Permission check: own employee always allowed, otherwise check explicit permissions
+    const userIsSuperuser = await isSuperuser(authUser.id);
+    const hasFullAccess = userIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
+    const isOwnEmployee = authUser.employee_id === body.employee_id;
+
+    if (!hasFullAccess && !isOwnEmployee && employee.group_id) {
+      if (body.action === 'delete') {
+        const canDelete = await canUserExplicitlyDeleteGroup(authUser.id, employee.group_id);
         if (!canDelete) {
           return NextResponse.json(
             { error: 'Forbidden: You do not have permission to delete this employee\'s attendance' },
             { status: 403 }
           );
         }
-      }
-    } else if (body.action === 'update_day') {
-      // Check update permission for batch update action
-      if (employee.group_id) {
-        const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
-        if (!canUpdate) {
-          return NextResponse.json(
-            { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },
-            { status: 403 }
-          );
-        }
-      }
-    } else {
-      // Check update permission for create/update actions
-      if (employee.group_id) {
-        const canUpdate = await canUserUpdateInGroup(authUser.id, employee.group_id);
+      } else {
+        const canUpdate = await canUserExplicitlyUpdateGroup(authUser.id, employee.group_id);
         if (!canUpdate) {
           return NextResponse.json(
             { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },

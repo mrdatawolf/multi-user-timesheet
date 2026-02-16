@@ -552,6 +552,59 @@ export async function getUserCreatableGroups(userId: number): Promise<number[]> 
 }
 
 // ============================================================================
+// EXPLICIT-ONLY GROUP PERMISSIONS (no auto-own-group)
+// Used by attendance & employees APIs where group membership alone
+// should NOT grant access — explicit user_group_permissions entries required.
+// ============================================================================
+
+/**
+ * Get group IDs where user has explicit can_read=1 permission.
+ * Unlike getUserReadableGroups(), does NOT auto-include user's own group.
+ */
+export async function getExplicitReadableGroupIds(userId: number): Promise<number[]> {
+  if (await isSuperuser(userId)) {
+    const allGroups = await getAllGroups();
+    return allGroups.map(g => g.id);
+  }
+
+  const permissions = await getUserGroupPermissions(userId);
+  return permissions.filter(p => p.can_read === 1).map(p => p.group_id);
+}
+
+/**
+ * Check if user has explicit can_read permission for a group.
+ * Unlike canUserReadGroup(), does NOT auto-include user's own group.
+ */
+export async function canUserExplicitlyReadGroup(userId: number, groupId: number): Promise<boolean> {
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_read === 1;
+}
+
+/**
+ * Check if user has explicit can_update permission for a group.
+ * Unlike canUserUpdateInGroup(), does NOT auto-include user's own group.
+ */
+export async function canUserExplicitlyUpdateGroup(userId: number, groupId: number): Promise<boolean> {
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_update === 1;
+}
+
+/**
+ * Check if user has explicit can_delete permission for a group.
+ * Unlike canUserDeleteInGroup(), does NOT auto-include user's own group.
+ */
+export async function canUserExplicitlyDeleteGroup(userId: number, groupId: number): Promise<boolean> {
+  if (await isSuperuser(userId)) return true;
+
+  const permission = await getUserGroupPermission(userId, groupId);
+  return permission?.can_delete === 1;
+}
+
+// ============================================================================
 // ROLE-BASED PERMISSIONS
 // ============================================================================
 
