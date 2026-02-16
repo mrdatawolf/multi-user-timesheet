@@ -10,6 +10,12 @@ const store = new Store({
   }
 });
 
+// Prevent multiple instances (e.g. double-click on taskbar shortcut)
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
+
 let mainWindow;
 let settingsWindow;
 let serverProcess;
@@ -175,6 +181,14 @@ ipcMain.on('restart-app', () => {
   setTimeout(() => {
     app.exit(0);
   }, 100);
+});
+
+app.on('second-instance', () => {
+  // Someone tried to launch a second instance — focus the existing window
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
 });
 
 app.whenReady().then(() => {
