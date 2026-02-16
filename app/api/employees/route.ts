@@ -3,8 +3,8 @@ import { getAllEmployees, createEmployee, getEmployeeById } from '@/lib/queries-
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
   logAudit,
-  getUserReadableGroups,
-  canUserReadGroup,
+  getExplicitReadableGroupIds,
+  canUserExplicitlyReadGroup,
   canUserCreateInGroup,
   canUserUpdateInGroup,
   canUserDeleteInGroup,
@@ -14,7 +14,6 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
-import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,9 +30,11 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get('id');
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    // Check if global read access is enabled (all users can read all data)
-    const brandFeatures = await getBrandFeatures();
-    const globalRead = isGlobalReadAccessEnabled(brandFeatures);
+    // Permission helpers
+    const userIsSuperuser = await isSuperuser(authUser.id);
+    const hasFullAccess = userIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
 
     if (employeeId) {
       const employee = await getEmployeeById(parseInt(employeeId));
@@ -41,48 +42,48 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
       }
 
-      // Check permissions using Phase 2 CRUD permissions (skip if global read enabled)
-      if (employee.group_id && !globalRead) {
-        const canView = await canUserReadGroup(authUser.id, employee.group_id);
-        if (!canView) {
-          return NextResponse.json(
-            { error: 'Forbidden: You do not have permission to view this employee' },
-            { status: 403 }
-          );
+      // Permission check: own employee, full access, or explicit group permission
+      if (!hasFullAccess && employee.group_id) {
+        const isOwnEmployee = authUser.employee_id === employee.id;
+        if (!isOwnEmployee) {
+          const canView = await canUserExplicitlyReadGroup(authUser.id, employee.group_id);
+          if (!canView) {
+            return NextResponse.json(
+              { error: 'Forbidden: You do not have permission to view this employee' },
+              { status: 403 }
+            );
+          }
         }
       }
 
       return NextResponse.json(serializeBigInt(employee));
     } else {
       // Get all employees (filter based on permissions)
-      let employees = await getAllEmployees();
-
-      // Check if user is superuser
-      const userIsSuperuser = await isSuperuser(authUser.id);
+      const allEmployees = await getAllEmployees();
 
       // Filter out inactive employees unless includeInactive is true
       // Only superusers can see inactive employees
+      let activeEmployees = allEmployees;
       if (!includeInactive || !userIsSuperuser) {
-        employees = employees.filter(emp => emp.is_active === 1);
+        activeEmployees = allEmployees.filter(emp => emp.is_active === 1);
       }
 
-      // Filter employees based on user's readable groups (Phase 2 permissions)
-      // Skip filtering if global read access is enabled
-      if (!userIsSuperuser && !globalRead) {
-        const readableGroupIds = await getUserReadableGroups(authUser.id);
-        // Always include user's own group - users can always see their own group
-        if (authUser.group_id && !readableGroupIds.includes(authUser.group_id)) {
-          readableGroupIds.push(authUser.group_id);
-        }
-        employees = employees.filter(emp =>
-          !emp.group_id || readableGroupIds.includes(emp.group_id)
-        );
+      // Filter employees based on explicit permissions (no auto-own-group)
+      let employees = activeEmployees;
+      if (!hasFullAccess) {
+        const readableGroupIds = await getExplicitReadableGroupIds(authUser.id);
+        employees = activeEmployees.filter(emp => {
+          // Always include user's own linked employee
+          if (authUser.employee_id && emp.id === authUser.employee_id) return true;
+          // Include employees in explicitly permitted groups
+          return emp.group_id && readableGroupIds.includes(emp.group_id);
+        });
       }
 
       // Auto-create employee for user if they're the first in their group
-      // This runs regardless of globalRead since it's a write-side effect for the user's own group
+      // Check against unfiltered active list so permission filtering doesn't trigger false positives
       if (!userIsSuperuser && authUser.group_id) {
-        const employeesInUserGroup = employees.filter(emp => emp.group_id === authUser.group_id);
+        const employeesInUserGroup = activeEmployees.filter(emp => emp.group_id === authUser.group_id);
         if (employeesInUserGroup.length === 0) {
           // No employees in user's group - create one for the user
           // Parse full_name into first_name and last_name

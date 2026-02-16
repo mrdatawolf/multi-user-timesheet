@@ -417,27 +417,29 @@ function AttendanceContent() {
         <div className="flex flex-wrap gap-2">
           {/* Selects + View controls - inline */}
           <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
-            <div className="w-64 space-y-1">
-              <HelpArea helpId="employee-selector" bubblePosition="bottom">
-                <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
-              </HelpArea>
-              <Select
-                value={selectedEmployeeId?.toString() || ''}
-                onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
-              >
-                <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
-                  <SelectValue placeholder="Select employee..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.id.toString()}>
-                      <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
-                      {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {employees.length > 1 && (
+              <div className="w-64 space-y-1">
+                <HelpArea helpId="employee-selector" bubblePosition="bottom">
+                  <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
+                </HelpArea>
+                <Select
+                  value={selectedEmployeeId?.toString() || ''}
+                  onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
+                >
+                  <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
+                    <SelectValue placeholder="Select employee..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id.toString()}>
+                        <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
+                        {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Year selector (only in year view — month/week have it in PeriodNavigator) */}
             {view === 'year' && (
