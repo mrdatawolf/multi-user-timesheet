@@ -328,11 +328,12 @@ export async function PUT(request: NextRequest) {
     const args: any[] = [];
 
     if (body.employee_number !== undefined) {
-      // Check for unique constraint collision with inactive employee
-      if (body.employee_number) {
+      // Normalize empty string to null (SQLite UNIQUE treats "" as duplicate but NULL as distinct)
+      const normalizedNumber = body.employee_number || null;
+      if (normalizedNumber) {
         const existing = await db.execute({
           sql: 'SELECT id, first_name, last_name, is_active FROM employees WHERE employee_number = ? AND id != ?',
-          args: [body.employee_number, employeeId],
+          args: [normalizedNumber, employeeId],
         });
         if (existing.rows.length > 0) {
           const match = existing.rows[0];
@@ -346,7 +347,7 @@ export async function PUT(request: NextRequest) {
         }
       }
       updates.push('employee_number = ?');
-      args.push(body.employee_number);
+      args.push(normalizedNumber);
     }
 
     if (body.first_name !== undefined) {
