@@ -12,7 +12,7 @@ interface PresenceEmployee {
   isOut: boolean;
 }
 
-const POLL_INTERVAL_MS = 60_000; // Refresh every 60 seconds
+const POLL_INTERVAL_MS = 5_000; // Refresh every 5 seconds
 
 export function OfficePresenceBar() {
   const { authFetch, user, isMaster, isAdministrator } = useAuth();

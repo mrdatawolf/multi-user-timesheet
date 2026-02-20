@@ -1,6 +1,6 @@
 {
   "appId": "com.attendance.app",
-  "productName": "NFL Attendance",
+  "productName": "TRL Attendance",
   "directories": {
     "app": "electron-app",
     "output": "dist-electron",
