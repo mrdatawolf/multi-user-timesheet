@@ -166,6 +166,10 @@
       "enabled": false,
       "resetTime": "17:00"
     },
+    "bulkEntry": {
+      "enabled": true,
+      "maxDays": 90
+    },
     "attendanceYearLayout": "table"
   }
 }
