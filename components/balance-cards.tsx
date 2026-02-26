@@ -26,7 +26,7 @@ interface AccrualDetails {
   }>;
   nextAccrualDate: string | null;
   message: string;
-  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority';
+  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority' | 'annualGrant';
   hoursWorkedDetails?: {
     totalHoursWorked: number;
     accrualRate: { earnHours: number; perHoursWorked: number };

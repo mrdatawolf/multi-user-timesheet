@@ -59,6 +59,16 @@ interface TieredSeniorityAccrualDetails {
   };
 }
 
+interface AnnualGrantDetails {
+  grantDate: string;
+  isFirstEligibleYear: boolean;
+  prorationBracket: string | null;
+  unitsGranted: number;
+  hoursPerUnit: number;
+  benefitYearStart: string;
+  benefitYearEnd: string;
+}
+
 interface AccrualDetails {
   isEligible: boolean;
   eligibilityDate: string | null;
@@ -68,9 +78,10 @@ interface AccrualDetails {
   quarterDetails: QuarterAccrual[];
   nextAccrualDate: string | null;
   message: string;
-  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority';
+  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority' | 'annualGrant';
   hoursWorkedDetails?: HoursWorkedAccrualDetails;
   tieredSeniorityDetails?: TieredSeniorityAccrualDetails;
+  annualGrantDetails?: AnnualGrantDetails;
 }
 
 interface TimeAllocation {
@@ -346,6 +357,67 @@ export function BalanceBreakdownModal({
                         </div>
                       </div>
                     </div>
+                  </>
+                ) : accrualDetails.accrualType === 'annualGrant' && accrualDetails.annualGrantDetails ? (
+                  /* Annual Grant Accrual (Floating Holiday) */
+                  <>
+                    {/* Eligibility Status */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Eligibility:</span>
+                      <span className={`font-medium ${accrualDetails.isEligible ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {accrualDetails.isEligible ? 'Eligible' : 'Not Yet Eligible'}
+                      </span>
+                    </div>
+                    {accrualDetails.eligibilityDate && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Eligible from:</span>
+                        <span>{formatDate(accrualDetails.eligibilityDate)}</span>
+                      </div>
+                    )}
+
+                    {/* Benefit Year */}
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Benefit Year:</div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Period:</span>
+                        <span>{formatDate(accrualDetails.annualGrantDetails.benefitYearStart)} – {formatDate(accrualDetails.annualGrantDetails.benefitYearEnd)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Grant Date:</span>
+                        <span>{formatDate(accrualDetails.annualGrantDetails.grantDate)}</span>
+                      </div>
+                    </div>
+
+                    {/* Grant Type */}
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">
+                        {accrualDetails.annualGrantDetails.isFirstEligibleYear ? 'First Year (Pro-Rated)' : 'Annual Grant'}
+                      </div>
+                      {accrualDetails.annualGrantDetails.isFirstEligibleYear && accrualDetails.annualGrantDetails.prorationBracket && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Anniversary bracket:</span>
+                          <span>{accrualDetails.annualGrantDetails.prorationBracket}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Granted:</span>
+                        <span className="font-medium">
+                          {accrualDetails.annualGrantDetails.unitsGranted} × {accrualDetails.annualGrantDetails.hoursPerUnit}h = {accrualDetails.accruedHours}h
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Max per year:</span>
+                        <span>{accrualDetails.maxHours}h</span>
+                      </div>
+                    </div>
+
+                    {/* Next Grant */}
+                    {accrualDetails.nextAccrualDate && (
+                      <div className="flex justify-between text-xs mt-2 pt-2 border-t">
+                        <span className="text-muted-foreground">Next grant date:</span>
+                        <span>{formatDate(accrualDetails.nextAccrualDate)}</span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   /* Quarterly Accrual (FH) */
