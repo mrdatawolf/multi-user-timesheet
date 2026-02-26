@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/spinner';
 import { Label } from '@/components/ui/label';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, CalendarRange } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 import { useAuth } from '@/lib/auth-context';
@@ -24,7 +24,8 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled, getAttendanceYearLayout } from '@/lib/brand-features';
+import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled, getAttendanceYearLayout, getBulkEntryConfig } from '@/lib/brand-features';
+import { BulkEntryDialog } from '@/components/bulk-entry-dialog';
 
 interface Employee {
   id: number;
@@ -95,6 +96,8 @@ function AttendanceContent() {
   const [capacityCriticalCount, setCapacityCriticalCount] = useState<number>(5);
   const [globalReadEnabled, setGlobalReadEnabled] = useState(false);
   const [yearLayout, setYearLayout] = useState<'table' | 'calendar'>('table');
+  const [bulkEntryOpen, setBulkEntryOpen] = useState(false);
+  const [bulkEntryEnabled, setBulkEntryEnabled] = useState(false);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -194,6 +197,7 @@ function AttendanceContent() {
       setCompanyHolidays(holidays);
       setGlobalReadEnabled(isGlobalReadAccessEnabled(brandFeatures));
       setYearLayout(getAttendanceYearLayout(brandFeatures));
+      setBulkEntryEnabled(getBulkEntryConfig(brandFeatures).enabled);
 
       const [employeesRes, timeCodesRes] = await Promise.all([
         authFetch('/api/employees'),
@@ -485,6 +489,22 @@ function AttendanceContent() {
                 />
               </div>
             )}
+
+            {/* Bulk Entry button */}
+            {bulkEntryEnabled && selectedEmployeeId && (
+              <div className="space-y-1">
+                <Label className="text-xs">&nbsp;</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  onClick={() => setBulkEntryOpen(true)}
+                >
+                  <CalendarRange className="h-3.5 w-3.5" />
+                  Bulk Add Attendance
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Balance Cards */}
@@ -550,6 +570,24 @@ function AttendanceContent() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Bulk Entry Dialog */}
+        {bulkEntryEnabled && selectedEmployeeId && (
+          <BulkEntryDialog
+            open={bulkEntryOpen}
+            onOpenChange={setBulkEntryOpen}
+            employeeId={selectedEmployeeId}
+            timeCodes={timeCodes}
+            authFetch={authFetch}
+            onSave={async () => {
+              await loadAttendanceData();
+              toast({
+                title: 'Bulk Entry Saved',
+                description: 'Date range entries have been saved successfully.',
+              });
+            }}
+          />
         )}
 
         {!selectedEmployeeId && employees.length === 0 && (

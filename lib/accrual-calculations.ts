@@ -50,7 +50,7 @@ export interface TieredSeniorityRule {
 }
 
 export interface AccrualRule {
-  type: 'quarterly' | 'monthly' | 'annual' | 'hoursWorked' | 'tieredSeniority';
+  type: 'quarterly' | 'monthly' | 'annual' | 'hoursWorked' | 'tieredSeniority' | 'annualGrant';
   hoursPerPeriod?: number;
   maxAnnual?: number;
   maxAccrual?: number;  // For hoursWorked type
@@ -100,6 +100,17 @@ export interface AccrualRule {
     payoutRule?: string;
     terminationRule?: string;
   };
+  // For annualGrant type
+  grantDate?: { month: number; day: number };
+  hoursPerUnit?: number;
+  benefitYear?: { startMonth: number; startDay: number; endMonth: number; endDay: number };
+  prorationBrackets?: Array<{
+    startMonth: number;
+    startDay: number;
+    endMonth: number;
+    endDay: number;
+    units: number;
+  }>;
 }
 
 export interface HoursWorkedAccrualDetails {
@@ -132,6 +143,16 @@ export interface TieredSeniorityAccrualDetails {
   };
 }
 
+export interface AnnualGrantDetails {
+  grantDate: Date;
+  isFirstEligibleYear: boolean;
+  prorationBracket: string | null;
+  unitsGranted: number;
+  hoursPerUnit: number;
+  benefitYearStart: Date;
+  benefitYearEnd: Date;
+}
+
 export interface AccrualResult {
   isEligible: boolean;
   eligibilityDate: Date | null;
@@ -142,9 +163,10 @@ export interface AccrualResult {
   nextAccrualDate: Date | null;
   message: string;
   // Type-specific fields
-  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority';
+  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority' | 'annualGrant';
   hoursWorkedDetails?: HoursWorkedAccrualDetails;
   tieredSeniorityDetails?: TieredSeniorityAccrualDetails;
+  annualGrantDetails?: AnnualGrantDetails;
 }
 
 export interface QuarterAccrual {
@@ -620,6 +642,178 @@ export function calculateTieredSeniorityAccrual(
 }
 
 /**
+ * Calculate annual grant accrual (e.g., Floating Holidays)
+ *
+ * This accrual type grants all hours on a specific date each year,
+ * with a pro-rated first eligible year based on when the employee's
+ * eligibility anniversary falls within the benefit year.
+ */
+export function calculateAnnualGrantAccrual(
+  hireDate: Date,
+  targetYear: number,
+  asOfDate: Date,
+  rule: AccrualRule
+): AccrualResult {
+  const waitPeriod = rule.eligibility?.waitPeriod || {};
+  const eligibilityDate = calculateEligibilityDate(hireDate, waitPeriod);
+  const maxAnnual = rule.maxAnnual || 0;
+  const hoursPerUnit = rule.hoursPerUnit || 8;
+
+  const grantMonth = rule.grantDate?.month || 6;
+  const grantDay = rule.grantDate?.day || 1;
+  const byStartMonth = rule.benefitYear?.startMonth || grantMonth;
+  const byStartDay = rule.benefitYear?.startDay || grantDay;
+  const byEndMonth = rule.benefitYear?.endMonth || 5;
+  const byEndDay = rule.benefitYear?.endDay || 31;
+
+  // Determine the benefit year that contains the target year's grant date
+  // Benefit year runs e.g. Jun 1 of targetYear to May 31 of targetYear+1
+  let benefitYearStart = new Date(targetYear, byStartMonth - 1, byStartDay);
+  let benefitYearEnd = new Date(targetYear + 1, byEndMonth - 1, byEndDay);
+  const grantDate = new Date(targetYear, grantMonth - 1, grantDay);
+
+  // If asOfDate is before this benefit year's start, use the previous benefit year
+  if (asOfDate < benefitYearStart) {
+    benefitYearStart = new Date(targetYear - 1, byStartMonth - 1, byStartDay);
+    benefitYearEnd = new Date(targetYear, byEndMonth - 1, byEndDay);
+  }
+
+  const isEligible = asOfDate >= eligibilityDate;
+
+  if (!isEligible) {
+    return {
+      isEligible: false,
+      eligibilityDate,
+      accruedHours: 0,
+      maxHours: maxAnnual,
+      quartersEarned: 0,
+      quarterDetails: [],
+      nextAccrualDate: eligibilityDate,
+      message: `Not yet eligible. Eligibility begins ${eligibilityDate.toLocaleDateString()}.`,
+      accrualType: 'annualGrant',
+      annualGrantDetails: {
+        grantDate,
+        isFirstEligibleYear: true,
+        prorationBracket: null,
+        unitsGranted: 0,
+        hoursPerUnit,
+        benefitYearStart,
+        benefitYearEnd,
+      }
+    };
+  }
+
+  // Determine if this is the first eligible benefit year
+  // The first eligible benefit year is the one that contains the eligibility date
+  const eligBenefitYearStart = new Date(
+    eligibilityDate.getFullYear(),
+    byStartMonth - 1,
+    byStartDay
+  );
+  // If eligibility date is before that year's benefit year start, step back
+  let firstEligibleBYStart: Date;
+  if (eligibilityDate < eligBenefitYearStart) {
+    firstEligibleBYStart = new Date(
+      eligibilityDate.getFullYear() - 1,
+      byStartMonth - 1,
+      byStartDay
+    );
+  } else {
+    firstEligibleBYStart = eligBenefitYearStart;
+  }
+
+  const isFirstEligibleYear =
+    benefitYearStart.getTime() === firstEligibleBYStart.getTime();
+
+  if (isFirstEligibleYear && rule.prorationBrackets) {
+    // Pro-rate based on which bracket the eligibility date falls into
+    let unitsGranted = 0;
+    let bracketLabel: string | null = null;
+
+    for (const bracket of rule.prorationBrackets) {
+      // Build bracket start/end dates within the benefit year
+      let bracketStart: Date;
+      let bracketEnd: Date;
+
+      // Handle brackets that span the year boundary (e.g., Dec 1 - Feb 28)
+      if (bracket.startMonth >= byStartMonth) {
+        bracketStart = new Date(benefitYearStart.getFullYear(), bracket.startMonth - 1, bracket.startDay);
+      } else {
+        bracketStart = new Date(benefitYearStart.getFullYear() + 1, bracket.startMonth - 1, bracket.startDay);
+      }
+
+      if (bracket.endMonth >= byStartMonth) {
+        bracketEnd = new Date(benefitYearStart.getFullYear(), bracket.endMonth - 1, bracket.endDay);
+      } else {
+        bracketEnd = new Date(benefitYearStart.getFullYear() + 1, bracket.endMonth - 1, bracket.endDay);
+      }
+
+      if (eligibilityDate >= bracketStart && eligibilityDate <= bracketEnd) {
+        unitsGranted = bracket.units;
+        const startLabel = bracketStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endLabel = bracketEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        bracketLabel = `${startLabel} – ${endLabel}`;
+        break;
+      }
+    }
+
+    const accruedHours = unitsGranted * hoursPerUnit;
+
+    return {
+      isEligible: true,
+      eligibilityDate,
+      accruedHours,
+      maxHours: maxAnnual,
+      quartersEarned: 0,
+      quarterDetails: [],
+      nextAccrualDate: unitsGranted < (maxAnnual / hoursPerUnit)
+        ? new Date(benefitYearEnd.getFullYear(), grantMonth - 1, grantDay)
+        : null,
+      message: `First eligible year (pro-rated): ${unitsGranted} × ${hoursPerUnit}h = ${accruedHours}h`,
+      accrualType: 'annualGrant',
+      annualGrantDetails: {
+        grantDate,
+        isFirstEligibleYear: true,
+        prorationBracket: bracketLabel,
+        unitsGranted,
+        hoursPerUnit,
+        benefitYearStart,
+        benefitYearEnd,
+      }
+    };
+  }
+
+  // Subsequent years: full grant on grant date
+  // Determine the grant date for the current benefit year
+  const currentGrantDate = new Date(benefitYearStart.getFullYear(), grantMonth - 1, grantDay);
+  const hasBeenGranted = asOfDate >= currentGrantDate;
+  const accruedHours = hasBeenGranted ? maxAnnual : 0;
+
+  return {
+    isEligible: true,
+    eligibilityDate,
+    accruedHours,
+    maxHours: maxAnnual,
+    quartersEarned: 0,
+    quarterDetails: [],
+    nextAccrualDate: hasBeenGranted ? null : currentGrantDate,
+    message: hasBeenGranted
+      ? `Annual grant: ${maxAnnual}h (${maxAnnual / hoursPerUnit} floating holidays)`
+      : `Granted on ${currentGrantDate.toLocaleDateString()}`,
+    accrualType: 'annualGrant',
+    annualGrantDetails: {
+      grantDate: currentGrantDate,
+      isFirstEligibleYear: false,
+      prorationBracket: null,
+      unitsGranted: hasBeenGranted ? maxAnnual / hoursPerUnit : 0,
+      hoursPerUnit,
+      benefitYearStart,
+      benefitYearEnd,
+    }
+  };
+}
+
+/**
  * Main function to calculate accrual based on rule type
  */
 export function calculateAccrual(
@@ -638,6 +832,8 @@ export function calculateAccrual(
       return calculateHoursWorkedAccrual(hireDateObj, targetYear, asOfDateObj, rule);
     case 'tieredSeniority':
       return calculateTieredSeniorityAccrual(hireDateObj, targetYear, asOfDateObj, rule);
+    case 'annualGrant':
+      return calculateAnnualGrantAccrual(hireDateObj, targetYear, asOfDateObj, rule);
     default:
       return {
         isEligible: false,

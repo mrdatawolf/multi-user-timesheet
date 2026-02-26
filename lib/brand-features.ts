@@ -96,6 +96,12 @@ export interface GlobalReadAccessConfig {
   capacityCriticalCount?: number;  // # of people out that triggers red bar (default 5)
 }
 
+// Bulk entry configuration
+export interface BulkEntryConfig {
+  enabled: boolean;
+  maxDays?: number;  // Maximum number of days in a single bulk entry (default 90)
+}
+
 // Brand features configuration structure
 export interface BrandFeatures {
   brandId: string;
@@ -119,6 +125,7 @@ export interface BrandFeatures {
       enabled: boolean;
       timeCodeOrder?: string[];  // Display order for summary rows (time code strings). Unlisted codes appear at the end.
     };
+    bulkEntry?: BulkEntryConfig;
     attendanceYearLayout?: 'table' | 'calendar';  // Year view layout: 'table' (default 12x31 grid) or 'calendar' (12 month cards)
   };
 }
@@ -448,4 +455,20 @@ export function getOfficePresenceConfig(features: BrandFeatures): OfficePresence
  */
 export function getAttendanceYearLayout(features: BrandFeatures): 'table' | 'calendar' {
   return features.features.attendanceYearLayout ?? 'table';
+}
+
+/**
+ * Get bulk entry configuration.
+ * Returns enabled status and max days limit.
+ */
+export function getBulkEntryConfig(features: BrandFeatures): {
+  enabled: boolean;
+  maxDays: number;
+} {
+  const config = features.features.bulkEntry;
+
+  return {
+    enabled: config?.enabled ?? true,
+    maxDays: config?.maxDays ?? 90,
+  };
 }

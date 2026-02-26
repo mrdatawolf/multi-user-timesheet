@@ -26,7 +26,7 @@ interface AccrualDetails {
   }>;
   nextAccrualDate: string | null;
   message: string;
-  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority';
+  accrualType?: 'quarterly' | 'hoursWorked' | 'tieredSeniority' | 'annualGrant';
   hoursWorkedDetails?: {
     totalHoursWorked: number;
     accrualRate: { earnHours: number; perHoursWorked: number };
@@ -319,7 +319,7 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
       <div className="flex flex-wrap gap-2">
         {renderBalanceCard(leaveTypes.floatingHoliday, 'floatingHoliday', 'Floating Holiday')}
         {renderBalanceCard(leaveTypes.sickLeave, 'sickLeave', 'Paid Sick Leave')}
-        {renderUsageCard(leaveTypes.vacation, 'vacation', 'Vacation', 'Total vacation hours this year')}
+        {renderBalanceCard(leaveTypes.vacation, 'vacation', 'Vacation')}
         {renderUsageCard(leaveTypes.paidHoliday, 'paidHoliday', 'Holiday', 'Total holiday hours this year')}
       </div>
 

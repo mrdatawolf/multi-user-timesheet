@@ -25,18 +25,20 @@
       "enabled": true,
       "rules": {
         "FLH": {
-          "type": "quarterly",
-          "hoursPerPeriod": 8,
+          "type": "annualGrant",
           "maxAnnual": 24,
+          "hoursPerUnit": 8,
+          "grantDate": { "month": 6, "day": 1 },
           "eligibility": {
             "waitPeriod": { "years": 1 }
           },
-          "quarters": {
-            "Q1": { "startMonth": 3, "startDay": 1, "endMonth": 5, "endDay": 31 },
-            "Q2": { "startMonth": 6, "startDay": 1, "endMonth": 8, "endDay": 31 },
-            "Q3": { "startMonth": 9, "startDay": 1, "endMonth": 11, "endDay": 30 },
-            "Q4": { "startMonth": 12, "startDay": 1, "endMonth": 2, "endDay": 28 }
-          }
+          "benefitYear": { "startMonth": 6, "startDay": 1, "endMonth": 5, "endDay": 31 },
+          "prorationBrackets": [
+            { "startMonth": 6, "startDay": 1, "endMonth": 8, "endDay": 31, "units": 3 },
+            { "startMonth": 9, "startDay": 1, "endMonth": 11, "endDay": 30, "units": 2 },
+            { "startMonth": 12, "startDay": 1, "endMonth": 2, "endDay": 28, "units": 1 },
+            { "startMonth": 3, "startDay": 1, "endMonth": 5, "endDay": 31, "units": 0 }
+          ]
         },
         "PSL": {
           "type": "hoursWorked",
@@ -165,6 +167,10 @@
     "officePresenceTracking": {
       "enabled": false,
       "resetTime": "17:00"
+    },
+    "bulkEntry": {
+      "enabled": true,
+      "maxDays": 90
     },
     "attendanceYearLayout": "table"
   }
