@@ -4,13 +4,13 @@ import type { AttendanceEntry, DailySummary } from '@/lib/attendance-types';
 
 // Mapping of semantic colors to Tailwind background classes for cells
 export const CELL_BG_COLOR_MAP: Record<string, string> = {
-  blue: 'bg-blue-100 hover:bg-blue-200',
-  amber: 'bg-amber-100 hover:bg-amber-200',
-  red: 'bg-red-100 hover:bg-red-200',
-  teal: 'bg-teal-100 hover:bg-teal-200',
-  purple: 'bg-purple-100 hover:bg-purple-200',
-  green: 'bg-green-100 hover:bg-green-200',
-  gray: 'bg-gray-100 hover:bg-gray-200',
+  blue: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100',
+  amber: 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900 dark:hover:bg-amber-800 dark:text-amber-100',
+  red: 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-100',
+  teal: 'bg-teal-100 hover:bg-teal-200 dark:bg-teal-900 dark:hover:bg-teal-800 dark:text-teal-100',
+  purple: 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-100',
+  green: 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-100',
+  gray: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100',
 };
 
 interface TimeCodeColorInfo {
