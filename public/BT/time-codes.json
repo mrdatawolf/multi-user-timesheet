@@ -33,7 +33,7 @@
       "description": "FMLA",
       "hours_limit": null,
       "default_allocation": null,
-      "is_active": 0
+      "is_active": 1
     },
     {
       "id": 5,

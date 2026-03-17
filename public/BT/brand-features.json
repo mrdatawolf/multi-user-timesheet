@@ -8,7 +8,8 @@
         "vacation": { "enabled": true, "timeCode": "V", "label": "Vacation" },
         "sickLeave": { "enabled": true, "timeCode": "PS", "label": "Paid Sick Leave" },
         "floatingHoliday": { "disabled": true, "timeCode": "FH", "label": "Floating Holiday" },
-        "paidHoliday": { "enabled": false, "timeCode": "H", "label": "Holiday" }
+        "paidHoliday": { "enabled": false, "timeCode": "H", "label": "Holiday" },
+        "family" : { "enabled": true, "timeCode": "FM", "label": "young child or family" }
       }
     },
     "approvalWorkflows": {
