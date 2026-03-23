@@ -51,6 +51,8 @@ export function ReportFilters({
   actionButtons,
   hideTimeCode,
 }: ReportFiltersProps) {
+  const dateRangeInvalid = !!(startDate && endDate && startDate > endDate);
+
   return (
     <HelpArea helpId="report-filters" bubblePosition="bottom">
       <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-muted">
@@ -92,16 +94,16 @@ export function ReportFilters({
 
         <div className="flex-1 min-w-[200px] space-y-1">
           <label className="text-xs">Start Date</label>
-          <DatePicker date={startDate} setDate={onStartDateChange} />
+          <DatePicker date={startDate} setDate={onStartDateChange} invalid={dateRangeInvalid} />
         </div>
 
         <div className="flex-1 min-w-[200px] space-y-1">
           <label className="text-xs">End Date</label>
-          <DatePicker date={endDate} setDate={onEndDateChange} />
+          <DatePicker date={endDate} setDate={onEndDateChange} invalid={dateRangeInvalid} />
         </div>
 
         <HelpArea helpId="generate-report" bubblePosition="top" showHighlight={false}>
-          <Button onClick={onGenerate} disabled={loading}>
+          <Button onClick={onGenerate} disabled={loading || dateRangeInvalid}>
             {loading ? <Spinner /> : 'Generate Report'}
           </Button>
         </HelpArea>

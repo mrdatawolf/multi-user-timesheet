@@ -81,6 +81,8 @@ interface ModalState {
   isOpen: boolean;
   timeCode: string;
   title: string;
+  availableBalanceText?: string;
+  annualUsageLimit?: number;
 }
 
 interface LeaveTypes {
@@ -196,8 +198,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
     loadColorConfig();
   }, [authFetch]);
 
-  const openModal = (timeCode: string, title: string) => {
-    setModalState({ isOpen: true, timeCode, title });
+  const openModal = (timeCode: string, title: string, availableBalanceText?: string, annualUsageLimit?: number) => {
+    setModalState({ isOpen: true, timeCode, title, availableBalanceText, annualUsageLimit });
   };
 
   const closeModal = () => {
@@ -252,7 +254,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
     const timeCode = config.timeCode;
     const label = config.label || defaultLabel;
     const used = calculateUsage(timeCode);
-    const limit = getAllocatedHours(timeCode);
+    const limit = config.annualUsageLimit ?? getAllocatedHours(timeCode);
+    const hasCustomBalanceText = !!config.availableBalanceText;
     const remaining = Math.max(0, limit - used);
     const colorClasses = getUsageColorClasses(used, limit);
 
@@ -260,14 +263,14 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
       <div
         key={key}
         className={`flex-1 min-w-[150px] border rounded-lg p-2 cursor-pointer hover:opacity-80 transition-all ${colorClasses.card || 'bg-card'}`}
-        onClick={() => openModal(timeCode, label)}
+        onClick={() => openModal(timeCode, label, config.availableBalanceText, config.annualUsageLimit)}
         title="Click to see breakdown"
       >
         <div className="text-xs font-medium text-muted-foreground mb-0.5">
           {label}
         </div>
         <div className="text-lg font-bold">
-          {remaining}h
+          {hasCustomBalanceText ? config.availableBalanceText : `${remaining}h`}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {used}h used / {limit}h total
@@ -330,6 +333,8 @@ export function BalanceCards({ entries, allocations }: BalanceCardsProps) {
         title={modalState.title}
         entries={entries}
         allocation={getSelectedAllocation()}
+        availableBalanceText={modalState.availableBalanceText}
+        annualUsageLimit={modalState.annualUsageLimit}
       />
     </>
   );

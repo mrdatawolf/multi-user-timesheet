@@ -16,9 +16,10 @@ import {
 interface DatePickerProps {
   date?: Date;
   setDate: (date?: Date) => void;
+  invalid?: boolean;
 }
 
-export function DatePicker({ date, setDate }: DatePickerProps) {
+export function DatePicker({ date, setDate, invalid }: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -26,7 +27,8 @@ export function DatePicker({ date, setDate }: DatePickerProps) {
           variant={"outline"}
           className={cn(
             "w-[280px] justify-start text-left font-normal",
-            !date && "text-muted-foreground"
+            !date && "text-muted-foreground",
+            invalid && "ring-2 ring-red-500 animate-pulse"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

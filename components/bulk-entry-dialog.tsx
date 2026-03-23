@@ -94,6 +94,7 @@ export function BulkEntryDialog({
 
   const hoursPerDay = hours + minutes / 60;
   const totalHours = hoursPerDay * dayCount;
+  const dateRangeInvalid = !!(startDate && endDate && endDate < startDate);
   const isValid = timeCode !== '__NONE__' && dayCount > 0 && hoursPerDay > 0 && hoursPerDay <= 24;
 
   // Find selected time code info
@@ -212,7 +213,7 @@ export function BulkEntryDialog({
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="h-9"
+                  className={`h-9 ${dateRangeInvalid ? 'ring-2 ring-red-500 animate-pulse' : ''}`}
                 />
               </div>
               <div className="space-y-1">
@@ -222,7 +223,7 @@ export function BulkEntryDialog({
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="h-9"
+                  className={`h-9 ${dateRangeInvalid ? 'ring-2 ring-red-500 animate-pulse' : ''}`}
                 />
               </div>
             </div>

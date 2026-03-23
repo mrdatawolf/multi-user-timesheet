@@ -1,12 +1,12 @@
 {
   "name": "multi-user-attendance",
-  "version": "1.7.2",
+  "version": "1.7.4",
   "private": true,
   "scripts": {
     "dev": "next dev -p 6029",
     "build": "node scripts/build-with-brand-uri.js",
     "start": "next start -p 6029",
-    "start:standalone": "node .next/standalone/server.js",
+    "start:standalone": "node .next/standalone/multi-user-timesheet/server.js",
     "lint": "next lint",
     "db:init": "tsx scripts/init-db.ts",
     "db:migrate": "node scripts/migrate.js",

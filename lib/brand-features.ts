@@ -14,6 +14,8 @@ export interface LeaveTypeConfig {
   enabled: boolean;
   timeCode?: string;  // Maps to actual time code in database (e.g., "FLH", "PSL", "V")
   label?: string;     // Display label for UI (e.g., "Floating Holiday", "Paid Sick Leave")
+  availableBalanceText?: string;  // Custom text instead of calculated balance (e.g., "Check ADP")
+  annualUsageLimit?: number;      // Override the "total" shown on card (e.g., 40 for 40h/year cap)
 }
 
 // Company holiday configuration

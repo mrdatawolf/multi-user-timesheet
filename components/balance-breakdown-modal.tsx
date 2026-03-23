@@ -101,6 +101,8 @@ interface BalanceBreakdownModalProps {
   title: string;
   entries: AttendanceEntry[];
   allocation: TimeAllocation | null;
+  availableBalanceText?: string;
+  annualUsageLimit?: number;
 }
 
 export function BalanceBreakdownModal({
@@ -110,6 +112,8 @@ export function BalanceBreakdownModal({
   title,
   entries,
   allocation,
+  availableBalanceText,
+  annualUsageLimit,
 }: BalanceBreakdownModalProps) {
   // Filter entries for this specific time code
   const relevantEntries = entries
@@ -117,12 +121,13 @@ export function BalanceBreakdownModal({
     .sort((a, b) => a.entry_date.localeCompare(b.entry_date));
 
   const totalUsed = relevantEntries.reduce((sum, e) => sum + (e.hours || 0), 0);
+  const effectiveLimit = annualUsageLimit ?? (allocation?.allocated_hours ?? 0);
   const allocatedHours = allocation?.allocated_hours ?? 0;
   const defaultAllocation = allocation?.default_allocation ?? 0;
   const isOverride = allocation?.is_override ?? false;
   const isAccrual = allocation?.is_accrual ?? false;
   const accrualDetails = allocation?.accrual_details;
-  const remaining = Math.max(0, allocatedHours - totalUsed);
+  const remaining = Math.max(0, effectiveLimit - totalUsed);
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'N/A';
@@ -160,10 +165,15 @@ export function BalanceBreakdownModal({
           {/* Allocation Source */}
           <div className="border rounded-lg p-3 bg-muted/30">
             <h3 className="text-sm font-semibold mb-2">
-              {isAccrual ? 'Accrual-Based Allocation' : 'Allocation'}
+              {availableBalanceText ? 'Available Balance' : isAccrual ? 'Accrual-Based Allocation' : 'Allocation'}
             </h3>
             <div className="space-y-1 text-sm">
-              {isAccrual && accrualDetails ? (
+              {availableBalanceText ? (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Available:</span>
+                  <span className="font-medium">{availableBalanceText}</span>
+                </div>
+              ) : isAccrual && accrualDetails ? (
                 accrualDetails.accrualType === 'tieredSeniority' && accrualDetails.tieredSeniorityDetails ? (
                   /* Tiered Seniority Accrual (Vacation) */
                   <>
@@ -504,9 +514,18 @@ export function BalanceBreakdownModal({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Used:</span>
-                <span className="font-medium">{totalUsed}h</span>
+                <span className="font-medium">{totalUsed}h / {effectiveLimit}h total</span>
               </div>
-              {allocatedHours > 0 && (
+              {availableBalanceText ? (
+                <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${totalUsed > effectiveLimit ? 'bg-destructive' : 'bg-primary'}`}
+                    style={{
+                      width: `${effectiveLimit > 0 ? Math.min(100, (totalUsed / effectiveLimit) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+              ) : effectiveLimit > 0 ? (
                 <>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Remaining:</span>
@@ -516,14 +535,14 @@ export function BalanceBreakdownModal({
                   </div>
                   <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all ${totalUsed > allocatedHours ? 'bg-destructive' : 'bg-primary'}`}
+                      className={`h-full transition-all ${totalUsed > effectiveLimit ? 'bg-destructive' : 'bg-primary'}`}
                       style={{
-                        width: `${Math.min(100, (totalUsed / allocatedHours) * 100)}%`,
+                        width: `${Math.min(100, (totalUsed / effectiveLimit) * 100)}%`,
                       }}
                     />
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
 
