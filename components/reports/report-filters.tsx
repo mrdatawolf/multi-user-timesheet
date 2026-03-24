@@ -33,6 +33,7 @@ interface ReportFiltersProps {
   loading: boolean;
   actionButtons?: React.ReactNode;
   hideTimeCode?: boolean;
+  requireEmployee?: boolean;
 }
 
 export function ReportFilters({
@@ -50,6 +51,7 @@ export function ReportFilters({
   loading,
   actionButtons,
   hideTimeCode,
+  requireEmployee,
 }: ReportFiltersProps) {
   const dateRangeInvalid = !!(startDate && endDate && startDate > endDate);
 
@@ -60,10 +62,10 @@ export function ReportFilters({
           <label className="text-xs">Employee</label>
           <Select value={selectedEmployeeId} onValueChange={onEmployeeChange}>
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
+              <SelectValue placeholder={requireEmployee ? 'Pick an Employee' : undefined} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Employees</SelectItem>
+              {!requireEmployee && <SelectItem value="all">All Employees</SelectItem>}
               {employees.map(emp => (
                 <SelectItem key={emp.id} value={emp.id.toString()}>
                   {emp.last_name}, {emp.first_name}
@@ -103,7 +105,7 @@ export function ReportFilters({
         </div>
 
         <HelpArea helpId="generate-report" bubblePosition="top" showHighlight={false}>
-          <Button onClick={onGenerate} disabled={loading || dateRangeInvalid}>
+          <Button onClick={onGenerate} disabled={loading || dateRangeInvalid || (requireEmployee && (!selectedEmployeeId || selectedEmployeeId === 'all'))}>
             {loading ? <Spinner /> : 'Generate Report'}
           </Button>
         </HelpArea>

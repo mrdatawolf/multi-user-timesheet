@@ -144,16 +144,16 @@ export default function ReportsPage() {
     if (selectedReportId === 'leave-balance-summary') {
       loadLeaveBalanceSummary();
     } else if (selectedReportId === 'attendance-management') {
-      // Default dates to previous month
       const now = new Date();
       const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       setStartDate(prevMonthStart);
       setEndDate(prevMonthEnd);
-      // Don't auto-generate — user must pick an employee and click Generate
+      setSelectedEmployeeId('');
       setAttendanceManagementData(null);
     } else {
-      // Auto-generate table-based reports with current filters
+      // Table-based reports default to "all employees"
+      setSelectedEmployeeId('all');
       setAttendanceData([]);
       handleGenerateAttendanceReport();
     }
@@ -225,7 +225,7 @@ export default function ReportsPage() {
   };
 
   const loadAttendanceManagement = async () => {
-    if (selectedEmployeeId === 'all') {
+    if (!selectedEmployeeId || selectedEmployeeId === 'all') {
       setAttendanceManagementData(null);
       return;
     }
@@ -415,6 +415,7 @@ export default function ReportsPage() {
               onGenerate={loadAttendanceManagement}
               loading={reportLoading}
               hideTimeCode={true}
+              requireEmployee={true}
               actionButtons={
                 <AttendanceManagementExport
                   data={attendanceManagementData}
