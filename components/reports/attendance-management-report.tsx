@@ -9,6 +9,7 @@ interface SummaryRow {
   days: number;
   hoursUsed: number;
   hoursAvail: number | string | null;
+  usageLimit: number | null;
 }
 
 export interface AttendanceManagementData {
@@ -114,7 +115,14 @@ export function AttendanceManagementReport({ data, loading }: AttendanceManageme
                   <TableCell className="text-center">
                     {row.hoursAvail != null
                       ? typeof row.hoursAvail === 'string'
-                        ? row.hoursAvail
+                        ? (<>
+                            <div>{row.hoursAvail}</div>
+                            {row.usageLimit != null && (
+                              <div className="text-xs text-muted-foreground">
+                                {row.hoursUsed}h / {row.usageLimit}h
+                              </div>
+                            )}
+                          </>)
                         : row.hoursAvail.toFixed(2)
                       : ''}
                   </TableCell>
