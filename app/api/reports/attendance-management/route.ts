@@ -3,14 +3,13 @@ import { getAuthUser } from '@/lib/middleware/auth';
 import { getUserReadableGroups, isSuperuser, getGroupById } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
-import { getBrandTimeCodes, getAccrualRuleForTimeCode } from '@/lib/brand-time-codes';
+import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 import { calculateAccrual, type AccrualRule } from '@/lib/accrual-calculations';
 
 export const dynamic = 'force-dynamic';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Build special availability text from brand features leave type configs
 function getSpecialAvailability(brandFeatures: any): Record<string, { text: string; usageLimit: number | null }> {
   const result: Record<string, { text: string; usageLimit: number | null }> = {};
   const leaveTypes = brandFeatures?.features?.leaveManagement?.leaveTypes;
@@ -81,71 +80,62 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get department name from auth.db
-    let department = 'Unassigned';
-    if (employee.group_id) {
-      const group = await getGroupById(employee.group_id);
-      if (group) {
-        department = group.name;
-      }
-    }
-
-    // Get ALL active brand time codes for summary rows
     const brandTimeCodes = getBrandTimeCodes() || [];
     const activeTimeCodes = brandTimeCodes.filter(tc => tc.is_active === 1);
 
-    // Sort by configured timeCodeOrder if present, otherwise use brand JSON order
     const timeCodeOrder = brandFeatures.features.attendanceManagement?.timeCodeOrder;
     if (timeCodeOrder && timeCodeOrder.length > 0) {
       activeTimeCodes.sort((a, b) => {
         const aIdx = timeCodeOrder.indexOf(a.code);
         const bIdx = timeCodeOrder.indexOf(b.code);
-        // Codes not in the order list go to the end
         const aOrder = aIdx === -1 ? timeCodeOrder.length : aIdx;
         const bOrder = bIdx === -1 ? timeCodeOrder.length : bIdx;
         return aOrder - bOrder;
       });
     }
 
-    // Get allocations for this employee for the year
+    // Parallelize independent queries
     const year = new Date(startDate).getFullYear();
-    const allocResult = await db.execute({
-      sql: 'SELECT time_code, allocated_hours FROM employee_time_allocations WHERE employee_id = ? AND year = ?',
-      args: [empId, year],
-    });
+    const [groupResult, allocResult, entriesResult] = await Promise.all([
+      employee.group_id ? getGroupById(employee.group_id) : Promise.resolve(null),
+      db.execute({
+        sql: 'SELECT time_code, allocated_hours FROM employee_time_allocations WHERE employee_id = ? AND year = ?',
+        args: [empId, year],
+      }),
+      db.execute({
+        sql: `
+          SELECT te.entry_date, te.time_code, te.hours, te.notes
+          FROM attendance_entries te
+          WHERE te.employee_id = ? AND te.entry_date >= ? AND te.entry_date <= ?
+          ORDER BY te.entry_date
+        `,
+        args: [empId, startDate, endDate],
+      }),
+    ]);
+
+    const department = groupResult?.name || 'Unassigned';
+
     const allocOverrides = new Map<string, number>();
     for (const row of allocResult.rows as unknown as Array<{ time_code: string; allocated_hours: number }>) {
       allocOverrides.set(row.time_code, row.allocated_hours);
     }
 
-    // Compute accrual-based allocations where applicable
+    // Resolve allocations: overrides > accrual rules > default_allocation
+    const accrualCalc = brandFeatures?.features?.accrualCalculations as any;
+    const accrualRules = accrualCalc?.enabled ? (accrualCalc.rules || {}) : {};
     const allocations = new Map<string, number>();
     const asOfDate = new Date();
     for (const tc of activeTimeCodes) {
-      // Employee-specific override takes precedence
       if (allocOverrides.has(tc.code)) {
         allocations.set(tc.code, allocOverrides.get(tc.code)!);
         continue;
       }
-      // Check for accrual rules
-      const accrualRule = getAccrualRuleForTimeCode(tc.code);
+      const accrualRule = accrualRules[tc.code];
       if (accrualRule && employee.date_of_hire) {
         const result = calculateAccrual(employee.date_of_hire, year, asOfDate, accrualRule as AccrualRule);
         allocations.set(tc.code, result.accruedHours);
       }
-      // Otherwise falls through to default_allocation in summary builder
     }
-
-    // Get attendance entries for this employee in the date range
-    const entriesResult = await db.execute({
-      sql: `
-        SELECT te.entry_date, te.time_code, te.hours, te.notes
-        FROM attendance_entries te
-        WHERE te.employee_id = ? AND te.entry_date >= ? AND te.entry_date <= ?
-        ORDER BY te.entry_date
-      `,
-      args: [empId, startDate, endDate],
-    });
     const entries = entriesResult.rows as unknown as Array<{
       entry_date: string;
       time_code: string;
@@ -208,13 +198,11 @@ export async function GET(request: NextRequest) {
       dayOfWeekBreakdown[dayName] += 1;
     }
 
-    // Build description lookup from brand time codes
     const tcDescriptions = new Map<string, string>();
     for (const tc of activeTimeCodes) {
       tcDescriptions.set(tc.code, tc.description);
     }
 
-    // Build detail rows
     const details = entries.map(entry => {
       const date = new Date(entry.entry_date + 'T00:00:00');
       return {
