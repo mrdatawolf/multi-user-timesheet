@@ -35,12 +35,11 @@ export async function GET(request: NextRequest) {
       SELECT
         e.first_name || ' ' || e.last_name AS employee_name,
         te.entry_date,
-        tc.code AS time_code,
+        te.time_code,
         te.hours,
         te.notes
       FROM attendance_entries te
       JOIN employees e ON te.employee_id = e.id
-      JOIN time_codes tc ON te.time_code_id = tc.id
       WHERE te.entry_date >= ? AND te.entry_date <= ?
         AND e.is_active = 1
     `;
@@ -71,7 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (timeCode !== 'all') {
-      sql += ' AND tc.code = ?';
+      sql += ' AND te.time_code = ?';
       args.push(timeCode);
     }
 

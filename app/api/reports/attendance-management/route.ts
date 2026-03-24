@@ -3,17 +3,29 @@ import { getAuthUser } from '@/lib/middleware/auth';
 import { getUserReadableGroups, isSuperuser, getGroupById } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { getBrandFeatures, isGlobalReadAccessEnabled } from '@/lib/brand-features';
-import { getBrandTimeCodes } from '@/lib/brand-time-codes';
+import { getBrandTimeCodes, getAccrualRuleForTimeCode } from '@/lib/brand-time-codes';
+import { calculateAccrual, type AccrualRule } from '@/lib/accrual-calculations';
 
 export const dynamic = 'force-dynamic';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Time codes that show special text instead of numeric hours available
-// Future: move to brand configuration
-const SPECIAL_AVAILABILITY: Record<string, string> = {
-  PSL: 'ADP',
-};
+// Build special availability text from brand features leave type configs
+function getSpecialAvailability(brandFeatures: any): Record<string, { text: string; usageLimit: number | null }> {
+  const result: Record<string, { text: string; usageLimit: number | null }> = {};
+  const leaveTypes = brandFeatures?.features?.leaveManagement?.leaveTypes;
+  if (!leaveTypes) return result;
+
+  for (const config of Object.values(leaveTypes) as any[]) {
+    if (config?.enabled && config?.timeCode && config?.availableBalanceText) {
+      result[config.timeCode] = {
+        text: config.availableBalanceText,
+        usageLimit: config.annualUsageLimit ?? null,
+      };
+    }
+  }
+  return result;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Get employee details
     const empResult = await db.execute({
-      sql: 'SELECT id, first_name, last_name, group_id FROM employees WHERE id = ? AND is_active = 1',
+      sql: 'SELECT id, first_name, last_name, group_id, date_of_hire FROM employees WHERE id = ? AND is_active = 1',
       args: [empId],
     });
     const employee = empResult.rows[0] as unknown as {
@@ -51,6 +63,7 @@ export async function GET(request: NextRequest) {
       first_name: string;
       last_name: string;
       group_id: number | null;
+      date_of_hire: string | null;
     } | undefined;
 
     if (!employee) {
@@ -100,17 +113,34 @@ export async function GET(request: NextRequest) {
       sql: 'SELECT time_code, allocated_hours FROM employee_time_allocations WHERE employee_id = ? AND year = ?',
       args: [empId, year],
     });
-    const allocations = new Map<string, number>();
+    const allocOverrides = new Map<string, number>();
     for (const row of allocResult.rows as unknown as Array<{ time_code: string; allocated_hours: number }>) {
-      allocations.set(row.time_code, row.allocated_hours);
+      allocOverrides.set(row.time_code, row.allocated_hours);
+    }
+
+    // Compute accrual-based allocations where applicable
+    const allocations = new Map<string, number>();
+    const asOfDate = new Date();
+    for (const tc of activeTimeCodes) {
+      // Employee-specific override takes precedence
+      if (allocOverrides.has(tc.code)) {
+        allocations.set(tc.code, allocOverrides.get(tc.code)!);
+        continue;
+      }
+      // Check for accrual rules
+      const accrualRule = getAccrualRuleForTimeCode(tc.code);
+      if (accrualRule && employee.date_of_hire) {
+        const result = calculateAccrual(employee.date_of_hire, year, asOfDate, accrualRule as AccrualRule);
+        allocations.set(tc.code, result.accruedHours);
+      }
+      // Otherwise falls through to default_allocation in summary builder
     }
 
     // Get attendance entries for this employee in the date range
     const entriesResult = await db.execute({
       sql: `
-        SELECT te.entry_date, tc.code AS time_code, tc.description, te.hours, te.notes
+        SELECT te.entry_date, te.time_code, te.hours, te.notes
         FROM attendance_entries te
-        JOIN time_codes tc ON te.time_code_id = tc.id
         WHERE te.employee_id = ? AND te.entry_date >= ? AND te.entry_date <= ?
         ORDER BY te.entry_date
       `,
@@ -119,7 +149,6 @@ export async function GET(request: NextRequest) {
     const entries = entriesResult.rows as unknown as Array<{
       entry_date: string;
       time_code: string;
-      description: string;
       hours: number;
       notes: string | null;
     }>;
@@ -137,13 +166,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const specialAvailability = getSpecialAvailability(brandFeatures);
+
     const summary = activeTimeCodes.map(tc => {
       const stats = summaryMap.get(tc.code) || { days: 0, hoursUsed: 0 };
 
       // Determine hours available
       let hoursAvail: number | string | null = null;
-      if (SPECIAL_AVAILABILITY[tc.code]) {
-        hoursAvail = SPECIAL_AVAILABILITY[tc.code];
+      const special = specialAvailability[tc.code];
+      if (special) {
+        hoursAvail = special.text;
       } else if (allocations.has(tc.code)) {
         hoursAvail = allocations.get(tc.code)!;
       } else if (tc.default_allocation != null) {
@@ -156,6 +188,7 @@ export async function GET(request: NextRequest) {
         days: stats.days,
         hoursUsed: stats.hoursUsed,
         hoursAvail,
+        usageLimit: special?.usageLimit ?? null,
       };
     });
 
@@ -175,13 +208,19 @@ export async function GET(request: NextRequest) {
       dayOfWeekBreakdown[dayName] += 1;
     }
 
+    // Build description lookup from brand time codes
+    const tcDescriptions = new Map<string, string>();
+    for (const tc of activeTimeCodes) {
+      tcDescriptions.set(tc.code, tc.description);
+    }
+
     // Build detail rows
     const details = entries.map(entry => {
       const date = new Date(entry.entry_date + 'T00:00:00');
       return {
         date: entry.entry_date,
         dayOfWeek: DAY_NAMES[date.getDay()],
-        type: entry.description,
+        type: tcDescriptions.get(entry.time_code) || entry.time_code,
         time: entry.hours,
         reasonGiven: entry.notes || '',
       };
