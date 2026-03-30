@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -17,9 +18,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Shield, Map, FlaskConical, Settings, HelpCircle } from 'lucide-react';
+import { User, LogOut, Shield, Map, FlaskConical, Settings, HelpCircle, KeyRound } from 'lucide-react';
 import { useHelp } from '@/lib/help-context';
 import { OfficePresenceBar } from '@/components/office-presence-bar';
+import { ChangePasswordDialog } from '@/components/change-password-dialog';
 
 const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
@@ -35,6 +37,7 @@ export function Navbar() {
   const { user, isAuthenticated, logout, isLoading, isMaster, isAdministrator } = useAuth();
   const { theme: themeId } = useTheme();
   const { isHelpMode, toggleHelpMode } = useHelp();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const themeConfig = getTheme(themeId);
   const showAdminMenu = isMaster || isAdministrator;
   const enabledItems = NAV_ITEMS.filter(item => {
@@ -124,6 +127,10 @@ export function Navbar() {
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setChangePasswordOpen(true)} className="cursor-pointer">
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        <span>Change Password</span>
+                      </DropdownMenuItem>
                       {showAdminMenu && (
                         <>
                           <DropdownMenuItem onClick={() => router.push('/tests')} className="cursor-pointer">
@@ -155,6 +162,7 @@ export function Navbar() {
           </div>
         </div>
       </div>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </nav>
   );
 }

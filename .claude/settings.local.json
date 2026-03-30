@@ -67,7 +67,8 @@
       "Bash(npm show:*)",
       "Bash(npm run lint)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(\"/c/Program Files/Python313/python.exe\":*)"
     ]
   }
 }
