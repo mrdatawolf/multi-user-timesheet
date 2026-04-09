@@ -6,7 +6,7 @@ import { db } from '../db-sqlite';
 
 // JWT secret - In production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '24h';
+const JWT_EXPIRES_IN = '90d';
 
 export interface AuthUser {
   id: number;
