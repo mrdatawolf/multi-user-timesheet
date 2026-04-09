@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
@@ -49,6 +50,7 @@ interface UpcomingStaffingEntry {
 }
 
 export default function Home() {
+  const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -59,6 +61,11 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      const lastPage = localStorage.getItem('last_visited_page');
+      if (lastPage && lastPage !== '/') {
+        router.replace(lastPage);
+        return;
+      }
       loadDashboardData();
     } else if (!authLoading) {
       setLoading(false);

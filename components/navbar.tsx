@@ -40,6 +40,14 @@ export function Navbar() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const themeConfig = getTheme(themeId);
   const showAdminMenu = isMaster || isAdministrator;
+
+  // Persist the last visited main page so the app can return to it on re-open
+  const TRACKED_PATHS = ['/attendance', '/employees', '/users', '/dashboard', '/reports', '/settings'];
+  useEffect(() => {
+    if (isAuthenticated && TRACKED_PATHS.includes(pathname)) {
+      localStorage.setItem('last_visited_page', pathname);
+    }
+  }, [pathname, isAuthenticated]);
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
     if (item.superuserOnly && !showAdminMenu) return false;
