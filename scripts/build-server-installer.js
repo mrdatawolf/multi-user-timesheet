@@ -204,6 +204,31 @@ pause
 `;
   fs.writeFileSync(path.join(TEMP_DIR, 'Start Server.bat'), launcherContent);
 
+  const ps1Content = `$host.ui.RawUI.WindowTitle = 'Attendance Server'
+Set-Location -Path "$PSScriptRoot\\server"
+
+Write-Host ""
+Write-Host "========================================"
+Write-Host "  Attendance Management Server v${version}"
+Write-Host "========================================"
+Write-Host ""
+Write-Host "Starting server on port 6029..."
+Write-Host ""
+Write-Host "Open your browser to: http://localhost:6029"
+Write-Host ""
+Write-Host "Press Ctrl+C to stop the server"
+Write-Host "========================================"
+Write-Host ""
+
+$env:PORT = '6029'
+$env:HOSTNAME = '0.0.0.0'
+
+& "$PSScriptRoot\\node\\node.exe" server.js
+
+Read-Host "Press Enter to exit"
+`;
+  fs.writeFileSync(path.join(TEMP_DIR, 'Start Server.ps1'), ps1Content);
+
   // Create NSIS script
   console.log('Creating installer script...');
   const installerName = `${brandId}_Attendance_Server_Setup_${version}`;
@@ -271,6 +296,7 @@ Section "Uninstall"
   RMDir /r "$INSTDIR\\server"
   RMDir /r "$INSTDIR\\node"
   Delete "$INSTDIR\\Start Server.bat"
+  Delete "$INSTDIR\\Start Server.ps1"
   Delete "$INSTDIR\\Uninstall.exe"
   RMDir "$INSTDIR"
 
