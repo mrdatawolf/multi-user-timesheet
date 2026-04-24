@@ -456,10 +456,12 @@ export default function UsersPage() {
   return (
     <div className="container mx-auto p-8">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Employee Management</h1>
-          <p className="text-muted-foreground">Manage employee records and information</p>
-        </div>
+        <HelpArea helpId="employees-overview" bubblePosition="right">
+          <div>
+            <h1 className="text-3xl font-bold">Employee Management</h1>
+            <p className="text-muted-foreground">Manage employee records and information</p>
+          </div>
+        </HelpArea>
         <div className="flex gap-2">
           {user?.group?.is_master && (
             <Button

@@ -125,6 +125,17 @@
       "order": 12
     },
     {
+      "id": "employees-overview",
+      "screen": "employees",
+      "section": "employees-overview",
+      "title": "Employee Management",
+      "whatItIs": "The Employee Management page lists all employees in the system along with their group, hire date, and status.",
+      "howToUse": "Browse the list to find employees. Active employees are shown by default. Administrators can add, edit, or deactivate employees using the action buttons in each row.",
+      "howToUpdate": "Administrators can create new employees using the 'Add Employee' button in the top right. Changes to employee records take effect immediately.",
+      "position": "right",
+      "order": 0
+    },
+    {
       "id": "employees-add-button",
       "screen": "employees",
       "section": "add-employee",
