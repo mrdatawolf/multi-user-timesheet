@@ -135,7 +135,7 @@ export function Navbar() {
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setChangePasswordOpen(true)} className="cursor-pointer">
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setChangePasswordOpen(true)} className="cursor-pointer">
                         <KeyRound className="mr-2 h-4 w-4" />
                         <span>Change Password</span>
                       </DropdownMenuItem>
