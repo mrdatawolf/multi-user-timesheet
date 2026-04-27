@@ -95,7 +95,7 @@ function main() {
     });
 
     // Create symlink for static files in standalone folder (for electron:start dev mode)
-    const standaloneStaticDir = path.join(ROOT_DIR, '.next', 'standalone', 'multi-user-timesheet', '.next', 'static');
+    const standaloneStaticDir = path.join(ROOT_DIR, '.next', 'standalone', '.next', 'static');
     const sourceStaticDir = path.join(ROOT_DIR, '.next', 'static');
 
     if (fs.existsSync(sourceStaticDir) && !fs.existsSync(standaloneStaticDir)) {
@@ -115,7 +115,7 @@ function main() {
     }
 
     // Write demo mode flag file to standalone build for server to read
-    const standaloneDir = path.join(ROOT_DIR, '.next', 'standalone', 'multi-user-timesheet');
+    const standaloneDir = path.join(ROOT_DIR, '.next', 'standalone');
     const demoModeFlagPath = path.join(standaloneDir, 'demo-mode.json');
 
     if (fs.existsSync(standaloneDir)) {
