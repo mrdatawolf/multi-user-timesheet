@@ -7,8 +7,8 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'packa
 const version = packageJson.version;
 
 const distDir = path.join(__dirname, '..', 'dist-server');
-// Next.js standalone creates a nested folder with the project name
-const standaloneDir = path.join(__dirname, '..', '.next', 'standalone', 'multi-user-timesheet');
+// Next.js standalone output is at .next/standalone/ directly (not in a subdirectory)
+const standaloneDir = path.join(__dirname, '..', '.next', 'standalone');
 const publicDir = path.join(__dirname, '..', 'public');
 const staticDir = path.join(__dirname, '..', '.next', 'static');
 
