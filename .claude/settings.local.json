@@ -68,7 +68,10 @@
       "Bash(npm run lint)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(\"/c/Program Files/Python313/python.exe\":*)"
+      "Bash(\"/c/Program Files/Python313/python.exe\":*)",
+      "PowerShell(& \"C:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\node_modules\\\\.bin\\\\better-sqlite3\" $db $query 2>&1)",
+      "PowerShell($db = \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\\\\databases\\\\attendance.db\")",
+      "PowerShell($query = \"SELECT id, first_name, last_name, date_of_hire FROM employees LIMIT 10;\")"
     ]
   }
 }

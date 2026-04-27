@@ -117,13 +117,6 @@ function LoginForm() {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-            <div className="text-sm text-gray-500 text-center pt-2">
-              <p>Default credentials:</p>
-              <p className="font-mono text-xs mt-1">
-                Username: <span className="font-semibold">admin</span> / Password:{' '}
-                <span className="font-semibold">admin123</span>
-              </p>
-            </div>
           </form>
         </CardContent>
       </Card>

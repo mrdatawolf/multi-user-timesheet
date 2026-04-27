@@ -510,7 +510,7 @@ function AttendanceContent() {
           {/* Balance Cards */}
           {selectedEmployeeId && (
             <div className="flex-1 min-w-0">
-              <BalanceCards entries={entries} allocations={allocations} />
+              <BalanceCards entries={entries} allocations={allocations} employeeId={selectedEmployeeId} />
             </div>
           )}
         </div>
