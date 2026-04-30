@@ -4,6 +4,8 @@ import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-au
 import { logAudit } from '@/lib/queries-auth';
 import { authDb } from '@/lib/db-auth';
 import { db } from '@/lib/db-sqlite';
+import { getBrandFeatures, isAutoGenerateAbbreviation } from '@/lib/brand-features';
+import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,10 +82,37 @@ export async function POST(request: NextRequest) {
     if (user.employee_id) {
       try {
         const empResult = await db.execute({
-          sql: 'SELECT abbreviation FROM employees WHERE id = ?',
+          sql: 'SELECT abbreviation, first_name, last_name FROM employees WHERE id = ?',
           args: [user.employee_id],
         });
-        employee_abbreviation = (empResult.rows[0] as any)?.abbreviation || undefined;
+        const empRow = empResult.rows[0] as any;
+        employee_abbreviation = empRow?.abbreviation || undefined;
+
+        // Auto-generate for existing employees who have no abbreviation yet
+        if (!employee_abbreviation && empRow) {
+          const brandFeatures = await getBrandFeatures();
+          if (isAutoGenerateAbbreviation(brandFeatures)) {
+            const existingAbbrs = await db.execute({
+              sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1 AND id != ?',
+              args: [user.employee_id],
+            });
+            const existingSet = new Set<string>(
+              (existingAbbrs.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+            );
+            const abbr = generateUniqueAbbreviation(
+              empRow.first_name || '',
+              empRow.last_name || '',
+              existingSet
+            );
+            if (abbr) {
+              await db.execute({
+                sql: 'UPDATE employees SET abbreviation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                args: [abbr, user.employee_id],
+              });
+              employee_abbreviation = abbr;
+            }
+          }
+        }
       } catch {
         // Non-fatal
       }

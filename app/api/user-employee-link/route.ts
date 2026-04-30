@@ -5,6 +5,8 @@ import { authDb } from '@/lib/db-auth';
 import { getAllEmployees, createEmployee } from '@/lib/queries-sqlite';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
+import { getBrandFeatures, isAutoGenerateAbbreviation } from '@/lib/brand-features';
+import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +127,31 @@ export async function POST(request: NextRequest) {
             user_agent: getUserAgent(request),
           });
 
+          // Auto-generate abbreviation if feature is on and employee has none
+          const reactivatedRow = await db.execute({
+            sql: 'SELECT abbreviation FROM employees WHERE id = ?',
+            args: [existingId],
+          });
+          if (!(reactivatedRow.rows[0] as any)?.abbreviation) {
+            const brandFeatures = await getBrandFeatures();
+            if (isAutoGenerateAbbreviation(brandFeatures)) {
+              const existingAbbrs = await db.execute({
+                sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1 AND id != ?',
+                args: [existingId],
+              });
+              const existingSet = new Set<string>(
+                (existingAbbrs.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+              );
+              const abbr = generateUniqueAbbreviation(firstName, lastName, existingSet);
+              if (abbr) {
+                await db.execute({
+                  sql: 'UPDATE employees SET abbreviation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                  args: [abbr, existingId],
+                });
+              }
+            }
+          }
+
           // Link and return early
           await setUserEmployeeId(authUser.id, employeeId);
 
@@ -158,6 +185,20 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Auto-generate abbreviation if brand feature is enabled
+      let autoAbbreviation: string | undefined;
+      const brandFeaturesForNew = await getBrandFeatures();
+      if (isAutoGenerateAbbreviation(brandFeaturesForNew)) {
+        const existingAbbrs = await db.execute({
+          sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1',
+          args: [],
+        });
+        const existingSet = new Set<string>(
+          (existingAbbrs.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+        );
+        autoAbbreviation = generateUniqueAbbreviation(firstName, lastName, existingSet) || undefined;
+      }
+
       const newEmployee = await createEmployee({
         employee_number: undefined,
         first_name: firstName,
@@ -169,6 +210,7 @@ export async function POST(request: NextRequest) {
         rehire_date: undefined,
         employment_type: 'full_time',
         seniority_rank: undefined,
+        abbreviation: autoAbbreviation,
         created_by: authUser.id,
         is_active: 1,
       });

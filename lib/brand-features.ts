@@ -111,6 +111,7 @@ export interface BrandFeatures {
     leaveManagement: {
       enabled: boolean;
       leaveTypes?: Record<string, LeaveTypeConfig>;
+      autogenerateNameAbbreviation?: boolean;
     };
     approvalWorkflows: { enabled: boolean };
     policyEnforcement: { enabled: boolean };
@@ -457,6 +458,15 @@ export function getOfficePresenceConfig(features: BrandFeatures): OfficePresence
  */
 export function getAttendanceYearLayout(features: BrandFeatures): 'table' | 'calendar' {
   return features.features.attendanceYearLayout ?? 'table';
+}
+
+/**
+ * Returns true when the brand is configured to auto-generate employee
+ * abbreviations from their name instead of requiring manual entry.
+ * Default is false (manual entry required).
+ */
+export function isAutoGenerateAbbreviation(features: BrandFeatures): boolean {
+  return features.features.leaveManagement.autogenerateNameAbbreviation ?? false;
 }
 
 /**
