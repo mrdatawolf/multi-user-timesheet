@@ -10,7 +10,8 @@
         "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
         "paidHoliday": { "enabled": true, "timeCode": "HL", "label": "Holiday" }
       },
-      "autogenerateNameAbbreviation": true
+      "autogenerateNameAbbreviation": true,
+      "logoutOnClose": true
     },
     "approvalWorkflows": {
       "enabled": true

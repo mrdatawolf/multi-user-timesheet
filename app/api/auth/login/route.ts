@@ -4,7 +4,7 @@ import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-au
 import { logAudit } from '@/lib/queries-auth';
 import { authDb } from '@/lib/db-auth';
 import { db } from '@/lib/db-sqlite';
-import { getBrandFeatures, isAutoGenerateAbbreviation } from '@/lib/brand-features';
+import { getBrandFeatures, isAutoGenerateAbbreviation, isLogoutOnClose } from '@/lib/brand-features';
 import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export async function POST(request: NextRequest) {
@@ -146,14 +146,18 @@ export async function POST(request: NextRequest) {
       token,
     });
 
-    // Set token as HTTP-only cookie
-    response.cookies.set('auth_token', token, {
+    // Set token as HTTP-only cookie.
+    // logoutOnClose: omit maxAge so the cookie becomes a session cookie
+    // (cleared automatically when the browser closes).
+    const loginBrandFeatures = await getBrandFeatures();
+    const cookieOpts: Parameters<typeof response.cookies.set>[2] = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 90, // 90 days
       path: '/',
-    });
+      ...(!isLogoutOnClose(loginBrandFeatures) && { maxAge: 60 * 60 * 24 * 90 }),
+    };
+    response.cookies.set('auth_token', token, cookieOpts);
 
     return response;
   } catch (error) {
