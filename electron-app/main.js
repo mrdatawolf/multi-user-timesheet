@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, session } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const config = require('./config');
@@ -68,6 +68,21 @@ function getSelectedBrand() {
 
 function shouldShowBreakTrays() {
   return TRAY_BREAK_BRANDS.has(getSelectedBrand());
+}
+
+function shouldLogoutOnClose() {
+  const brand = getSelectedBrand();
+  if (!brand) return false;
+  const isDev = !app.isPackaged;
+  const featuresPath = isDev
+    ? path.join(__dirname, '..', 'public', brand, 'brand-features.json')
+    : path.join(process.resourcesPath, 'server', 'public', brand, 'brand-features.json');
+  try {
+    const features = JSON.parse(fs.readFileSync(featuresPath, 'utf8'));
+    return features.features?.leaveManagement?.logoutOnClose === true;
+  } catch {
+    return false;
+  }
 }
 
 process.on('uncaughtException', (error) => {
@@ -1148,6 +1163,16 @@ app.on('window-all-closed', function () {
 
 app.on('before-quit', function () {
   isQuitting = true;
+
+  // logoutOnClose: remove the persisted auth cookie so Electron's session
+  // store doesn't carry it into the next launch.
+  // localStorage is cleared by the pagehide listener in the renderer.
+  if (shouldLogoutOnClose()) {
+    const serverUrl = store.get('serverUrl');
+    if (serverUrl) {
+      session.defaultSession.cookies.remove(serverUrl, 'auth_token').catch(() => {});
+    }
+  }
 });
 
 app.on('activate', function () {

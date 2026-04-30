@@ -9,7 +9,9 @@
         "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave", "availableBalanceText": "Check ADP", "annualUsageLimit": 40 },
         "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
         "paidHoliday": { "enabled": true, "timeCode": "HL", "label": "Holiday" }
-      }
+      },
+      "autogenerateNameAbbreviation": true,
+      "logoutOnClose": true
     },
     "approvalWorkflows": {
       "enabled": true
@@ -19,7 +21,7 @@
     },
     "attendanceManagement": {
       "enabled": true,
-      "timeCodeOrder": ["V", "PSL", "FLH", "BR", "FMLAUP", "HL", "JD", "PERS", "SUP", "WCP", "WCUP", "VUP", "VTO"]
+      "timeCodeOrder": ["V", "PERS", "BRP", "FMLAUP", "FLH", "LA", "BRUP", "WCP", "PSL", "LE", "JD", "SUP", "HL", "VTO"]
     },
     "accrualCalculations": {
       "enabled": true,

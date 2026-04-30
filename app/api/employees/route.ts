@@ -14,6 +14,8 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
+import { getBrandFeatures, isAutoGenerateAbbreviation } from '@/lib/brand-features';
+import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -164,6 +166,22 @@ export async function POST(request: NextRequest) {
           { error: 'Forbidden: You do not have permission to create employees in this group' },
           { status: 403 }
         );
+      }
+    }
+
+    // Auto-generate abbreviation from name if brand feature is enabled and none was supplied
+    if (!body.abbreviation && body.first_name && body.last_name) {
+      const brandFeatures = await getBrandFeatures();
+      if (isAutoGenerateAbbreviation(brandFeatures)) {
+        const existingResult = await db.execute({
+          sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1',
+          args: [],
+        });
+        const existingSet = new Set<string>(
+          (existingResult.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+        );
+        const abbr = generateUniqueAbbreviation(body.first_name, body.last_name, existingSet);
+        if (abbr) body.abbreviation = abbr;
       }
     }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { getBrandFeatures, isLogoutOnClose } from './brand-features';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface User {
@@ -116,6 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return () => clearTimeout(timeout);
+  }, []);
+
+  // logoutOnClose: when the brand requires it, clear auth from localStorage
+  // whenever the page/app is closed so the next open forces a fresh login.
+  useEffect(() => {
+    let removeListener: (() => void) | null = null;
+
+    getBrandFeatures().then(features => {
+      if (isLogoutOnClose(features)) {
+        const handlePageHide = (e: PageTransitionEvent) => {
+          if (!e.persisted) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
+        };
+        window.addEventListener('pagehide', handlePageHide);
+        removeListener = () => window.removeEventListener('pagehide', handlePageHide);
+      }
+    }).catch(() => {});
+
+    return () => { removeListener?.(); };
   }, []);
 
   const verifyToken = async (authToken: string) => {

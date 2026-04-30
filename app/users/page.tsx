@@ -62,7 +62,7 @@ interface Group {
 }
 
 export default function UsersPage() {
-  const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch, isMaster, isAdministrator } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -96,8 +96,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Only superusers can access this page
-      if (currentUser && !currentUser.is_superuser) {
+      if (currentUser && !isMaster && !isAdministrator) {
         router.push('/');
         return;
       }
@@ -308,7 +307,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!isAuthenticated || !currentUser?.is_superuser) {
+  if (!isAuthenticated || (!isMaster && !isAdministrator)) {
     return null;
   }
 
