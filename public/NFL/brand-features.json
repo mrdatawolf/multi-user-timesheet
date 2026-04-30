@@ -21,7 +21,7 @@
     },
     "attendanceManagement": {
       "enabled": true,
-      "timeCodeOrder": ["V", "PSL", "FLH", "BR", "FMLAUP", "HL", "JD", "PERS", "SUP", "WCP", "WCUP", "VUP", "VTO"]
+      "timeCodeOrder": ["V", "PERS", "BRP", "FMLAUP", "FLH", "LA", "BRUP", "WCP", "PSL", "LE", "JD", "SUP", "HL", "VTO"]
     },
     "accrualCalculations": {
       "enabled": true,
