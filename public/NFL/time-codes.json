@@ -135,16 +135,16 @@
       "id": 17,
       "code": "LA",
       "description": "Late Arrival",
-      "hours_limit": 16,
-      "default_allocation": 16,
+      "hours_limit": null,
+      "default_allocation": null,
       "is_active": 1
     },
     {
       "id": 18,
       "code": "LE",
       "description": "Left Early",
-      "hours_limit": 16,
-      "default_allocation": 16,
+      "hours_limit": null,
+      "default_allocation": null,
       "is_active": 1
     }
   ]
