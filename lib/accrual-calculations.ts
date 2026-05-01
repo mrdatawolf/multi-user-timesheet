@@ -177,6 +177,19 @@ export interface QuarterAccrual {
 }
 
 /**
+ * Returns whole completed years between two dates using calendar math,
+ * avoiding the floating-point drift of dividing by 365.25 ms/year.
+ */
+function calendarYearsBetween(from: Date, to: Date): number {
+  let years = to.getFullYear() - from.getFullYear();
+  const monthDiff = to.getMonth() - from.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && to.getDate() < from.getDate())) {
+    years--;
+  }
+  return Math.max(0, years);
+}
+
+/**
  * Calculate the eligibility date based on hire date and wait period
  */
 export function calculateEligibilityDate(
@@ -521,8 +534,7 @@ export function calculateTieredSeniorityAccrual(
   }
 
   // Calculate base years (years of service as of period start)
-  const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
-  const baseYears = Math.floor((periodStart.getTime() - hireDate.getTime()) / msPerYear);
+  const baseYears = calendarYearsBetween(hireDate, periodStart);
 
   // Determine eligibility
   let isEligible = true;
