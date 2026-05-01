@@ -1,0 +1,244 @@
+import { describe, it, expect } from 'vitest';
+import {
+  calculateTieredSeniorityAccrual,
+  calculateAnnualGrantAccrual,
+  type AccrualRule,
+} from '../accrual-calculations';
+import nflFeatures from '../../public/NFL/brand-features.json';
+
+// Pull rules directly from NFL brand config so tests catch config bugs too
+const V_RULE = nflFeatures.features.accrualCalculations.rules.V as unknown as AccrualRule;
+const FLH_RULE = nflFeatures.features.accrualCalculations.rules.FLH as unknown as AccrualRule;
+
+// Enough hours to qualify as full-time (threshold is 1,200)
+const FULL_TIME_HOURS = 1300;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: date shorthand
+// ─────────────────────────────────────────────────────────────────────────────
+function d(year: number, month: number, day: number) {
+  return new Date(year, month - 1, day);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VACATION  (tieredSeniority, benefit year Jun 1 – May 31)
+//
+// Expected tiers per NFL policy:
+//   0–2 years  =  40 h  (5 days)
+//   3–7 years  =  80 h  (10 days)
+//   8–14 years = 120 h  (15 days)
+//   15+ years  = 160 h  (20 days)
+//
+// Base years are measured as of the benefit-year start (Jun 1).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Vacation accrual', () => {
+  describe('tier selection – full-time employees', () => {
+    // For each case: hire date chosen so baseYears as of Jun 1 2025 hits the tier.
+    // asOfDate = Oct 1 2025 (mid benefit-year 2025–2026, full period active).
+
+    it('0 years of service → 40 h', () => {
+      const hire = d(2025, 3, 1);        // hired Mar 2025 → 0 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.isEligible).toBe(true);
+      expect(result.accruedHours).toBe(40);
+    });
+
+    it('1 year of service → 40 h', () => {
+      const hire = d(2024, 6, 1);        // exactly 1 base year at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(40);
+    });
+
+    it('2 years of service → 40 h', () => {
+      const hire = d(2023, 6, 1);        // exactly 2 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(40);
+    });
+
+    it('3 years of service → 80 h', () => {
+      const hire = d(2022, 6, 1);        // exactly 3 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(80);
+    });
+
+    it('5 years of service → 80 h', () => {
+      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(80);
+    });
+
+    it('7 years of service → 80 h', () => {
+      const hire = d(2018, 6, 1);        // 7 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(80);
+    });
+
+    it('8 years of service → 120 h', () => {
+      const hire = d(2017, 6, 1);        // 8 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(120);
+    });
+
+    it('14 years of service → 120 h', () => {
+      const hire = d(2011, 6, 1);        // 14 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(120);
+    });
+
+    it('15 years of service → 160 h', () => {
+      const hire = d(2010, 6, 1);        // 15 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(160);
+    });
+
+    it('20 years of service → 160 h', () => {
+      const hire = d(2005, 6, 1);        // 20 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(160);
+    });
+  });
+
+  describe('benefit year boundaries cross calendar years', () => {
+    it('asOfDate before Jun 1 uses previous benefit year start for base-year calc', () => {
+      // Employee with 3 base years: hired Jun 1 2022.
+      // Checking on Mar 1 2026 → benefit year is Jun 2025–May 2026 → baseYears = 3 → 80 h
+      const hire = d(2022, 6, 1);
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 3, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.accruedHours).toBe(80);
+      expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2025, 6, 1));
+    });
+
+    it('asOfDate just before Jun 1 uses benefit year starting previous Jun', () => {
+      // May 31 is still in the old benefit year
+      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 5, 31), V_RULE, FULL_TIME_HOURS);
+      expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2025, 6, 1));
+      expect(result.accruedHours).toBe(80);
+    });
+
+    it('asOfDate on Jun 1 starts new benefit year and recalculates base years', () => {
+      // Hired Jun 1 2020: as of Jun 1 2026 → 6 base years → still 80 h
+      const hire = d(2020, 6, 1);
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2026, 6, 1));
+      expect(result.tieredSeniorityDetails?.baseYears).toBe(6);
+      expect(result.accruedHours).toBe(80);
+    });
+
+    it('tier changes correctly when benefit year flips and pushes employee into new tier', () => {
+      // Hired Jun 1 2017: 8 base years at Jun 1 2025 → 120 h
+      //                   9 base years at Jun 1 2026 → still 120 h
+      const hire = d(2017, 6, 1);
+      const result2025 = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      const result2026 = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result2025.accruedHours).toBe(120);
+      expect(result2026.accruedHours).toBe(120);
+    });
+  });
+
+  describe('details returned', () => {
+    it('includes correct periodStart and periodEnd for a Jun-May benefit year', () => {
+      const hire = d(2022, 6, 1);
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2025, 6, 1));
+      expect(result.tieredSeniorityDetails?.periodEnd).toEqual(d(2026, 5, 31));
+    });
+
+    it('reports correct baseYears in details', () => {
+      const hire = d(2018, 6, 1);        // 7 years at Jun 1 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
+      expect(result.tieredSeniorityDetails?.baseYears).toBe(7);
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOATING HOLIDAY  (annualGrant, 24 h on Jun 1, benefit year Jun 1 – May 31)
+//
+// Rules:
+//   • 1-year wait period before first eligibility
+//   • First eligible year: pro-rated by which proration bracket the
+//     eligibility-anniversary date falls into:
+//       Jun 1 – Aug 31  → 3 units = 24 h
+//       Sep 1 – Nov 30  → 2 units = 16 h
+//       Dec 1 – Feb 28  → 1 unit  =  8 h
+//       Mar 1 – May 31  → 0 units =  0 h
+//   • Subsequent years: full 24 h granted on Jun 1
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Floating Holiday accrual', () => {
+  describe('not yet eligible', () => {
+    it('employee hired Jan 1 2025 is not eligible on Jul 1 2025 (needs 1 year)', () => {
+      const result = calculateAnnualGrantAccrual(d(2025, 1, 1), 2025, d(2025, 7, 1), FLH_RULE);
+      expect(result.isEligible).toBe(false);
+      expect(result.accruedHours).toBe(0);
+    });
+  });
+
+  describe('first eligible benefit year – proration brackets', () => {
+    it('eligibility in Jun 1 – Aug 31 bracket → 24 h', () => {
+      // Hired Jun 1 2024 → eligible Jun 1 2025 (bracket 1)
+      const result = calculateAnnualGrantAccrual(d(2024, 6, 1), 2025, d(2025, 7, 1), FLH_RULE);
+      expect(result.isEligible).toBe(true);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(true);
+      expect(result.accruedHours).toBe(24);
+    });
+
+    it('eligibility on Aug 31 (last day of bracket 1) → 24 h', () => {
+      // Hired Aug 31 2023 → eligible Aug 31 2024
+      const result = calculateAnnualGrantAccrual(d(2023, 8, 31), 2024, d(2024, 10, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(true);
+      expect(result.accruedHours).toBe(24);
+    });
+
+    it('eligibility in Sep 1 – Nov 30 bracket → 16 h', () => {
+      // Hired Sep 15 2023 → eligible Sep 15 2024
+      const result = calculateAnnualGrantAccrual(d(2023, 9, 15), 2024, d(2024, 10, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(true);
+      expect(result.accruedHours).toBe(16);
+    });
+
+    it('eligibility in Dec 1 – Feb 28 bracket → 8 h', () => {
+      // Hired Dec 15 2023 → eligible Dec 15 2024
+      const result = calculateAnnualGrantAccrual(d(2023, 12, 15), 2025, d(2025, 1, 15), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(true);
+      expect(result.accruedHours).toBe(8);
+    });
+
+    it('eligibility in Mar 1 – May 31 bracket → 0 h', () => {
+      // Hired Apr 15 2024 → eligible Apr 15 2025
+      const result = calculateAnnualGrantAccrual(d(2024, 4, 15), 2025, d(2025, 5, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(true);
+      expect(result.accruedHours).toBe(0);
+    });
+  });
+
+  describe('subsequent benefit years – full grant', () => {
+    it('returns 24 h on or after Jun 1 in a non-first eligible year', () => {
+      // Hired Jun 1 2020, eligible Jun 1 2021; checking benefit year 2025–2026
+      const result = calculateAnnualGrantAccrual(d(2020, 6, 1), 2025, d(2025, 7, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(false);
+      expect(result.accruedHours).toBe(24);
+    });
+
+    it('returns 24 h when checking mid-benefit-year via next targetYear param', () => {
+      // Same employee, checking on Mar 1 2026 (still benefit year Jun 2025–May 2026)
+      const result = calculateAnnualGrantAccrual(d(2020, 6, 1), 2026, d(2026, 3, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.isFirstEligibleYear).toBe(false);
+      expect(result.accruedHours).toBe(24);
+    });
+
+    it('returns 0 h before Jun 1 grant date in that benefit year', () => {
+      // Hired Jun 1 2020. asOfDate = May 31 2025 → benefit year Jun 2024–May 2025
+      // Grant for that year was Jun 1 2024; asOfDate is after that → still 24 h
+      // (Grant already fired on Jun 1 2024)
+      const result = calculateAnnualGrantAccrual(d(2020, 6, 1), 2025, d(2025, 5, 31), FLH_RULE);
+      expect(result.accruedHours).toBe(24);
+    });
+
+    it('benefit year boundaries: Jun 1 to May 31 are correct in details', () => {
+      const result = calculateAnnualGrantAccrual(d(2020, 6, 1), 2025, d(2025, 10, 1), FLH_RULE);
+      expect(result.annualGrantDetails?.benefitYearStart).toEqual(d(2025, 6, 1));
+      expect(result.annualGrantDetails?.benefitYearEnd).toEqual(d(2026, 5, 31));
+    });
+  });
+});

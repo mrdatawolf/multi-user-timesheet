@@ -44,8 +44,6 @@ const BREAK_LABELS = {
 const LUNCH_DURATION_MINUTES = 60;
 const DEFAULT_BREAK_DURATION_MINUTES = 10;
 const logFile = path.join(app.getPath('userData'), 'electron-debug.log');
-const TRAY_BREAK_BRANDS = new Set(['BT']);
-
 function debugLog(message) {
   const line = `[${new Date().toISOString()}] ${message}\n`;
   fs.appendFileSync(logFile, line);
@@ -67,7 +65,18 @@ function getSelectedBrand() {
 }
 
 function shouldShowBreakTrays() {
-  return TRAY_BREAK_BRANDS.has(getSelectedBrand());
+  const brand = getSelectedBrand();
+  if (!brand) return false;
+  const isDev = !app.isPackaged;
+  const featuresPath = isDev
+    ? path.join(__dirname, '..', 'public', brand, 'brand-features.json')
+    : path.join(process.resourcesPath, 'server', 'public', brand, 'brand-features.json');
+  try {
+    const features = JSON.parse(fs.readFileSync(featuresPath, 'utf8'));
+    return features.features?.breakTracking?.enabled === true;
+  } catch {
+    return false;
+  }
 }
 
 function shouldLogoutOnClose() {
@@ -823,20 +832,21 @@ function createTray() {
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image.resize({ width: 16, height: 16 }));
   tray.setToolTip('Attendance Management');
 
+  const breakEnabled = shouldShowBreakTrays();
   const buildMenu = () => Menu.buildFromTemplate([
     {
       label: 'Open Attendance',
       click: focusMainWindow
     },
     { type: 'separator' },
-    {
+    ...(breakEnabled ? [{
       label: 'Break Reminders',
       type: 'checkbox',
       checked: store.get('breakRemindersEnabled'),
       click: (menuItem) => {
         store.set('breakRemindersEnabled', menuItem.checked);
       }
-    },
+    }] : []),
     {
       label: 'Settings',
       click: () => createSettingsWindow()
@@ -1130,12 +1140,12 @@ app.whenReady().then(() => {
   }
 
   createWindow();
-  createTray();
   if (shouldShowBreakTrays()) {
+    createTray();
     createBreakTray();
     createLunchTray();
+    startBreakReminderTimer();
   }
-  startBreakReminderTimer();
 });
 
 app.on('window-all-closed', function () {

@@ -102,20 +102,20 @@
             {
               "minBaseYears": 5,
               "maxBaseYears": 7,
-              "fullTime": { "weeks": 2, "hours": 120 },
-              "partTime": { "earnHours": 3, "perHoursWorked": 30, "maxHours": 120 }
+              "fullTime": { "weeks": 2, "hours": 80 },
+              "partTime": { "earnHours": 2, "perHoursWorked": 30, "maxHours": 80 }
             },
             {
               "minBaseYears": 8,
               "maxBaseYears": 14,
-              "fullTime": { "weeks": 3, "hours": 160 },
-              "partTime": { "earnHours": 4, "perHoursWorked": 30, "maxHours": 160 }
+              "fullTime": { "weeks": 3, "hours": 120 },
+              "partTime": { "earnHours": 3, "perHoursWorked": 30, "maxHours": 120 }
             },
             {
               "minBaseYears": 15,
               "maxBaseYears": null,
-              "fullTime": { "weeks": 4, "hours": 200 },
-              "partTime": { "earnHours": 5, "perHoursWorked": 30, "maxHours": 200 }
+              "fullTime": { "weeks": 4, "hours": 160 },
+              "partTime": { "earnHours": 4, "perHoursWorked": 30, "maxHours": 160 }
             }
           ],
           "notes": {
