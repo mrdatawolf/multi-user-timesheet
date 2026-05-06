@@ -104,7 +104,7 @@ interface LeaveTypes {
 
 // Default leave types for backwards compatibility
 const DEFAULT_LEAVE_TYPES: LeaveTypes = {
-  vacation: { enabled: true, timeCode: 'V', label: 'Vacation' },
+  vacation: { enabled: true, timeCode: 'V', label: 'Vacation Remaining' },
   sickLeave: { enabled: true, timeCode: 'PS', label: 'Personal Sick Day' },
   floatingHoliday: { enabled: true, timeCode: 'FH', label: 'Floating Holiday' },
   paidHoliday: { enabled: true, timeCode: 'H', label: 'Holiday' }
@@ -343,22 +343,26 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
         title="Click to see breakdown"
       >
         <div className="text-xs font-medium text-muted-foreground mb-0.5">
-          {label}
+          Current {label}
         </div>
         <div className="text-lg font-bold">
           {hasCustomBalanceText ? config.availableBalanceText : `${remaining}h`}
         </div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {used}h used / {limit}h total
-        </div>
-        <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all ${colorClasses.progress}`}
-            style={{
-              width: `${limit > 0 ? Math.min((used / limit) * 100, 100) : 0}%`,
-            }}
-          />
-        </div>
+        {!hasCustomBalanceText && (
+          <>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {used}h used / {limit}h total
+            </div>
+            <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${colorClasses.progress}`}
+                style={{
+                  width: `${limit > 0 ? Math.min((used / limit) * 100, 100) : 0}%`,
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -381,7 +385,7 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
         title="Click to see breakdown"
       >
         <div className="text-xs font-medium text-muted-foreground mb-0.5">
-          {label} Used
+          Current {label} Used
         </div>
         <div className="text-lg font-bold">
           {used}h
@@ -398,7 +402,7 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
       <div className="flex flex-wrap gap-2">
         {renderBalanceCard(leaveTypes.floatingHoliday, 'floatingHoliday', 'Floating Holiday')}
         {renderBalanceCard(leaveTypes.sickLeave, 'sickLeave', 'Paid Sick Leave')}
-        {renderBalanceCard(leaveTypes.vacation, 'vacation', 'Vacation')}
+        {renderBalanceCard(leaveTypes.vacation, 'vacation', 'Vacation Remaining')}
         {renderUsageCard(leaveTypes.paidHoliday, 'paidHoliday', 'Holiday', 'Total holiday hours this year')}
       </div>
 

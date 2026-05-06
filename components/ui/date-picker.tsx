@@ -20,6 +20,7 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ date, setDate, invalid }: DatePickerProps) {
+  const currentYear = new Date().getFullYear();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -41,6 +42,12 @@ export function DatePicker({ date, setDate, invalid }: DatePickerProps) {
           selected={date}
           onSelect={setDate}
           initialFocus
+          captionLayout="dropdown"
+          startMonth={new Date(currentYear - 5, 0)}
+          endMonth={new Date(currentYear + 5, 11)}
+          classNames={{
+            caption_label: "hidden",
+          }}
         />
       </PopoverContent>
     </Popover>
