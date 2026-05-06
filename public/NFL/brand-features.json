@@ -6,7 +6,8 @@
       "enabled": true,
       "leaveTypes": {
         "vacation": { "enabled": true, "timeCode": "VAC", "label": "Vacation" },
-        "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave", "availableBalanceText": "Check ADP", "annualUsageLimit": 40 },
+        "sickLeave": { "enabled": true, "timeCode": "PSL", "label": "Paid Sick Leave", "availableBalanceText": "Check ADP"},
+
         "floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" },
         "paidHoliday": { "enabled": true, "timeCode": "HOL", "label": "Holiday" }
       },
