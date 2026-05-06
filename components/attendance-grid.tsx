@@ -28,6 +28,8 @@ interface AttendanceGridProps {
   maxOutOfOffice?: number;
   capacityWarningCount?: number;
   capacityCriticalCount?: number;
+  employeeNameMap?: Record<number, string>;
+  readOnly?: boolean;
 }
 
 const MONTHS = [
@@ -57,6 +59,8 @@ export function AttendanceGridYear({
   maxOutOfOffice = 0,
   capacityWarningCount = 3,
   capacityCriticalCount = 5,
+  employeeNameMap,
+  readOnly,
 }: AttendanceGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -197,6 +201,8 @@ export function AttendanceGridYear({
         entries={selectedEntries}
         timeCodes={timeCodes}
         onSave={handleSave}
+        employeeNameMap={employeeNameMap}
+        readOnly={readOnly}
       />
     </div>
   );

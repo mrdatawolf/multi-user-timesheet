@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, Eye, EyeOff, Search } from 'lucide-react';
 import { UserPermissionsDialog } from '@/components/user-permissions-dialog';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
@@ -73,6 +73,7 @@ export default function UsersPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -296,6 +297,21 @@ export default function UsersPage() {
     return roles.find((r) => r.id === roleId)?.name || 'Unknown';
   };
 
+  const filteredUsers = searchQuery.trim()
+    ? users.filter(u => {
+        const q = searchQuery.toLowerCase();
+        const groupName = u.group?.name ?? getGroupName(u.group_id);
+        const roleName = u.role?.name ?? getRoleName(u.role_id);
+        return (
+          u.username.toLowerCase().includes(q) ||
+          u.full_name.toLowerCase().includes(q) ||
+          (u.email?.toLowerCase() ?? '').includes(q) ||
+          groupName.toLowerCase().includes(q) ||
+          roleName.toLowerCase().includes(q)
+        );
+      })
+    : users;
+
   if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -345,6 +361,16 @@ export default function UsersPage() {
         </div>
       </div>
 
+      <div className="relative mb-3">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search by username, name, email, group, or role..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8"
+        />
+      </div>
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -360,14 +386,14 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground">
-                  No users found
+                  {searchQuery.trim() ? 'No users match your search' : 'No users found'}
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user) => (
+              filteredUsers.map((user) => (
                 <TableRow
                   key={user.id}
                   className={user.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}

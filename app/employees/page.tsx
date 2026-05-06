@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock, RotateCcw, Search } from 'lucide-react';
 import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
 import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
 import { useHelp } from '@/lib/help-context';
@@ -80,6 +80,7 @@ export default function UsersPage() {
   const [allocationsDialogOpen, setAllocationsDialogOpen] = useState(false);
   const [selectedEmployeeForAllocations, setSelectedEmployeeForAllocations] = useState<Employee | null>(null);
   const [brandFeatures, setBrandFeatures] = useState<BrandFeatures | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Check if leave management is enabled for this brand
   const leaveManagementEnabled = brandFeatures?.features?.leaveManagement?.enabled ?? false;
@@ -387,56 +388,47 @@ export default function UsersPage() {
   // Check if current user can edit a given employee
   const canEditEmployee = (employee: Employee): boolean => {
     if (!user || !user.group) return false;
-
-    // Master group can edit all
     if (user.group.is_master) return true;
-
-    // Users with can_edit_all permission can edit all
+    if (isAdmin) return true;
     if (user.group.can_edit_all) return true;
-
-    // Users can edit employees in their own group
     if (employee.group_id && employee.group_id === user.group_id) return true;
-
-    // Otherwise, no permission
     return false;
   };
 
   // Check if current user can delete a given employee
   const canDeleteEmployee = (employee: Employee): boolean => {
     if (!user || !user.group) return false;
-
-    // Master users can delete any employee
     if (user.group.is_master) return true;
-
-    // Creator can delete their own employees
+    if (isAdmin) return true;
     if (employee.created_by && employee.created_by === user.id) return true;
-
-    // Users with can_edit_all permission can delete all
     if (user.group.can_edit_all) return true;
-
-    // Users can delete employees in their own group (if they have edit permission)
     if (employee.group_id && employee.group_id === user.group_id) return true;
-
     return false;
   };
 
   // Check if current user can create new employees
   const canCreateEmployee = (): boolean => {
     if (!user || !user.group) return false;
-
-    // Master group can create employees
     if (user.group.is_master) return true;
-
-    // Users with can_edit_all permission can create employees
+    if (isAdmin) return true;
     if (user.group.can_edit_all) return true;
-
-    // Regular users can create employees in their own group
-    // This is a more permissive option - uncomment if desired:
-    // return true;
-
-    // By default, only Master and can_edit_all users can create
     return false;
   };
+
+  const filteredEmployees = searchQuery.trim()
+    ? employees.filter(emp => {
+        const q = searchQuery.toLowerCase();
+        const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
+        const groupName = emp.group_id ? groups.find(g => g.id === emp.group_id)?.name?.toLowerCase() ?? '' : '';
+        return (
+          fullName.includes(q) ||
+          (emp.employee_number?.toLowerCase() ?? '').includes(q) ||
+          (emp.email?.toLowerCase() ?? '').includes(q) ||
+          emp.role.toLowerCase().includes(q) ||
+          groupName.includes(q)
+        );
+      })
+    : employees;
 
   if (authLoading || isLoading) {
     return (
@@ -463,7 +455,7 @@ export default function UsersPage() {
           </div>
         </HelpArea>
         <div className="flex gap-2">
-          {user?.group?.is_master && (
+          {user?.group?.is_master === 1 && (
             <Button
               variant="outline"
               onClick={() => setShowInactive(!showInactive)}
@@ -493,6 +485,16 @@ export default function UsersPage() {
         </div>
       </div>
 
+      <div className="relative mb-3">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search by name, number, email, job title, or group..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8"
+        />
+      </div>
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -509,14 +511,14 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.length === 0 ? (
+            {filteredEmployees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7 + (leaveManagementEnabled ? 1 : 0) + (officePresenceEnabled ? 1 : 0)} className="text-center text-muted-foreground">
-                  No employees found
+                  {searchQuery.trim() ? 'No employees match your search' : 'No employees found'}
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => (
+              filteredEmployees.map((employee) => (
                 <TableRow
                   key={employee.id}
                   className={employee.is_active === 0 ? 'opacity-50 bg-muted/30' : ''}
@@ -601,7 +603,7 @@ export default function UsersPage() {
                           <RotateCcw className="h-4 w-4" />
                         </Button>
                       )}
-                      {employee.is_active === 0 && user?.group?.is_master && (
+                      {employee.is_active === 0 && user?.group?.is_master === 1 && (
                         <Button
                           variant="ghost"
                           size="sm"

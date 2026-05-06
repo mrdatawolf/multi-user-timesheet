@@ -28,6 +28,8 @@ interface AttendanceGridWeekProps {
   maxOutOfOffice?: number;
   capacityWarningCount?: number;
   capacityCriticalCount?: number;
+  employeeNameMap?: Record<number, string>;
+  readOnly?: boolean;
 }
 
 export function AttendanceGridWeek({
@@ -42,6 +44,8 @@ export function AttendanceGridWeek({
   maxOutOfOffice = 0,
   capacityWarningCount = 3,
   capacityCriticalCount = 5,
+  employeeNameMap,
+  readOnly,
 }: AttendanceGridWeekProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -175,6 +179,8 @@ export function AttendanceGridWeek({
         entries={selectedEntries}
         timeCodes={timeCodes}
         onSave={handleSave}
+        employeeNameMap={employeeNameMap}
+        readOnly={readOnly}
       />
     </div>
   );
