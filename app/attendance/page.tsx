@@ -26,6 +26,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled, getAttendanceYearLayout, getBulkEntryConfig } from '@/lib/brand-features';
 import { BulkEntryDialog } from '@/components/bulk-entry-dialog';
+import { PageLoading } from '@/components/page-loading';
+import { clearCachedDataByPrefix, getCachedData, setCachedData } from '@/lib/client-cache';
 
 interface Employee {
   id: number;
@@ -220,6 +222,22 @@ function AttendanceContent() {
       setYearLayout(getAttendanceYearLayout(brandFeatures));
       setBulkEntryEnabled(getBulkEntryConfig(brandFeatures).enabled);
 
+      const cachedInitial = getCachedData<{
+        employees: Employee[];
+        timeCodes: TimeCode[];
+      }>('attendance:initial');
+      if (cachedInitial) {
+        setEmployees(cachedInitial.employees);
+        setTimeCodes(cachedInitial.timeCodes);
+        if (cachedInitial.employees.length > 0 && !selectedEmployeeId) {
+          const linkedEmployee = user?.employee_id
+            ? cachedInitial.employees.find((e: Employee) => e.id === user.employee_id)
+            : null;
+          setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : cachedInitial.employees[0].id);
+        }
+        setLoading(false);
+      }
+
       const [employeesRes, timeCodesRes, groupsRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
@@ -266,6 +284,11 @@ function AttendanceContent() {
         console.error('Invalid time codes data:', timeCodesData);
         setTimeCodes([]);
       }
+
+      setCachedData('attendance:initial', {
+        employees: Array.isArray(employeesData) ? employeesData : [],
+        timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
+      });
     } catch (error) {
       console.error('Failed to load initial data:', error);
       setEmployees([]);
@@ -277,6 +300,26 @@ function AttendanceContent() {
 
   const loadAttendanceData = async () => {
     if (!selectedEmployeeId || !isAuthenticated) return;
+
+    const cacheKey = `attendance:data:${selectedEmployeeId}:${year}:${globalReadEnabled}`;
+    const cachedAttendance = getCachedData<{
+      entries: AttendanceEntry[];
+      allocations: TimeAllocation[];
+      dailySummary: DailySummary | null;
+      totalActiveEmployees: number;
+      maxOutOfOffice: number;
+      capacityWarningCount: number;
+      capacityCriticalCount: number;
+    }>(cacheKey);
+    if (cachedAttendance) {
+      setEntries(cachedAttendance.entries);
+      setAllocations(cachedAttendance.allocations);
+      setDailySummary(cachedAttendance.dailySummary);
+      setTotalActiveEmployees(cachedAttendance.totalActiveEmployees);
+      setMaxOutOfOffice(cachedAttendance.maxOutOfOffice);
+      setCapacityWarningCount(cachedAttendance.capacityWarningCount);
+      setCapacityCriticalCount(cachedAttendance.capacityCriticalCount);
+    }
 
     try {
       // Build parallel fetch list
@@ -319,14 +362,35 @@ function AttendanceContent() {
       }
 
       // Process daily summary if available
+      let nextDailySummary: DailySummary | null = null;
+      let nextTotalActiveEmployees = 0;
+      let nextMaxOutOfOffice = 0;
+      let nextCapacityWarningCount = 3;
+      let nextCapacityCriticalCount = 5;
+
       if (summaryRes && summaryRes.ok) {
         const summaryData = await summaryRes.json();
-        setDailySummary(summaryData.dailySummary || null);
-        setTotalActiveEmployees(summaryData.totalActiveEmployees || 0);
-        setMaxOutOfOffice(summaryData.maxOutOfOffice || 0);
-        setCapacityWarningCount(summaryData.capacityWarningCount ?? 3);
-        setCapacityCriticalCount(summaryData.capacityCriticalCount ?? 5);
+        nextDailySummary = summaryData.dailySummary || null;
+        nextTotalActiveEmployees = summaryData.totalActiveEmployees || 0;
+        nextMaxOutOfOffice = summaryData.maxOutOfOffice || 0;
+        nextCapacityWarningCount = summaryData.capacityWarningCount ?? 3;
+        nextCapacityCriticalCount = summaryData.capacityCriticalCount ?? 5;
+        setDailySummary(nextDailySummary);
+        setTotalActiveEmployees(nextTotalActiveEmployees);
+        setMaxOutOfOffice(nextMaxOutOfOffice);
+        setCapacityWarningCount(nextCapacityWarningCount);
+        setCapacityCriticalCount(nextCapacityCriticalCount);
       }
+
+      setCachedData(cacheKey, {
+        entries: Array.isArray(attendanceData) ? attendanceData : [],
+        allocations: allocationsData && Array.isArray(allocationsData.allocations) ? allocationsData.allocations : [],
+        dailySummary: nextDailySummary,
+        totalActiveEmployees: nextTotalActiveEmployees,
+        maxOutOfOffice: nextMaxOutOfOffice,
+        capacityWarningCount: nextCapacityWarningCount,
+        capacityCriticalCount: nextCapacityCriticalCount,
+      });
     } catch (error) {
       console.error('Failed to load attendance:', error);
       setEntries([]);
@@ -401,6 +465,7 @@ function AttendanceContent() {
       }
 
       // Reload attendance data to show updated entries
+      clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
       if (viewAll) {
         await loadAllEmployeesData();
       } else {
@@ -494,8 +559,8 @@ function AttendanceContent() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner />
+      <div className="min-h-screen p-3">
+        <PageLoading label="Loading attendance..." />
       </div>
     );
   }

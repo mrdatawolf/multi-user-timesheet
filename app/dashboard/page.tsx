@@ -8,12 +8,13 @@ import { Users, Calendar, Clock, TrendingUp, CalendarDays, ChevronLeft, ChevronR
 import { config } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
-import { Spinner } from '@/components/spinner';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import { AttendanceForecastWidget } from '@/components/attendance-forecast-widget';
 import { BreakEntryWidget } from '@/components/break-entry-widget';
 import { formatDateStr, getLocalToday, parseDateStr } from '@/lib/date-helpers';
+import { PageLoading } from '@/components/page-loading';
+import { getCachedData, setCachedData } from '@/lib/client-cache';
 
 const PAGE_SIZE = 5;
 
@@ -98,7 +99,18 @@ export default function DashboardPage() {
       return;
     }
 
-    setLoading(true);
+    const cachedDashboard = getCachedData<{
+      employees: Employee[];
+      upcomingStaffingData: UpcomingStaffingEntry[];
+    }>('dashboard:data');
+    if (cachedDashboard) {
+      setEmployees(cachedDashboard.employees);
+      setUpcomingStaffingData(cachedDashboard.upcomingStaffingData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const todayStr = getLocalToday();
       const endDate = new Date(parseDateStr(todayStr));
@@ -138,6 +150,11 @@ export default function DashboardPage() {
       } else {
         setEntries([]);
       }
+
+      setCachedData('dashboard:data', {
+        employees: Array.isArray(employeesData) ? employeesData : [],
+        upcomingStaffingData: Array.isArray(upcomingData) ? upcomingData : [],
+      });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -238,8 +255,8 @@ export default function DashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner />
+      <div className="min-h-screen p-3">
+        <PageLoading label="Loading dashboard..." />
       </div>
     );
   }

@@ -3,10 +3,20 @@ import {
   getAllUsers,
   getUserById,
   createUser,
+  canUserManageUsers,
   type User
 } from '@/lib/queries-auth';
 import { getAuthUser, hashPassword, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import { logAudit } from '@/lib/queries-auth';
+
+function isMasterUser(authUser: Awaited<ReturnType<typeof getAuthUser>>): boolean {
+  return authUser?.group?.is_master === 1;
+}
+
+async function canManageUserAccounts(authUser: Awaited<ReturnType<typeof getAuthUser>>): Promise<boolean> {
+  if (!authUser) return false;
+  return isMasterUser(authUser) || authUser.role?.can_manage_users === 1 || await canUserManageUsers(authUser.id);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +32,9 @@ export async function GET(request: NextRequest) {
     const hasFullUserAccess = authUser.group?.is_master === 1 || authUser.group?.can_view_all === 1;
     const isManagerRole = authUser.role_id === 2;
 
-    if (!hasFullUserAccess && !isManagerRole) {
+    // Users with the Administrator/manage-users role can open and use the Users tab
+    // even when their group is not the master group.
+    if (!await canManageUserAccounts(authUser) && !isManagerRole) {
       return NextResponse.json(
         { error: 'Forbidden: You do not have permission to view users' },
         { status: 403 }
@@ -70,8 +82,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user can create users (only master and HR can create users)
-    if (!authUser.group?.is_master && !authUser.group?.can_edit_all) {
+    // Users with the Administrator/manage-users role can create accounts
+    // even when their group is not the master group.
+    if (!await canManageUserAccounts(authUser)) {
       return NextResponse.json(
         { error: 'Forbidden: You do not have permission to create users' },
         { status: 403 }
@@ -139,8 +152,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check if user can edit users (only master and HR can edit users)
-    if (!authUser.group?.is_master && !authUser.group?.can_edit_all) {
+    // Users with the Administrator/manage-users role can edit accounts
+    // even when their group is not the master group.
+    if (!await canManageUserAccounts(authUser)) {
       return NextResponse.json(
         { error: 'Forbidden: You do not have permission to edit users' },
         { status: 403 }
@@ -266,10 +280,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if user can delete users (only master can delete users)
-    if (!authUser.group?.is_master) {
+    // Keep deactivation aligned with the Users tab: Administrator/manage-users
+    // can deactivate users without also needing master-group membership.
+    if (!await canManageUserAccounts(authUser)) {
       return NextResponse.json(
-        { error: 'Forbidden: Only master administrators can delete users' },
+        { error: 'Forbidden: You do not have permission to delete users' },
         { status: 403 }
       );
     }

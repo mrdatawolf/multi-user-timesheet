@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { BalanceBreakdownModal } from './balance-breakdown-modal';
 import { getBrandFeatures, getLeaveBalanceSummaryConfig, type LeaveTypeConfig } from '@/lib/brand-features';
 import { useAuth } from '@/lib/auth-context';
@@ -59,6 +59,15 @@ interface AccrualDetails {
       payoutRule?: string;
       terminationRule?: string;
     };
+  };
+  annualGrantDetails?: {
+    grantDate: string;
+    isFirstEligibleYear: boolean;
+    prorationBracket: string | null;
+    unitsGranted: number;
+    hoursPerUnit: number;
+    benefitYearStart: string;
+    benefitYearEnd: string;
   };
 }
 
@@ -131,6 +140,27 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
   const [warningThreshold, setWarningThreshold] = useState(0.9);
   const [criticalThreshold, setCriticalThreshold] = useState(1.0);
   const [statusColors, setStatusColors] = useState<StatusColors>({ warning: 'amber', critical: 'red' });
+
+  const getBenefitYearWindow = useCallback((allocation: TimeAllocation): { start: string; end: string } | null => {
+    const details = allocation.accrual_details;
+    const tiered = details?.tieredSeniorityDetails;
+    if (tiered) {
+      return {
+        start: tiered.periodStart.substring(0, 10),
+        end: tiered.periodEnd.substring(0, 10),
+      };
+    }
+
+    const annualGrant = details?.annualGrantDetails;
+    if (annualGrant) {
+      return {
+        start: annualGrant.benefitYearStart.substring(0, 10),
+        end: annualGrant.benefitYearEnd.substring(0, 10),
+      };
+    }
+
+    return null;
+  }, []);
 
   // Load brand features and active time codes
   useEffect(() => {
@@ -206,16 +236,18 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
   useEffect(() => {
     if (!employeeId) return;
 
-    const tieredAllocations = allocations.filter(a => a.accrual_details?.tieredSeniorityDetails);
-    if (tieredAllocations.length === 0) return;
+    const benefitYearAllocations = allocations.filter(a => getBenefitYearWindow(a));
+    if (benefitYearAllocations.length === 0) return;
 
     const fetchBenefitYearEntries = async () => {
       const map = new Map<string, AttendanceEntry[]>();
 
-      for (const alloc of tieredAllocations) {
-        const details = alloc.accrual_details!.tieredSeniorityDetails!;
-        const startStr = details.periodStart.substring(0, 10);
-        const endStr = details.periodEnd.substring(0, 10);
+      for (const alloc of benefitYearAllocations) {
+        const window = getBenefitYearWindow(alloc);
+        if (!window) continue;
+
+        const startStr = window.start;
+        const endStr = window.end;
         const startYear = parseInt(startStr.substring(0, 4));
         const endYear = parseInt(endStr.substring(0, 4));
 
@@ -240,7 +272,7 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
     };
 
     fetchBenefitYearEntries();
-  }, [allocations, employeeId, authFetch]);
+  }, [allocations, employeeId, authFetch, getBenefitYearWindow]);
 
   const openModal = (timeCode: string, title: string, availableBalanceText?: string, annualUsageLimit?: number) => {
     setModalState({ isOpen: true, timeCode, title, availableBalanceText, annualUsageLimit });
@@ -375,7 +407,7 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
         onClose={closeModal}
         timeCode={modalState.timeCode}
         title={modalState.title}
-        entries={entries}
+        entries={benefitYearEntriesMap.get(modalState.timeCode) ?? entries}
         allocation={getSelectedAllocation()}
         availableBalanceText={modalState.availableBalanceText}
         annualUsageLimit={modalState.annualUsageLimit}

@@ -1,17 +1,49 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, type FormEvent, type InputHTMLAttributes } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/spinner';
+
+interface FloatingLoginInputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  value: string;
+}
+
+function FloatingLoginInput({ id, label, value, className, ...props }: FloatingLoginInputProps) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        value={value}
+        placeholder=" "
+        className={cn(
+          "login-floating-input peer h-12 bg-background px-3 py-0 text-base placeholder-transparent shadow-sm shadow-black/10",
+          className
+        )}
+        {...props}
+      />
+      <label
+        htmlFor={id}
+        className={cn(
+          "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 rounded bg-card px-1 text-sm text-muted-foreground transition-all duration-150",
+          "peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-300",
+          value && "top-0 text-xs"
+        )}
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -34,7 +66,7 @@ function LoginForm() {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -54,71 +86,75 @@ function LoginForm() {
   const logoAlt = themeConfig.branding.logoAlt || 'Logo';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-3">
-          <div className="flex justify-center">
-            <Image
-              src={logoSrc}
-              alt={logoAlt}
-              width={80}
-              height={80}
-              className="object-contain"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access the Attendance system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                autoFocus
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {sessionExpired && !error && (
-              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-md">
-                <AlertCircle className="h-4 w-4" />
-                <span>Your session has expired. Please sign in again.</span>
+    <div className="flex min-h-screen items-center justify-center bg-slate-500 px-4">
+      <Card className="w-full max-w-4xl shadow-md shadow-slate-700/10">
+        <div className="grid gap-8 p-6 md:grid-cols-[0.95fr_1.05fr] md:p-8">
+          <CardHeader className="items-center justify-center p-0 md:items-start">
+            <div className="flex h-28 w-44 items-center justify-center rounded-lg border border-gray-300 bg-gray-200 p-4 shadow-sm md:h-40 md:w-64 md:p-6">
+              <div className="relative h-full w-full">
+                <Image
+                  src={logoSrc}
+                  alt={logoAlt}
+                  fill
+                  priority
+                  sizes="(min-width: 768px) 224px, 144px"
+                  className="object-contain"
+                />
               </div>
-            )}
-
-            {error && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="flex items-center p-0">
+            <form onSubmit={handleSubmit} className="w-full space-y-5">
+              <div>
+                <FloatingLoginInput
+                  id="username"
+                  label="Username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoFocus
+                  autoComplete="username"
+                  disabled={isLoading}
+                />
               </div>
-            )}
+              <div>
+                <FloatingLoginInput
+                  id="password"
+                  label="Password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                />
+              </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
+              {sessionExpired && !error && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-700">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Your session has expired. Please sign in again.</span>
+                </div>
+              )}
 
-          </form>
-        </CardContent>
+              {error && (
+                <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="h-10 w-full bg-blue-600 text-white shadow-sm shadow-black/20 hover:bg-blue-700 hover:shadow-md"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+          </CardContent>
+        </div>
       </Card>
     </div>
   );
@@ -127,7 +163,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-500">
         <Spinner />
       </div>
     }>

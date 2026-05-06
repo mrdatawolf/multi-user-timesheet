@@ -4,6 +4,7 @@ import { getUserReadableGroups, isSuperuser } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { getBrandFeatures, getLeaveBalanceSummaryConfig, isGlobalReadAccessEnabled } from '@/lib/brand-features';
 import { getBrandTimeCodes } from '@/lib/brand-time-codes';
+import { calculateAccrual, type AccrualResult, type AccrualRule } from '@/lib/accrual-calculations';
 
 // Force dynamic to prevent caching
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,51 @@ interface ColumnDef {
   timeCode: string;
   label: string;
   hasAllocation: boolean;
+}
+
+interface EnabledLeaveType {
+  key: string;
+  timeCode: string;
+  label: string;
+}
+
+interface BalanceWindow {
+  startDate: string;
+  endDate: string;
+  allocated: number | null;
+  hasAllocation: boolean;
+}
+
+function toDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getReportAsOfDate(year: number): Date {
+  const now = new Date();
+  return year === now.getFullYear() ? now : new Date(year, 11, 31);
+}
+
+function getAccrualWindow(result: AccrualResult): { startDate: string; endDate: string } | null {
+  const tiered = result.tieredSeniorityDetails;
+  if (tiered) {
+    return {
+      startDate: toDateString(tiered.periodStart),
+      endDate: toDateString(tiered.periodEnd),
+    };
+  }
+
+  const annualGrant = result.annualGrantDetails;
+  if (annualGrant) {
+    return {
+      startDate: toDateString(annualGrant.benefitYearStart),
+      endDate: toDateString(annualGrant.benefitYearEnd),
+    };
+  }
+
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -56,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     // Get enabled leave types from brand features
     const leaveTypes = brandFeatures.features.leaveManagement.leaveTypes || {};
-    const enabledLeaveTypes = Object.entries(leaveTypes)
+    const enabledLeaveTypes: EnabledLeaveType[] = Object.entries(leaveTypes)
       .filter(([, config]) => config.enabled && config.timeCode)
       .map(([key, config]) => ({
         key,
@@ -84,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     // Build employee query with permission filtering
     let employeeSql = `
-      SELECT id, first_name, last_name
+      SELECT id, first_name, last_name, date_of_hire
       FROM employees
       WHERE is_active = 1
     `;
@@ -116,6 +162,7 @@ export async function GET(request: NextRequest) {
       id: number;
       first_name: string;
       last_name: string;
+      date_of_hire: string | null;
     }>;
 
     if (employees.length === 0) {
@@ -151,40 +198,50 @@ export async function GET(request: NextRequest) {
       allocationsMap.get(row.employee_id)!.set(row.time_code, row.allocated_hours);
     }
 
-    // Get usage for all employees for the year
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
+    const accrualConfig = brandFeatures.features.accrualCalculations as unknown as {
+      enabled?: boolean;
+      rules?: Record<string, AccrualRule>;
+    };
+    const accrualRules = accrualConfig?.enabled ? (accrualConfig.rules || {}) : {};
+    const asOfDate = getReportAsOfDate(year);
+    const calendarWindow = { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
 
-    const usageResult = await db.execute({
-      sql: `SELECT employee_id, time_code, SUM(hours) AS total_hours
-            FROM attendance_entries
-            WHERE employee_id IN (${allocPlaceholders})
-              AND entry_date >= ? AND entry_date <= ?
-            GROUP BY employee_id, time_code`,
-      args: [...employeeIds, startDate, endDate],
-    });
+    const resolveBalanceWindow = (
+      emp: { id: number; date_of_hire: string | null },
+      lt: EnabledLeaveType
+    ): BalanceWindow => {
+      const empAllocations = allocationsMap.get(emp.id) || new Map();
+      const defaultAlloc = timeCodeDefaults.get(lt.timeCode);
+      const accrualRule = accrualRules[lt.timeCode];
 
-    // Build usage lookup: Map<employeeId, Map<timeCode, hours>>
-    const usageMap = new Map<number, Map<string, number>>();
-    for (const row of usageResult.rows as unknown as Array<{
-      employee_id: number;
-      time_code: string;
-      total_hours: number;
-    }>) {
-      if (!usageMap.has(row.employee_id)) {
-        usageMap.set(row.employee_id, new Map());
+      if (accrualRule && emp.date_of_hire) {
+        const result = calculateAccrual(emp.date_of_hire, year, asOfDate, accrualRule);
+        const accrualWindow = getAccrualWindow(result) || calendarWindow;
+        return {
+          ...accrualWindow,
+          allocated: result.accruedHours,
+          hasAllocation: true,
+        };
       }
-      usageMap.get(row.employee_id)!.set(row.time_code, row.total_hours);
-    }
+
+      const hasAllocation = defaultAlloc !== null && defaultAlloc !== undefined;
+      return {
+        ...calendarWindow,
+        allocated: hasAllocation
+          ? (empAllocations.has(lt.timeCode) ? empAllocations.get(lt.timeCode)! : (defaultAlloc ?? 0))
+          : null,
+        hasAllocation,
+      };
+    };
 
     // Determine which leave types have allocations (for column ordering)
     const leaveTypesWithAllocation = enabledLeaveTypes.filter(lt => {
       const defaultAlloc = timeCodeDefaults.get(lt.timeCode);
-      return defaultAlloc !== null && defaultAlloc !== undefined;
+      return !!accrualRules[lt.timeCode] || (defaultAlloc !== null && defaultAlloc !== undefined);
     });
     const leaveTypesUsageOnly = enabledLeaveTypes.filter(lt => {
       const defaultAlloc = timeCodeDefaults.get(lt.timeCode);
-      return defaultAlloc === null || defaultAlloc === undefined;
+      return !accrualRules[lt.timeCode] && (defaultAlloc === null || defaultAlloc === undefined);
     });
 
     // Order: allocation-based first, then usage-only
@@ -197,40 +254,38 @@ export async function GET(request: NextRequest) {
       hasAllocation: leaveTypesWithAllocation.some(a => a.timeCode === lt.timeCode),
     }));
 
-    // Build employee rows with balances
-    const employeeRows: EmployeeRow[] = employees.map(emp => {
-      const empAllocations = allocationsMap.get(emp.id) || new Map();
-      const empUsage = usageMap.get(emp.id) || new Map();
+    // Build employee rows with balances. Each employee/code resolves its own
+    // usage window so June-May benefit-year policies are not forced into a
+    // calendar-year report bucket.
+    const employeeRows: EmployeeRow[] = await Promise.all(employees.map(async emp => {
+      const balances: EmployeeBalance[] = await Promise.all(orderedLeaveTypes.map(async lt => {
+        const window = resolveBalanceWindow(emp, lt);
+        const usageResult = await db.execute({
+          sql: `SELECT SUM(hours) AS total_hours
+                FROM attendance_entries
+                WHERE employee_id = ?
+                  AND time_code = ?
+                  AND entry_date >= ? AND entry_date <= ?`,
+          args: [emp.id, lt.timeCode, window.startDate, window.endDate],
+        });
 
-      const balances: EmployeeBalance[] = orderedLeaveTypes.map(lt => {
-        const defaultAlloc = timeCodeDefaults.get(lt.timeCode);
-        const hasAllocation = defaultAlloc !== null && defaultAlloc !== undefined;
-
-        // Get allocated hours: override > default > null
-        let allocated: number | null = null;
-        if (hasAllocation) {
-          allocated = empAllocations.has(lt.timeCode)
-            ? empAllocations.get(lt.timeCode)!
-            : (defaultAlloc ?? 0);
-        }
-
-        const used = empUsage.get(lt.timeCode) || 0;
+        const used = Number((usageResult.rows[0] as any)?.total_hours || 0);
 
         return {
           timeCode: lt.timeCode,
           label: lt.label,
           used,
-          allocated,
-          hasAllocation,
+          allocated: window.allocated,
+          hasAllocation: window.hasAllocation,
         };
-      });
+      }));
 
       return {
         id: emp.id,
         name: `${emp.last_name}, ${emp.first_name}`,
         balances,
       };
-    });
+    }));
 
     return NextResponse.json({
       employees: employeeRows,

@@ -45,4 +45,14 @@
     --tw-prose-bullets: #9ca3af;
     --tw-prose-counters: #9ca3af;
   }
+
+  .login-floating-input:-webkit-autofill,
+  .login-floating-input:-webkit-autofill:hover,
+  .login-floating-input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground));
+    border-color: hsl(var(--input));
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
