@@ -272,7 +272,8 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
     };
 
     fetchBenefitYearEntries();
-  }, [allocations, employeeId, authFetch, getBenefitYearWindow]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allocations, employeeId, authFetch, getBenefitYearWindow, entries.length]);
 
   const openModal = (timeCode: string, title: string, availableBalanceText?: string, annualUsageLimit?: number) => {
     setModalState({ isOpen: true, timeCode, title, availableBalanceText, annualUsageLimit });

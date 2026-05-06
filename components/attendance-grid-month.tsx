@@ -78,6 +78,16 @@ export function AttendanceGridMonth({
     onEntryChange(date, updatedEntries);
   };
 
+  const getCellTooltip = (entries: AttendanceEntry[]): string => {
+    if (entries.length === 0) return '';
+    return entries
+      .map(e => {
+        const tc = timeCodes.find(t => t.code === e.time_code);
+        return `${tc ? tc.description : e.time_code}: ${e.hours}h`;
+      })
+      .join('\n');
+  };
+
   return (
     <div className="border rounded-lg overflow-hidden">
       <table className="w-full border-collapse">
@@ -132,9 +142,10 @@ export function AttendanceGridMonth({
                             variant="ghost"
                             className={`h-auto min-h-[32px] text-xs w-full px-1 py-0.5 justify-start relative ${getCellColorClass(entriesForDate)}`}
                             onClick={() => handleCellClick(date)}
+                            title={getCellTooltip(entriesForDate)}
                           >
                             <span className="truncate">
-                              {getCellDisplay(entriesForDate)}
+                              {entriesForDate.length > 0 ? getCellDisplay(entriesForDate) : ''}
                             </span>
                             {hasNotes(entriesForDate) && (
                               <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>

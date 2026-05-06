@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { RotateCcw, Save } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { clearCachedDataByPrefix } from '@/lib/client-cache';
 
 interface TimeAllocation {
   time_code: string;
@@ -107,6 +108,7 @@ export function EmployeeAllocationsDialog({
       });
 
       if (response.ok) {
+        clearCachedDataByPrefix(`attendance:data:${employeeId}:`);
         await loadAllocations();
       }
     } catch (error) {
@@ -130,6 +132,7 @@ export function EmployeeAllocationsDialog({
       );
 
       if (response.ok) {
+        clearCachedDataByPrefix(`attendance:data:${employeeId}:`);
         await loadAllocations();
       }
     } catch (error) {

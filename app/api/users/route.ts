@@ -113,7 +113,8 @@ export async function POST(request: NextRequest) {
       role_id: body.role_id,
       is_active: body.is_active !== undefined ? body.is_active : 1,
       is_superuser: body.is_superuser !== undefined ? body.is_superuser : 0, // Deprecated but keep for compatibility
-      color_mode: 'system'
+      color_mode: 'system',
+      must_change_password: 1,
     });
 
     // Log audit entry

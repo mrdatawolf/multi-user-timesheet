@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
         role_id: user.role_id,
         employee_id: user.employee_id,
         employee_abbreviation,
+        must_change_password: user.must_change_password ?? 0,
         is_superuser: user.is_superuser, // Deprecated
         group: group,
         role: role,

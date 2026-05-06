@@ -25,6 +25,7 @@ export interface User {
   is_superuser?: number; // Deprecated, use role_id instead
   role_id?: number;
   employee_id?: number;
+  must_change_password?: number;
   color_mode?: 'light' | 'dark' | 'system';
   last_login?: string;
   created_at: string;
@@ -163,8 +164,8 @@ export async function getAllUsers(): Promise<UserWithDetails[]> {
 
 export async function createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at' | 'last_login'>): Promise<User> {
   const result = await db.execute({
-    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, role_id, is_active, is_superuser, color_mode)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO users (username, password_hash, full_name, email, group_id, role_id, is_active, is_superuser, color_mode, must_change_password)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       user.username,
       user.password_hash,
@@ -175,6 +176,7 @@ export async function createUser(user: Omit<User, 'id' | 'created_at' | 'updated
       user.is_active,
       user.is_superuser || 0,
       user.color_mode || 'system',
+      user.must_change_password ?? 1,
     ],
   });
 

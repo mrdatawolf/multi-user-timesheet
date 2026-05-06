@@ -81,17 +81,10 @@ export default function DashboardPage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && pathname === '/dashboard') {
       loadDashboardData();
     }
-  }, [isAuthenticated]);
-
-  // Reload data when navigating to dashboard page
-  useEffect(() => {
-    if (pathname === '/dashboard' && isAuthenticated) {
-      loadDashboardData();
-    }
-  }, [pathname, isAuthenticated]);
+  }, [isAuthenticated, pathname]);
 
   const loadDashboardData = async () => {
     if (!isAuthenticated) {
@@ -102,10 +95,12 @@ export default function DashboardPage() {
     const cachedDashboard = getCachedData<{
       employees: Employee[];
       upcomingStaffingData: UpcomingStaffingEntry[];
+      entries: AttendanceEntry[];
     }>('dashboard:data');
     if (cachedDashboard) {
       setEmployees(cachedDashboard.employees);
       setUpcomingStaffingData(cachedDashboard.upcomingStaffingData);
+      setEntries(cachedDashboard.entries ?? []);
       setLoading(false);
     } else {
       setLoading(true);
@@ -154,6 +149,7 @@ export default function DashboardPage() {
       setCachedData('dashboard:data', {
         employees: Array.isArray(employeesData) ? employeesData : [],
         upcomingStaffingData: Array.isArray(upcomingData) ? upcomingData : [],
+        entries: Array.isArray(entriesData) ? entriesData : [],
       });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -233,6 +229,10 @@ export default function DashboardPage() {
 
     return next5Days;
   })();
+
+  const dashboardEmployee = user?.employee_id
+    ? employees.find(e => e.id === user.employee_id)
+    : null;
 
   if (!config.features.enableDashboard) {
     return (
@@ -325,14 +325,9 @@ export default function DashboardPage() {
         </HelpArea>
 
         {/* Attendance Forecast and Break Tracking Widgets */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className={`grid grid-cols-1 gap-3 ${dashboardEmployee ? 'lg:grid-cols-2' : ''}`}>
           <AttendanceForecastWidget />
-          {(() => {
-            const myEmployee = user?.group_id
-              ? employees.find(e => e.group_id === user.group_id)
-              : employees[0];
-            return myEmployee ? <BreakEntryWidget employeeId={myEmployee.id} /> : null;
-          })()}
+          {dashboardEmployee && <BreakEntryWidget employeeId={dashboardEmployee.id} />}
         </div>
 
         <Card>

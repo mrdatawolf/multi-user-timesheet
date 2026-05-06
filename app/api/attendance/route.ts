@@ -6,6 +6,7 @@ import {
   canUserExplicitlyReadGroup,
   canUserExplicitlyUpdateGroup,
   canUserExplicitlyDeleteGroup,
+  getExplicitReadableGroupIds,
   isSuperuser,
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';

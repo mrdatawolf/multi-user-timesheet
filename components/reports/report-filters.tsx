@@ -55,13 +55,26 @@ export function ReportFilters({
 }: ReportFiltersProps) {
   const dateRangeInvalid = !!(startDate && endDate && startDate > endDate);
 
+  const today = new Date();
+  const ytdStart = new Date(today.getFullYear(), 0, 1);
+  const thisYearJune1 = new Date(today.getFullYear(), 5, 1);
+  const vacStart = today >= thisYearJune1
+    ? thisYearJune1
+    : new Date(today.getFullYear() - 1, 5, 1);
+
+  const isSameDay = (a: Date | undefined, b: Date) =>
+    !!a && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const isYtdActive = isSameDay(startDate, ytdStart) && isSameDay(endDate, today);
+  const isVacActive = isSameDay(startDate, vacStart) && isSameDay(endDate, today);
+
   return (
     <HelpArea helpId="report-filters" bubblePosition="bottom">
-      <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-muted">
-        <div className="flex-1 min-w-[200px] space-y-1">
-          <label className="text-xs">Employee</label>
+      <div className="flex flex-wrap items-end gap-4 p-3 border rounded-lg bg-muted">
+        <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+          <label className="text-sm font-medium">Employee</label>
           <Select value={selectedEmployeeId} onValueChange={onEmployeeChange}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder={requireEmployee ? 'Pick an Employee' : undefined} />
             </SelectTrigger>
             <SelectContent>
@@ -76,10 +89,10 @@ export function ReportFilters({
         </div>
 
         {!hideTimeCode && (
-          <div className="flex-1 min-w-[200px] space-y-1">
-            <label className="text-xs">Time Code</label>
+          <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+            <label className="text-sm font-medium">Time Code</label>
             <Select value={selectedTimeCode} onValueChange={onTimeCodeChange}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -94,14 +107,50 @@ export function ReportFilters({
           </div>
         )}
 
-        <div className="flex-1 min-w-[200px] space-y-1">
-          <label className="text-xs">Start Date</label>
+        <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+          <label className="text-sm font-medium">Start Date</label>
           <DatePicker date={startDate} setDate={onStartDateChange} invalid={dateRangeInvalid} />
         </div>
 
-        <div className="flex-1 min-w-[200px] space-y-1">
-          <label className="text-xs">End Date</label>
+        <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+          <label className="text-sm font-medium">End Date</label>
           <DatePicker date={endDate} setDate={onEndDateChange} invalid={dateRangeInvalid} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm invisible select-none">Presets</label>
+          <div className="flex gap-1">
+            <Button
+              variant={isYtdActive ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 text-sm px-3"
+              onClick={() => {
+                const today = new Date();
+                onStartDateChange(new Date(today.getFullYear(), 0, 1));
+                onEndDateChange(today);
+              }}
+              title="January 1st of current year to today"
+            >
+              YTD
+            </Button>
+            <Button
+              variant={isVacActive ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 text-sm px-3"
+              onClick={() => {
+                const today = new Date();
+                const thisYearJune1 = new Date(today.getFullYear(), 5, 1);
+                const lastJune1 = today >= thisYearJune1
+                  ? thisYearJune1
+                  : new Date(today.getFullYear() - 1, 5, 1);
+                onStartDateChange(lastJune1);
+                onEndDateChange(today);
+              }}
+              title="Last June 1st to today (vacation year)"
+            >
+              Vacation Year
+            </Button>
+          </div>
         </div>
 
         <HelpArea helpId="generate-report" bubblePosition="top" showHighlight={false}>

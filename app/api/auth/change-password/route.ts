@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
   }
 
-  // Get the user's current password hash from the database
+  // Get the user's current password hash and must_change_password flag
   const userResult = await authDb.execute({
-    sql: 'SELECT password_hash FROM users WHERE id = ?',
+    sql: 'SELECT password_hash, must_change_password FROM users WHERE id = ?',
     args: [authUser.id],
   });
 
@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 });
   }
 
-  // Hash and update the new password
+  // Hash and update the new password, clearing the forced-change flag
   const newHash = await hashPassword(newPassword);
   await authDb.execute({
-    sql: 'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    sql: 'UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     args: [newHash, authUser.id],
   });
 
