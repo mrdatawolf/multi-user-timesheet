@@ -62,16 +62,21 @@ export function Navbar() {
   return (
     <nav className="border-b sticky top-0 bg-background z-50">
       <div className="max-w-full mx-auto px-3">
-        <div className="flex items-center justify-between h-8">
+        <div className="flex h-10 items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
-              <Image
-                src={logoSrc}
-                alt={logoAlt}
-                width={32}
-                height={32}
-                className="object-contain"
-              />
+              <span className="flex h-8 w-10 items-center justify-center rounded-md border border-gray-300 bg-gray-200 p-1 shadow-sm">
+                <span className="relative h-6 w-8">
+                  <Image
+                    src={logoSrc}
+                    alt={logoAlt}
+                    fill
+                    priority
+                    sizes="32px"
+                    className="object-contain"
+                  />
+                </span>
+              </span>
               <span className="font-bold text-lg hidden sm:inline">{appTitle}</span>
             </Link>
             {isAuthenticated && <OfficePresenceBar />}
@@ -159,9 +164,9 @@ export function Navbar() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                ) : (
+        ) : pathname === '/login' || pathname === '/' ? null : (
                   <Link href="/login">
-                    <Button variant="default" size="sm">
+                    <Button variant="default" size="sm" className="h-7 px-3 text-xs">
                       Sign In
                     </Button>
                   </Link>

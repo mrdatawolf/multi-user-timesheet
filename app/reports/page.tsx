@@ -16,8 +16,9 @@ import { AttendanceManagementExport } from '@/components/reports/attendance-mana
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/spinner';
 import { formatDateStr } from '@/lib/date-helpers';
+import { PageLoading } from '@/components/page-loading';
+import { getCachedData, setCachedData } from '@/lib/client-cache';
 
 interface Employee {
   id: number;
@@ -160,6 +161,20 @@ export default function ReportsPage() {
   }, [selectedReportId, isAuthenticated, initialLoading]);
 
   const loadInitialData = async () => {
+    const cachedReports = getCachedData<{
+      employees: Employee[];
+      timeCodes: TimeCode[];
+      reportDefinitions: ReportDefinition[];
+      selectedReportId: string;
+    }>('reports:initial');
+    if (cachedReports) {
+      setEmployees(cachedReports.employees);
+      setTimeCodes(cachedReports.timeCodes);
+      setReportDefinitions(cachedReports.reportDefinitions);
+      setSelectedReportId(cachedReports.selectedReportId);
+      setInitialLoading(false);
+    }
+
     try {
       const [employeesRes, timeCodesRes, reportDefsRes] = await Promise.all([
         authFetch('/api/employees'),
@@ -182,17 +197,29 @@ export default function ReportsPage() {
         setTimeCodes(timeCodesData);
       }
 
+      let nextReportDefinitions: ReportDefinition[] = [];
+      let nextSelectedReportId = '';
+
       // Load all report definitions
       if (reportDefsRes.ok) {
         const reportDefsData = await reportDefsRes.json();
         // API returns array directly
         if (Array.isArray(reportDefsData)) {
+          nextReportDefinitions = reportDefsData;
           setReportDefinitions(reportDefsData);
           // Select the default report or first one
           const defaultReport = reportDefsData.find((r: ReportDefinition) => r.isDefault);
-          setSelectedReportId(defaultReport?.id || reportDefsData[0]?.id || '');
+          nextSelectedReportId = defaultReport?.id || reportDefsData[0]?.id || '';
+          setSelectedReportId(nextSelectedReportId);
         }
       }
+
+      setCachedData('reports:initial', {
+        employees: Array.isArray(employeesData) ? employeesData : [],
+        timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
+        reportDefinitions: nextReportDefinitions,
+        selectedReportId: nextSelectedReportId,
+      });
     } catch (error) {
       console.error('Failed to load initial data:', error);
     } finally {
@@ -331,8 +358,8 @@ export default function ReportsPage() {
 
   if (authLoading || initialLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner />
+      <div className="min-h-screen p-3">
+        <PageLoading label="Loading reports..." />
       </div>
     );
   }

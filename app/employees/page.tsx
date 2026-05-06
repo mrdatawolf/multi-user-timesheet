@@ -35,6 +35,8 @@ import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import { parseDateStr } from '@/lib/date-helpers';
+import { PageLoading } from '@/components/page-loading';
+import { clearCachedDataByPrefix, getCachedData, setCachedData } from '@/lib/client-cache';
 
 interface Employee {
   id: number;
@@ -128,6 +130,13 @@ export default function UsersPage() {
   }, [isAuthenticated, showInactive]);
 
   const loadEmployees = async () => {
+    const cacheKey = `employees:list:${showInactive}`;
+    const cachedEmployees = getCachedData<Employee[]>(cacheKey);
+    if (cachedEmployees) {
+      setEmployees(cachedEmployees);
+      setIsLoading(false);
+    }
+
     try {
       const url = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
       const response = await authFetch(url);
@@ -137,6 +146,7 @@ export default function UsersPage() {
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
+        setCachedData(cacheKey, data);
       }
     } catch (error) {
       console.error('Failed to load employees:', error);
@@ -282,6 +292,7 @@ export default function UsersPage() {
                 body: JSON.stringify({ id: existing.id, is_active: 1 }),
               });
               if (reactivateResponse.ok) {
+                clearCachedDataByPrefix('employees:list:');
                 handleCloseDialog();
                 loadEmployees();
               } else {
@@ -299,6 +310,7 @@ export default function UsersPage() {
       }
 
       handleCloseDialog();
+      clearCachedDataByPrefix('employees:list:');
       loadEmployees();
     } catch (error: any) {
       console.error('Failed to save employee:', error);
@@ -322,6 +334,7 @@ export default function UsersPage() {
         throw new Error('Failed to delete employee');
       }
 
+      clearCachedDataByPrefix('employees:list:');
       loadEmployees();
     } catch (error) {
       console.error('Failed to delete employee:', error);
@@ -352,6 +365,7 @@ export default function UsersPage() {
         throw new Error('Failed to reactivate employee');
       }
 
+      clearCachedDataByPrefix('employees:list:');
       loadEmployees();
     } catch (error) {
       console.error('Failed to reactivate employee:', error);
@@ -378,6 +392,7 @@ export default function UsersPage() {
         throw new Error(errData?.error || 'Failed to permanently delete employee');
       }
 
+      clearCachedDataByPrefix('employees:list:');
       loadEmployees();
     } catch (error: any) {
       console.error('Failed to permanently delete employee:', error);
@@ -432,11 +447,8 @@ export default function UsersPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
+      <div className="container mx-auto p-8">
+        <PageLoading label="Loading employees..." />
       </div>
     );
   }

@@ -33,6 +33,8 @@ import { Plus, Pencil, Trash2, Shield, Eye, EyeOff, Search } from 'lucide-react'
 import { UserPermissionsDialog } from '@/components/user-permissions-dialog';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
+import { PageLoading } from '@/components/page-loading';
+import { clearCachedDataByPrefix, getCachedData, setCachedData } from '@/lib/client-cache';
 
 interface Role {
   id: number;
@@ -108,6 +110,13 @@ export default function UsersPage() {
   }, [isAuthenticated, showInactive, currentUser]);
 
   const loadUsers = async () => {
+    const cacheKey = `users:list:${showInactive}`;
+    const cachedUsers = getCachedData<User[]>(cacheKey);
+    if (cachedUsers) {
+      setUsers(cachedUsers);
+      setIsLoading(false);
+    }
+
     try {
       const response = await authFetch('/api/users');
 
@@ -117,6 +126,7 @@ export default function UsersPage() {
         const data = await response.json();
         const filteredUsers = showInactive ? data : data.filter((u: User) => u.is_active === 1);
         setUsers(filteredUsers);
+        setCachedData(cacheKey, filteredUsers);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
@@ -253,6 +263,7 @@ export default function UsersPage() {
       }
 
       handleCloseDialog();
+      clearCachedDataByPrefix('users:list:');
       loadUsers();
     } catch (error) {
       console.error('Failed to save user:', error);
@@ -281,6 +292,7 @@ export default function UsersPage() {
         throw new Error('Failed to delete user');
       }
 
+      clearCachedDataByPrefix('users:list:');
       loadUsers();
     } catch (error) {
       console.error('Failed to delete user:', error);
@@ -318,11 +330,8 @@ export default function UsersPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
+      <div className="container mx-auto p-8">
+        <PageLoading label="Loading users..." />
       </div>
     );
   }

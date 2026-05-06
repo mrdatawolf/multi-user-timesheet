@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { useTheme } from '@/lib/theme-context';
-import { getTheme } from '@/lib/themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Calendar, Clock, TrendingUp, LogIn, CalendarDays } from 'lucide-react';
+import { Users, Calendar, Clock, TrendingUp, CalendarDays } from 'lucide-react';
 import { formatDateStr } from '@/lib/date-helpers';
+import { PageLoading } from '@/components/page-loading';
+import { getCachedData, setCachedData } from '@/lib/client-cache';
 
 interface Employee {
   id: number;
@@ -52,8 +51,6 @@ interface UpcomingStaffingEntry {
 export default function Home() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
-  const { theme: themeId } = useTheme();
-  const themeConfig = getTheme(themeId);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [upcomingStaffingData, setUpcomingStaffingData] = useState<UpcomingStaffingEntry[]>([]);
@@ -77,12 +74,24 @@ export default function Home() {
       }
       loadDashboardData();
     } else if (!authLoading) {
+      router.replace('/login');
       setLoading(false);
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, router]);
 
   const loadDashboardData = async () => {
-    setLoading(true);
+    const cachedDashboard = getCachedData<{
+      employees: Employee[];
+      upcomingStaffingData: UpcomingStaffingEntry[];
+    }>('dashboard:data');
+    if (cachedDashboard) {
+      setEmployees(cachedDashboard.employees);
+      setUpcomingStaffingData(cachedDashboard.upcomingStaffingData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     try {
       // Fetch employees and upcoming staffing (available to all authenticated users)
       const [employeesRes, upcomingStaffingRes] = await Promise.all([
@@ -110,6 +119,11 @@ export default function Home() {
         console.error('Invalid upcoming staffing data:', upcomingData);
         setUpcomingStaffingData([]);
       }
+
+      setCachedData('dashboard:data', {
+        employees: Array.isArray(employeesData) ? employeesData : [],
+        upcomingStaffingData: Array.isArray(upcomingData) ? upcomingData : [],
+      });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -191,45 +205,16 @@ export default function Home() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen p-3">
+        <PageLoading />
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    const logoSrc = themeConfig.branding.logo || '/default.png';
-    const logoAlt = themeConfig.branding.logoAlt || 'Logo';
-    const appTitle = themeConfig.branding.appTitle;
-
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="max-w-md text-center space-y-6">
-          <div className="border-2 border-dashed rounded-lg p-8">
-            <div className="flex justify-center mb-4">
-              <Image
-                src={logoSrc}
-                alt={logoAlt}
-                width={80}
-                height={80}
-                className="object-contain"
-              />
-            </div>
-            <h1 className="text-3xl font-bold mb-2">{appTitle}</h1>
-            <p className="text-muted-foreground mb-6">
-              Employee attendance management system
-            </p>
-            <Link href="/login">
-              <Button size="lg" className="gap-2">
-                <LogIn className="h-5 w-5" />
-                Sign In to Continue
-              </Button>
-            </Link>
-          </div>
-        </div>
+      <div className="min-h-screen p-3">
+        <PageLoading />
       </div>
     );
   }
