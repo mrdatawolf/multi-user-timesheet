@@ -19,8 +19,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user can view users (only master and HR can view all users)
-    if (!authUser.group?.is_master && !authUser.group?.can_view_all) {
+    const hasFullUserAccess = authUser.group?.is_master === 1 || authUser.group?.can_view_all === 1;
+    const isManagerRole = authUser.role_id === 2;
+
+    if (!hasFullUserAccess && !isManagerRole) {
       return NextResponse.json(
         { error: 'Forbidden: You do not have permission to view users' },
         { status: 403 }
@@ -33,7 +35,10 @@ export async function GET(request: NextRequest) {
     if (userId) {
       const user = await getUserById(parseInt(userId));
       if (user) {
-        // Don't send password hash
+        // Managers can only see users in their group
+        if (!hasFullUserAccess && isManagerRole && user.group_id !== authUser.group_id) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const { password_hash, ...userWithoutPassword } = user;
         return NextResponse.json(userWithoutPassword);
       } else {
@@ -41,8 +46,11 @@ export async function GET(request: NextRequest) {
       }
     } else {
       const users = await getAllUsers();
-      // Remove password hashes from all users
       const usersWithoutPasswords = users.map(({ password_hash, ...user }) => user);
+      // Managers only see users in their own group
+      if (!hasFullUserAccess && isManagerRole) {
+        return NextResponse.json(usersWithoutPasswords.filter(u => u.group_id === authUser.group_id));
+      }
       return NextResponse.json(usersWithoutPasswords);
     }
   } catch (error) {

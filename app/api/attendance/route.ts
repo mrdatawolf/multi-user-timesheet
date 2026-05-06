@@ -37,18 +37,45 @@ export async function GET(request: NextRequest) {
       || authUser.group?.is_master === 1
       || authUser.role?.can_access_all_groups === 1;
 
-    // If no employeeId is provided, return all entries (full-access users only)
+    // If no employeeId is provided, return entries scoped to what the user can see
     if (!employeeIdParam) {
-      if (!hasFullAccess) {
-        return NextResponse.json(
-          { error: 'Forbidden: You do not have permission to view all attendance entries' },
-          { status: 403 }
-        );
-      }
       const yearStartDate = startDate || `${year}-01-01`;
       const yearEndDate = endDate || `${year}-12-31`;
-      const entries = await getAllEntries(yearStartDate, yearEndDate);
-      return NextResponse.json(serializeBigInt(entries));
+
+      if (hasFullAccess) {
+        const entries = await getAllEntries(yearStartDate, yearEndDate);
+        return NextResponse.json(serializeBigInt(entries));
+      }
+
+      // Non-full-access users: return entries for their visible employees only
+      const readableGroupIds = await getExplicitReadableGroupIds(authUser.id);
+      const ownEmployeeId = authUser.employee_id;
+
+      const groupConditions: string[] = [];
+      const conditionArgs: (string | number)[] = [];
+
+      if (readableGroupIds.length > 0) {
+        groupConditions.push(`e.group_id IN (${readableGroupIds.map(() => '?').join(',')})`);
+        conditionArgs.push(...readableGroupIds);
+      }
+      if (ownEmployeeId) {
+        groupConditions.push('ae.employee_id = ?');
+        conditionArgs.push(ownEmployeeId);
+      }
+
+      if (groupConditions.length === 0) {
+        return NextResponse.json(serializeBigInt([]));
+      }
+
+      const result = await db.execute({
+        sql: `SELECT ae.* FROM attendance_entries ae
+              LEFT JOIN employees e ON ae.employee_id = e.id
+              WHERE ae.entry_date >= ? AND ae.entry_date <= ?
+              AND (${groupConditions.join(' OR ')})
+              ORDER BY ae.entry_date DESC`,
+        args: [yearStartDate, yearEndDate, ...conditionArgs],
+      });
+      return NextResponse.json(serializeBigInt(result.rows));
     }
 
     const employeeId = parseInt(employeeIdParam);

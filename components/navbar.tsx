@@ -34,7 +34,7 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, logout, isLoading, isMaster, isAdministrator } = useAuth();
+  const { user, isAuthenticated, logout, isLoading, isMaster, isAdministrator, isManager } = useAuth();
   const { theme: themeId } = useTheme();
   const { isHelpMode, toggleHelpMode } = useHelp();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -50,7 +50,8 @@ export function Navbar() {
   }, [pathname, isAuthenticated]);
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
-    if (item.superuserOnly && !showAdminMenu) return false;
+    // superuserOnly items are visible to admins and managers
+    if (item.superuserOnly && !showAdminMenu && !isManager) return false;
     return true;
   });
 

@@ -62,7 +62,7 @@ interface Group {
 }
 
 export default function UsersPage() {
-  const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch, isMaster, isAdministrator } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch, isMaster, isAdministrator, isManager } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -97,7 +97,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (currentUser && !isMaster && !isAdministrator) {
+      if (currentUser && !isMaster && !isAdministrator && !isManager) {
         router.push('/');
         return;
       }
@@ -297,8 +297,12 @@ export default function UsersPage() {
     return roles.find((r) => r.id === roleId)?.name || 'Unknown';
   };
 
+  const visibleUsers = (isMaster || isAdministrator)
+    ? users
+    : users.filter(u => u.group_id === currentUser?.group_id);
+
   const filteredUsers = searchQuery.trim()
-    ? users.filter(u => {
+    ? visibleUsers.filter(u => {
         const q = searchQuery.toLowerCase();
         const groupName = u.group?.name ?? getGroupName(u.group_id);
         const roleName = u.role?.name ?? getRoleName(u.role_id);
@@ -310,7 +314,7 @@ export default function UsersPage() {
           roleName.toLowerCase().includes(q)
         );
       })
-    : users;
+    : visibleUsers;
 
   if (authLoading || isLoading) {
     return (
@@ -323,7 +327,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!isAuthenticated || (!isMaster && !isAdministrator)) {
+  if (!isAuthenticated || (!isMaster && !isAdministrator && !isManager)) {
     return null;
   }
 
