@@ -23,6 +23,8 @@ interface AttendanceGridYearCalendarProps {
   maxOutOfOffice?: number;
   capacityWarningCount?: number;
   capacityCriticalCount?: number;
+  employeeNameMap?: Record<number, string>;
+  readOnly?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -168,6 +170,8 @@ export function AttendanceGridYearCalendar({
   maxOutOfOffice = 0,
   capacityWarningCount = 3,
   capacityCriticalCount = 5,
+  employeeNameMap,
+  readOnly,
 }: AttendanceGridYearCalendarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -216,6 +220,8 @@ export function AttendanceGridYearCalendar({
         entries={selectedEntries}
         timeCodes={timeCodes}
         onSave={handleSave}
+        employeeNameMap={employeeNameMap}
+        readOnly={readOnly}
       />
     </div>
   );

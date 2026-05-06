@@ -34,6 +34,13 @@ interface Employee {
   employee_number?: string;
   email?: string;
   role: string;
+  group_id?: number;
+}
+
+interface Group {
+  id: number;
+  name: string;
+  is_master?: number;
 }
 
 interface TimeCode {
@@ -98,6 +105,10 @@ function AttendanceContent() {
   const [yearLayout, setYearLayout] = useState<'table' | 'calendar'>('table');
   const [bulkEntryOpen, setBulkEntryOpen] = useState(false);
   const [bulkEntryEnabled, setBulkEntryEnabled] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
@@ -151,10 +162,16 @@ function AttendanceContent() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (selectedEmployeeId && isAuthenticated) {
+    if (selectedEmployeeId && !viewAll && isAuthenticated) {
       loadAttendanceData();
     }
-  }, [selectedEmployeeId, year, isAuthenticated]);
+  }, [selectedEmployeeId, year, isAuthenticated, viewAll]);
+
+  useEffect(() => {
+    if (viewAll && isAuthenticated) {
+      loadAllEmployeesData();
+    }
+  }, [viewAll, year, isAuthenticated]);
 
   // Reload company holidays when year changes
   useEffect(() => {
@@ -168,8 +185,12 @@ function AttendanceContent() {
 
   // Reload data when navigating to attendance page
   useEffect(() => {
-    if (pathname === '/attendance' && selectedEmployeeId && isAuthenticated) {
-      loadAttendanceData();
+    if (pathname === '/attendance' && isAuthenticated) {
+      if (viewAll) {
+        loadAllEmployeesData();
+      } else if (selectedEmployeeId) {
+        loadAttendanceData();
+      }
     }
   }, [pathname]);
 
@@ -199,9 +220,10 @@ function AttendanceContent() {
       setYearLayout(getAttendanceYearLayout(brandFeatures));
       setBulkEntryEnabled(getBulkEntryConfig(brandFeatures).enabled);
 
-      const [employeesRes, timeCodesRes] = await Promise.all([
+      const [employeesRes, timeCodesRes, groupsRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
+        authFetch('/api/groups'),
       ]);
 
       // If redirected to login due to expired session, stop processing
@@ -211,16 +233,27 @@ function AttendanceContent() {
 
       const employeesData = await employeesRes.json();
       const timeCodesData = await timeCodesRes.json();
+      const groupsData = groupsRes.ok ? await groupsRes.json() : [];
 
       // Validate that we received arrays
+      if (Array.isArray(groupsData)) {
+        // Exclude master groups from the filter (they're admin-only)
+        setGroups(groupsData.filter((g: Group) => !g.is_master));
+      }
+
       if (Array.isArray(employeesData)) {
         setEmployees(employeesData);
         if (employeesData.length > 0 && !selectedEmployeeId) {
-          // Prefer the user's linked employee, fall back to first in list
-          const linkedEmployee = user?.employee_id
-            ? employeesData.find((e: Employee) => e.id === user.employee_id)
-            : null;
-          setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : employeesData[0].id);
+          // Default to "All" when there are multiple employees
+          if (employeesData.length > 1) {
+            setViewAll(true);
+          } else {
+            // Prefer the user's linked employee, fall back to first in list
+            const linkedEmployee = user?.employee_id
+              ? employeesData.find((e: Employee) => e.id === user.employee_id)
+              : null;
+            setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : employeesData[0].id);
+          }
         }
       } else {
         console.error('Invalid employees data:', employeesData);
@@ -301,8 +334,46 @@ function AttendanceContent() {
     }
   };
 
-  const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[]) => {
-    if (!selectedEmployeeId || !isAuthenticated) return;
+  const loadAllEmployeesData = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await authFetch(`/api/attendance?year=${year}`);
+      if (res.status === 401) return;
+      if (res.ok) {
+        const data = await res.json();
+        setAllEmployeesEntries(Array.isArray(data) ? data : []);
+      } else {
+        setAllEmployeesEntries([]);
+      }
+      // Also refresh daily summary when viewing all
+      if (globalReadEnabled) {
+        const summaryRes = await authFetch(`/api/attendance/daily-summary?year=${year}`);
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          setDailySummary(summaryData.dailySummary || null);
+          setTotalActiveEmployees(summaryData.totalActiveEmployees || 0);
+          setMaxOutOfOffice(summaryData.maxOutOfOffice || 0);
+          setCapacityWarningCount(summaryData.capacityWarningCount ?? 3);
+          setCapacityCriticalCount(summaryData.capacityCriticalCount ?? 5);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load all employees data:', error);
+      setAllEmployeesEntries([]);
+    }
+  };
+
+  const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[], employeeId?: number) => {
+    const targetEmployeeId = employeeId ?? selectedEmployeeId;
+    if (!targetEmployeeId || !isAuthenticated) {
+      if (viewAll && isAuthenticated) {
+        toast({
+          title: 'Select an employee to edit',
+          description: 'Choose a specific employee from the dropdown to make changes.',
+        });
+      }
+      return;
+    }
 
     try {
       // Send batch update to API
@@ -313,7 +384,7 @@ function AttendanceContent() {
         },
         body: JSON.stringify({
           action: 'update_day',
-          employee_id: selectedEmployeeId,
+          employee_id: targetEmployeeId,
           entry_date: date,
           entries: updatedEntries,
         }),
@@ -330,7 +401,11 @@ function AttendanceContent() {
       }
 
       // Reload attendance data to show updated entries
-      await loadAttendanceData();
+      if (viewAll) {
+        await loadAllEmployeesData();
+      } else {
+        await loadAttendanceData();
+      }
 
       toast({
         title: 'Attendance Saved',
@@ -385,10 +460,26 @@ function AttendanceContent() {
     (_, i) => new Date().getFullYear() - 2 + i
   );
 
+  // Filter employees by selected group for the "All" view
+  const filteredEmployees = selectedGroupId
+    ? employees.filter(e => e.group_id === selectedGroupId)
+    : employees;
+
+  // When viewAll, use all employees' entries (filtered by group if needed)
+  const activeEntries = viewAll
+    ? (selectedGroupId
+        ? allEmployeesEntries.filter(e => filteredEmployees.some(emp => emp.id === e.employee_id))
+        : allEmployeesEntries)
+    : entries;
+
+  const employeeNameMap: Record<number, string> | undefined = viewAll
+    ? Object.fromEntries(filteredEmployees.map(e => [e.id, `${e.first_name} ${e.last_name}`]))
+    : undefined;
+
   // Shared grid props
   const gridProps = {
-    employeeId: selectedEmployeeId!,
-    entries,
+    employeeId: selectedEmployeeId ?? 0,
+    entries: activeEntries,
     timeCodes,
     onEntryChange: handleEntryChange,
     companyHolidays,
@@ -397,6 +488,8 @@ function AttendanceContent() {
     maxOutOfOffice,
     capacityWarningCount,
     capacityCriticalCount,
+    employeeNameMap,
+    readOnly: viewAll,
   };
 
   if (authLoading || loading) {
@@ -421,28 +514,66 @@ function AttendanceContent() {
         <div className="flex flex-wrap gap-2">
           {/* Selects + View controls - inline */}
           <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
-            {employees.length > 1 && (
-              <div className="w-64 space-y-1">
-                <HelpArea helpId="employee-selector" bubblePosition="bottom">
-                  <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
-                </HelpArea>
-                <Select
-                  value={selectedEmployeeId?.toString() || ''}
-                  onValueChange={(value) => setSelectedEmployeeId(parseInt(value))}
-                >
-                  <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
-                    <SelectValue placeholder="Select employee..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id.toString()}>
-                        <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
-                        {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
+            {employees.length > 0 && (
+              <>
+                {/* Group filter — only when multiple non-master groups visible */}
+                {groups.length > 1 && (
+                  <div className="w-40 space-y-1">
+                    <Label htmlFor="group-filter" className="text-xs">Group</Label>
+                    <Select
+                      value={selectedGroupId?.toString() ?? 'all'}
+                      onValueChange={(value) => setSelectedGroupId(value === 'all' ? null : parseInt(value))}
+                    >
+                      <SelectTrigger id="group-filter" className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Groups</SelectItem>
+                        {groups.map(g => (
+                          <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Employee selector */}
+                <div className="w-64 space-y-1">
+                  <HelpArea helpId="employee-selector" bubblePosition="bottom">
+                    <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
+                  </HelpArea>
+                  <Select
+                    value={viewAll ? 'all' : (selectedEmployeeId?.toString() || '')}
+                    onValueChange={(value) => {
+                      if (value === 'all') {
+                        setViewAll(true);
+                        setSelectedEmployeeId(undefined);
+                      } else {
+                        setViewAll(false);
+                        setSelectedEmployeeId(parseInt(value));
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
+                      <SelectValue placeholder="Select employee..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        <span className="font-semibold">All Employees</span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      {(selectedGroupId
+                        ? employees.filter(e => e.group_id === selectedGroupId)
+                        : employees
+                      ).map(emp => (
+                        <SelectItem key={emp.id} value={emp.id.toString()}>
+                          <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
+                          {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
 
             {/* Year selector (only in year view — month/week have it in PeriodNavigator) */}
@@ -491,7 +622,7 @@ function AttendanceContent() {
             )}
 
             {/* Bulk Entry button */}
-            {bulkEntryEnabled && selectedEmployeeId && (
+            {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
               <div className="space-y-1">
                 <Label className="text-xs">&nbsp;</Label>
                 <Button
@@ -507,22 +638,22 @@ function AttendanceContent() {
             )}
           </div>
 
-          {/* Balance Cards */}
-          {selectedEmployeeId && (
+          {/* Balance Cards — only in single-employee view */}
+          {selectedEmployeeId && !viewAll && (
             <div className="flex-1 min-w-0">
               <BalanceCards entries={entries} allocations={allocations} employeeId={selectedEmployeeId} />
             </div>
           )}
         </div>
 
-        {selectedEmployeeId && (
+        {(viewAll || selectedEmployeeId) && (
           <>
             <div className="space-y-3">
               <HelpArea helpId="attendance-grid" bubblePosition="bottom">
                 <h2 className="text-lg font-semibold cursor-help">
-                  {view === 'year' && `Attendance Record: ${year}`}
-                  {view === 'month' && `Attendance: ${getPeriodLabel('month', currentDate)}`}
-                  {view === 'week' && `Attendance: ${getPeriodLabel('week', currentDate)}`}
+                  {view === 'year' && (viewAll ? `Staff Overview: ${year}` : `Attendance Record: ${year}`)}
+                  {view === 'month' && (viewAll ? `Staff Overview: ${getPeriodLabel('month', currentDate)}` : `Attendance: ${getPeriodLabel('month', currentDate)}`)}
+                  {view === 'week' && (viewAll ? `Staff Overview: ${getPeriodLabel('week', currentDate)}` : `Attendance: ${getPeriodLabel('week', currentDate)}`)}
                 </h2>
               </HelpArea>
 
@@ -573,7 +704,7 @@ function AttendanceContent() {
         )}
 
         {/* Bulk Entry Dialog */}
-        {bulkEntryEnabled && selectedEmployeeId && (
+        {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
           <BulkEntryDialog
             open={bulkEntryOpen}
             onOpenChange={setBulkEntryOpen}

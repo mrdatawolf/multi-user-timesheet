@@ -1,5 +1,6 @@
 export interface AttendanceEntry {
   id?: number;
+  employee_id?: number;
   entry_date: string;
   time_code: string;
   hours: number;

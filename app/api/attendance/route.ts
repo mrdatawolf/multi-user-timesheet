@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
           { status: 403 }
         );
       }
-      const entries = await getAllEntries();
+      const yearStartDate = startDate || `${year}-01-01`;
+      const yearEndDate = endDate || `${year}-12-31`;
+      const entries = await getAllEntries(yearStartDate, yearEndDate);
       return NextResponse.json(serializeBigInt(entries));
     }
 

@@ -127,7 +127,14 @@ export async function syncTimeCodesFromJson(brandTimeCodes: {
 }
 
 // Attendance entry queries
-export async function getAllEntries(): Promise<AttendanceEntry[]> {
+export async function getAllEntries(startDate?: string, endDate?: string): Promise<AttendanceEntry[]> {
+  if (startDate && endDate) {
+    const result = await db.execute({
+      sql: 'SELECT * FROM attendance_entries WHERE entry_date >= ? AND entry_date <= ? ORDER BY entry_date DESC',
+      args: [startDate, endDate],
+    });
+    return result.rows as unknown as AttendanceEntry[];
+  }
   const result = await db.execute('SELECT * FROM attendance_entries ORDER BY entry_date DESC');
   return result.rows as unknown as AttendanceEntry[];
 }

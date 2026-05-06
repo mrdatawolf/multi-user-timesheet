@@ -35,10 +35,13 @@ interface MultiEntryDialogProps {
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
   onSave: (date: string, entries: AttendanceEntry[]) => void;
+  employeeNameMap?: Record<number, string>;
+  readOnly?: boolean;
 }
 
 interface EditableEntry {
   id?: number;
+  employee_id?: number;
   tempId: string;
   time_code: string;
   hours: number;
@@ -53,6 +56,8 @@ export function MultiEntryDialog({
   entries,
   timeCodes,
   onSave,
+  employeeNameMap,
+  readOnly = false,
 }: MultiEntryDialogProps) {
   const [editableEntries, setEditableEntries] = useState<EditableEntry[]>([]);
 
@@ -71,6 +76,7 @@ export function MultiEntryDialog({
       } else {
         setEditableEntries(entries.map((entry, index) => ({
           id: entry.id,
+          employee_id: entry.employee_id,
           tempId: entry.id ? `id-${entry.id}` : `new-${Date.now()}-${index}`,
           time_code: entry.time_code,
           hours: Math.floor(entry.hours),
@@ -179,15 +185,19 @@ export function MultiEntryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Entries for {date}</DialogTitle>
+          <DialogTitle>{readOnly ? 'Entries for' : 'Edit Entries for'} {date}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {editableEntries.map((entry, index) => (
             <div key={entry.tempId} className="p-4 border rounded-lg space-y-3 bg-muted/30">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Entry {index + 1}</h3>
-                {editableEntries.length > 1 && (
+                <h3 className="font-semibold text-sm">
+                  {entry.employee_id && employeeNameMap?.[entry.employee_id]
+                    ? employeeNameMap[entry.employee_id]
+                    : `Entry ${index + 1}`}
+                </h3>
+                {!readOnly && editableEntries.length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -209,6 +219,7 @@ export function MultiEntryDialog({
                 <Select
                   value={entry.time_code}
                   onValueChange={(value) => updateEntry(entry.tempId, 'time_code', value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger id={`time-code-${entry.tempId}`} className="h-9">
                     <SelectValue placeholder="Select a time code" />
@@ -236,6 +247,7 @@ export function MultiEntryDialog({
                     size="icon"
                     onClick={() => decrementHours(entry.tempId)}
                     className="h-8 w-8"
+                    disabled={readOnly}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -251,6 +263,7 @@ export function MultiEntryDialog({
                     size="icon"
                     onClick={() => incrementHours(entry.tempId)}
                     className="h-8 w-8"
+                    disabled={readOnly}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -262,6 +275,7 @@ export function MultiEntryDialog({
                     size="icon"
                     onClick={() => decrementMinutes(entry.tempId)}
                     className="h-8 w-8"
+                    disabled={readOnly}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -277,6 +291,7 @@ export function MultiEntryDialog({
                     size="icon"
                     onClick={() => incrementMinutes(entry.tempId)}
                     className="h-8 w-8"
+                    disabled={readOnly}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -288,6 +303,7 @@ export function MultiEntryDialog({
                     onClick={() => setAllDay(entry.tempId)}
                     className="h-8 ml-2 gap-1 text-xs"
                     title="Set to 8 hours (full day)"
+                    disabled={readOnly}
                   >
                     <Clock className="h-3 w-3" />
                     All Day
@@ -307,20 +323,24 @@ export function MultiEntryDialog({
                   onChange={(e) => updateEntry(entry.tempId, 'notes', e.target.value)}
                   className="min-h-[60px]"
                   placeholder="Optional notes"
+                  readOnly={readOnly}
+                  disabled={readOnly}
                 />
               </div>
             </div>
           ))}
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAddEntry}
-            className="w-full gap-2"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add Another Entry
-          </Button>
+          {!readOnly && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddEntry}
+              className="w-full gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add Another Entry
+            </Button>
+          )}
         </div>
 
         <div className="border-t pt-4">
@@ -331,12 +351,25 @@ export function MultiEntryDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isOverLimit}>
-            Save All Changes
-          </Button>
+          {readOnly ? (
+            <>
+              <p className="text-xs text-muted-foreground mr-auto self-center">
+                Select a specific employee to make changes
+              </p>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={isOverLimit}>
+                Save All Changes
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

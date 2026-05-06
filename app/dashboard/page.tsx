@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Users, Calendar, Clock, TrendingUp, CalendarDays } from 'lucide-react';
+import { Users, Calendar, Clock, TrendingUp, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { config } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
@@ -12,7 +13,9 @@ import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import { AttendanceForecastWidget } from '@/components/attendance-forecast-widget';
 import { BreakEntryWidget } from '@/components/break-entry-widget';
-import { formatDateStr } from '@/lib/date-helpers';
+import { formatDateStr, getLocalToday, parseDateStr } from '@/lib/date-helpers';
+
+const PAGE_SIZE = 5;
 
 interface Employee {
   id: number;
@@ -61,6 +64,8 @@ export default function DashboardPage() {
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [upcomingStaffingData, setUpcomingStaffingData] = useState<UpcomingStaffingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tcPage, setTcPage] = useState(0);
+  const [empPage, setEmpPage] = useState(0);
 
   // Set the current screen for help context
   useEffect(() => {
@@ -95,10 +100,15 @@ export default function DashboardPage() {
 
     setLoading(true);
     try {
-      // Fetch employees and upcoming staffing (available to all authenticated users)
-      const [employeesRes, upcomingStaffingRes] = await Promise.all([
+      const todayStr = getLocalToday();
+      const endDate = new Date(parseDateStr(todayStr));
+      endDate.setDate(endDate.getDate() + 4);
+      const endDateStr = formatDateStr(endDate);
+
+      const [employeesRes, upcomingStaffingRes, entriesRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/dashboard/upcoming-staffing?days=5'),
+        authFetch(`/api/attendance?startDate=${todayStr}&endDate=${endDateStr}`),
       ]);
 
       if (employeesRes.status === 401) {
@@ -107,6 +117,7 @@ export default function DashboardPage() {
 
       const employeesData = await employeesRes.json();
       const upcomingData = upcomingStaffingRes.ok ? await upcomingStaffingRes.json() : [];
+      const entriesData = entriesRes.ok ? await entriesRes.json() : [];
 
       if (Array.isArray(employeesData)) {
         setEmployees(employeesData);
@@ -120,6 +131,12 @@ export default function DashboardPage() {
       } else {
         console.error('Invalid upcoming staffing data:', upcomingData);
         setUpcomingStaffingData([]);
+      }
+
+      if (Array.isArray(entriesData)) {
+        setEntries(entriesData);
+      } else {
+        setEntries([]);
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -136,16 +153,14 @@ export default function DashboardPage() {
       existing.count++;
       existing.totalHours += entry.hours || 0;
     } else {
-      acc.push({
-        code: entry.time_code,
-        count: 1,
-        totalHours: entry.hours || 0,
-      });
+      acc.push({ code: entry.time_code, count: 1, totalHours: entry.hours || 0 });
     }
     return acc;
-  }, [] as TimeCodeSummary[]);
+  }, [] as TimeCodeSummary[]).sort((a, b) => b.totalHours - a.totalHours);
 
-  timeCodeSummary.sort((a, b) => b.totalHours - a.totalHours);
+  const tcTotalPages = Math.max(1, Math.ceil(timeCodeSummary.length / PAGE_SIZE));
+  const tcSafePage = Math.min(tcPage, tcTotalPages - 1);
+  const tcPagedRows = timeCodeSummary.slice(tcSafePage * PAGE_SIZE, (tcSafePage + 1) * PAGE_SIZE);
 
   const employeeSummaries: EmployeeSummary[] = employees.map(emp => {
     const empEntries = entries.filter(e => e.employee_id === emp.id);
@@ -154,11 +169,14 @@ export default function DashboardPage() {
       entryCount: empEntries.length,
       totalHours: empEntries.reduce((sum, e) => sum + (e.hours || 0), 0),
     };
-  }).sort((a, b) => b.totalHours - a.totalHours);
+  }).filter(s => s.entryCount > 0).sort((a, b) => b.totalHours - a.totalHours);
 
-  const recentEntries = [...entries]
-    .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime())
-    .slice(0, 10);
+  const empTotalPages = Math.max(1, Math.ceil(employeeSummaries.length / PAGE_SIZE));
+  const empSafePage = Math.min(empPage, empTotalPages - 1);
+  const empPagedRows = employeeSummaries.slice(empSafePage * PAGE_SIZE, (empSafePage + 1) * PAGE_SIZE);
+
+  const periodEntries = [...entries]
+    .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
 
   // Compute upcoming staffing for the next 5 days
   const upcomingStaffing = (() => {
@@ -261,7 +279,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{entries.length}</div>
-                <p className="text-xs text-muted-foreground">Attendance entries</p>
+                <p className="text-xs text-muted-foreground">Next 5 days</p>
               </CardContent>
             </Card>
 
@@ -272,7 +290,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
-                <p className="text-xs text-muted-foreground">Hours logged</p>
+                <p className="text-xs text-muted-foreground">Next 5 days</p>
               </CardContent>
             </Card>
 
@@ -283,7 +301,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{timeCodeSummary.length}</div>
-                <p className="text-xs text-muted-foreground">Different codes used</p>
+                <p className="text-xs text-muted-foreground">Next 5 days</p>
               </CardContent>
             </Card>
           </div>
@@ -334,17 +352,28 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <HelpArea helpId="time-code-usage" bubblePosition="right">
-                <CardTitle className="text-base cursor-help">Time Code Usage</CardTitle>
+                <CardTitle className="text-base cursor-help">Time Code Usage <span className="text-xs font-normal text-muted-foreground">(Next 5 Days)</span></CardTitle>
               </HelpArea>
+              {timeCodeSummary.length > PAGE_SIZE && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">{tcSafePage + 1}/{tcTotalPages}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTcPage(p => Math.max(0, p - 1))} disabled={tcSafePage === 0}>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTcPage(p => Math.min(tcTotalPages - 1, p + 1))} disabled={tcSafePage >= tcTotalPages - 1}>
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {timeCodeSummary.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No time codes used yet</p>
+                  <p className="text-sm text-muted-foreground">No time codes used in this period</p>
                 ) : (
-                  timeCodeSummary.map(tc => (
+                  tcPagedRows.map(tc => (
                     <div key={tc.code} className="flex items-center justify-between text-sm">
                       <span className="font-medium">{tc.code}</span>
                       <div className="flex items-center gap-3 text-muted-foreground">
@@ -359,17 +388,28 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <HelpArea helpId="employee-summary" bubblePosition="left">
-                <CardTitle className="text-base cursor-help">Employee Summary</CardTitle>
+                <CardTitle className="text-base cursor-help">Employee Summary <span className="text-xs font-normal text-muted-foreground">(Next 5 Days)</span></CardTitle>
               </HelpArea>
+              {employeeSummaries.length > PAGE_SIZE && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">{empSafePage + 1}/{empTotalPages}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEmpPage(p => Math.max(0, p - 1))} disabled={empSafePage === 0}>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEmpPage(p => Math.min(empTotalPages - 1, p + 1))} disabled={empSafePage >= empTotalPages - 1}>
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {employeeSummaries.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No employees found</p>
                 ) : (
-                  employeeSummaries.map(summary => (
+                  empPagedRows.map(summary => (
                     <div key={summary.employee.id} className="flex items-center justify-between text-sm">
                       <span className="font-medium">
                         {summary.employee.first_name} {summary.employee.last_name}
@@ -389,15 +429,15 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <HelpArea helpId="recent-entries" bubblePosition="bottom">
-              <CardTitle className="text-base cursor-help">Recent Entries</CardTitle>
+              <CardTitle className="text-base cursor-help">Entries (Next 5 Days)</CardTitle>
             </HelpArea>
           </CardHeader>
           <CardContent>
-            {recentEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No entries found</p>
+            {periodEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No entries in this period</p>
             ) : (
               <div className="space-y-2">
-                {recentEntries.map(entry => {
+                {periodEntries.map(entry => {
                   const employee = employees.find(e => e.id === entry.employee_id);
                   return (
                     <div key={entry.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
