@@ -63,6 +63,15 @@ export default function Home() {
     if (isAuthenticated) {
       const lastPage = localStorage.getItem('last_visited_page');
       if (lastPage && lastPage !== '/') {
+        const isAdminOrMaster = user?.group?.is_master === 1 || user?.role_id === 1;
+        // Pages that require elevated access
+        const adminOnlyPages = ['/users'];
+        const needsAdmin = adminOnlyPages.some(p => lastPage.startsWith(p));
+        if (needsAdmin && !isAdminOrMaster) {
+          localStorage.removeItem('last_visited_page');
+          router.replace('/attendance');
+          return;
+        }
         router.replace(lastPage);
         return;
       }

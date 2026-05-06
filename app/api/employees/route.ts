@@ -159,7 +159,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Check if user can create employees in the specified group (Phase 2 CRUD permissions)
-    if (body.group_id) {
+    const postIsSuperuser = await isSuperuser(authUser.id);
+    const postHasFullAccess = postIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
+
+    if (!postHasFullAccess && body.group_id) {
       const canCreate = await canUserCreateInGroup(authUser.id, body.group_id);
       if (!canCreate) {
         return NextResponse.json(
@@ -331,7 +336,12 @@ export async function PUT(request: NextRequest) {
       && body.abbreviation !== undefined
       && Object.keys(body).filter(k => k !== 'id' && k !== 'abbreviation').length === 0;
 
-    if (!isSelfAbbreviationUpdate && oldEmployee.group_id) {
+    const putIsSuperuser = await isSuperuser(authUser.id);
+    const putHasFullAccess = putIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
+
+    if (!isSelfAbbreviationUpdate && !putHasFullAccess && oldEmployee.group_id) {
       const canUpdate = await canUserUpdateInGroup(authUser.id, oldEmployee.group_id);
       if (!canUpdate) {
         return NextResponse.json(
@@ -558,7 +568,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check permissions using Phase 2 CRUD permissions
-    if (employee.group_id) {
+    const deleteIsSuperuser = await isSuperuser(authUser.id);
+    const deleteHasFullAccess = deleteIsSuperuser
+      || authUser.group?.is_master === 1
+      || authUser.role?.can_access_all_groups === 1;
+
+    if (!deleteHasFullAccess && employee.group_id) {
       const hasDeletePermission = await canUserDeleteInGroup(authUser.id, employee.group_id);
       if (!hasDeletePermission) {
         return NextResponse.json(
