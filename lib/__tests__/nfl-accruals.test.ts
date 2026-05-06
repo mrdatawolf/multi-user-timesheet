@@ -7,7 +7,7 @@ import {
 import nflFeatures from '../../public/NFL/brand-features.json';
 
 // Pull rules directly from NFL brand config so tests catch config bugs too
-const V_RULE = nflFeatures.features.accrualCalculations.rules.V as unknown as AccrualRule;
+const V_RULE = nflFeatures.features.accrualCalculations.rules.VAC as unknown as AccrualRule;
 const FLH_RULE = nflFeatures.features.accrualCalculations.rules.FLH as unknown as AccrualRule;
 
 // Enough hours to qualify as full-time (threshold is 1,200)

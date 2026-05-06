@@ -123,65 +123,53 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadEmployees();
-      loadGroups();
-      loadJobTitles();
+      loadAllData();
     }
   }, [isAuthenticated, showInactive]);
 
-  const loadEmployees = async () => {
-    const cacheKey = `employees:list:${showInactive}`;
-    const cachedEmployees = getCachedData<Employee[]>(cacheKey);
-    if (cachedEmployees) {
+  const loadAllData = async () => {
+    const empCacheKey = `employees:list:${showInactive}`;
+    const groupsCacheKey = 'employees:groups';
+    const jobTitlesCacheKey = 'employees:job-titles';
+
+    const cachedEmployees = getCachedData<Employee[]>(empCacheKey);
+    const cachedGroups = getCachedData<Group[]>(groupsCacheKey);
+    const cachedJobTitles = getCachedData<JobTitle[]>(jobTitlesCacheKey);
+
+    if (cachedEmployees && cachedGroups && cachedJobTitles) {
       setEmployees(cachedEmployees);
+      setGroups(cachedGroups);
+      setJobTitles(cachedJobTitles);
       setIsLoading(false);
     }
 
     try {
-      const url = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
-      const response = await authFetch(url);
+      const empUrl = showInactive ? '/api/employees?includeInactive=true' : '/api/employees';
+      const [empRes, groupsRes, jobTitlesRes] = await Promise.all([
+        authFetch(empUrl),
+        authFetch('/api/groups'),
+        authFetch('/api/job-titles?active=true'),
+      ]);
 
-      if (response.status === 401) return;
+      if (empRes.status === 401) return;
 
-      if (response.ok) {
-        const data = await response.json();
-        setEmployees(data);
-        setCachedData(cacheKey, data);
-      }
+      const [empData, groupsData, jobTitlesData] = await Promise.all([
+        empRes.ok ? empRes.json() : [],
+        groupsRes.ok ? groupsRes.json() : [],
+        jobTitlesRes.ok ? jobTitlesRes.json() : [],
+      ]);
+
+      setEmployees(Array.isArray(empData) ? empData : []);
+      setGroups(Array.isArray(groupsData) ? groupsData : []);
+      setJobTitles(Array.isArray(jobTitlesData) ? jobTitlesData : []);
+
+      setCachedData(empCacheKey, Array.isArray(empData) ? empData : []);
+      setCachedData(groupsCacheKey, Array.isArray(groupsData) ? groupsData : []);
+      setCachedData(jobTitlesCacheKey, Array.isArray(jobTitlesData) ? jobTitlesData : []);
     } catch (error) {
-      console.error('Failed to load employees:', error);
+      console.error('Failed to load employees data:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadGroups = async () => {
-    try {
-      const response = await authFetch('/api/groups');
-
-      if (response.status === 401) return;
-
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Failed to load groups:', error);
-    }
-  };
-
-  const loadJobTitles = async () => {
-    try {
-      const response = await authFetch('/api/job-titles?active=true');
-
-      if (response.status === 401) return;
-
-      if (response.ok) {
-        const data = await response.json();
-        setJobTitles(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Failed to load job titles:', error);
     }
   };
 
@@ -294,7 +282,7 @@ export default function UsersPage() {
               if (reactivateResponse.ok) {
                 clearCachedDataByPrefix('employees:list:');
                 handleCloseDialog();
-                loadEmployees();
+                loadAllData();
               } else {
                 throw new Error('Failed to reactivate employee');
               }
@@ -311,7 +299,7 @@ export default function UsersPage() {
 
       handleCloseDialog();
       clearCachedDataByPrefix('employees:list:');
-      loadEmployees();
+      loadAllData();
     } catch (error: any) {
       console.error('Failed to save employee:', error);
       alert(error.message || 'Failed to save employee');
@@ -335,7 +323,7 @@ export default function UsersPage() {
       }
 
       clearCachedDataByPrefix('employees:list:');
-      loadEmployees();
+      loadAllData();
     } catch (error) {
       console.error('Failed to delete employee:', error);
       alert('Failed to delete employee');
@@ -366,7 +354,7 @@ export default function UsersPage() {
       }
 
       clearCachedDataByPrefix('employees:list:');
-      loadEmployees();
+      loadAllData();
     } catch (error) {
       console.error('Failed to reactivate employee:', error);
       alert('Failed to reactivate employee');
@@ -393,7 +381,7 @@ export default function UsersPage() {
       }
 
       clearCachedDataByPrefix('employees:list:');
-      loadEmployees();
+      loadAllData();
     } catch (error: any) {
       console.error('Failed to permanently delete employee:', error);
       alert(error.message || 'Failed to permanently delete employee');
@@ -445,7 +433,7 @@ export default function UsersPage() {
       })
     : employees;
 
-  if (authLoading || isLoading) {
+  if (authLoading || isLoading || brandFeatures === null) {
     return (
       <div className="container mx-auto p-8">
         <PageLoading label="Loading employees..." />

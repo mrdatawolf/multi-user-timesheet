@@ -117,13 +117,14 @@ export function AttendanceGridWeek({
                 {isCompanyHoliday ? (
                   <div className="text-xs text-muted-foreground italic">Holiday</div>
                 ) : entriesForDate.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">No entries</div>
+                  null
                 ) : (
                   <div className="space-y-1 flex-1">
                     {entriesForDate.map((entry, entryIndex) => (
                       <div
                         key={entry.id || entryIndex}
                         className={`text-xs px-1.5 py-0.5 rounded ${getCellColorClass([entry])}`}
+                        title={timeCodes.find(t => t.code === entry.time_code)?.description ?? entry.time_code}
                       >
                         <span className="font-mono font-semibold">{entry.time_code}</span>
                         <span className="text-muted-foreground"> ({entry.hours}h)</span>

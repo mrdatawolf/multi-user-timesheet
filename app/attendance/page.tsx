@@ -7,9 +7,8 @@ import { AttendanceGridMonth } from '@/components/attendance-grid-month';
 import { AttendanceGridWeek } from '@/components/attendance-grid-week';
 import { AttendanceGridYearCalendar } from '@/components/attendance-grid-year-calendar';
 import { ViewToggle } from '@/components/view-toggle';
-import { PeriodNavigator } from '@/components/period-navigator';
 import type { AttendanceEntry, DailySummary, ViewType } from '@/lib/attendance-types';
-import { formatDateStr, parseDateStr, getWeekBounds, navigatePeriod, getPeriodLabel } from '@/lib/date-helpers';
+import { formatDateStr, parseDateStr, getWeekBounds, getWeekDates, navigatePeriod, getPeriodLabel } from '@/lib/date-helpers';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { BalanceCards } from '@/components/balance-cards';
 import { useToast } from '@/hooks/use-toast';
@@ -60,6 +59,47 @@ interface TimeAllocation {
   is_override: boolean;
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const SHORT_MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+function getWeekLabelNoYear(date: Date): string {
+  const dates = getWeekDates(date);
+  const mon = dates[0];
+  const sun = dates[6];
+  const monM = SHORT_MONTH_NAMES[mon.getMonth()];
+  const sunM = SHORT_MONTH_NAMES[sun.getMonth()];
+  if (mon.getFullYear() !== sun.getFullYear()) {
+    return `${monM} ${mon.getDate()}, ${mon.getFullYear()} – ${sunM} ${sun.getDate()}, ${sun.getFullYear()}`;
+  }
+  if (mon.getMonth() !== sun.getMonth()) {
+    return `${monM} ${mon.getDate()} – ${sunM} ${sun.getDate()}`;
+  }
+  return `${monM} ${mon.getDate()} – ${sun.getDate()}`;
+}
+
+function getWeeksInMonth(year: number, month: number): Date[] {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const day = firstDay.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const firstMonday = new Date(firstDay);
+  firstMonday.setDate(firstDay.getDate() + diffToMonday);
+  const weeks: Date[] = [];
+  const cursor = new Date(firstMonday);
+  while (cursor <= lastDay) {
+    weeks.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return weeks;
+}
+
 function getInitialView(searchParams: URLSearchParams): ViewType {
   const urlView = searchParams.get('view') as ViewType;
   if (urlView && ['year', 'month', 'week'].includes(urlView)) return urlView;
@@ -97,6 +137,7 @@ function AttendanceContent() {
     return initialDate.getFullYear();
   });
   const [loading, setLoading] = useState(true);
+  const [entriesReady, setEntriesReady] = useState(false);
   const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [totalActiveEmployees, setTotalActiveEmployees] = useState<number>(0);
@@ -165,12 +206,14 @@ function AttendanceContent() {
 
   useEffect(() => {
     if (selectedEmployeeId && !viewAll && isAuthenticated) {
+      setEntriesReady(false);
       loadAttendanceData();
     }
   }, [selectedEmployeeId, year, isAuthenticated, viewAll]);
 
   useEffect(() => {
     if (viewAll && isAuthenticated) {
+      setEntriesReady(false);
       loadAllEmployeesData();
     }
   }, [viewAll, year, isAuthenticated]);
@@ -200,6 +243,7 @@ function AttendanceContent() {
   useEffect(() => {
     const handlePresenceChange = () => {
       if (selectedEmployeeId && isAuthenticated && globalReadEnabled) {
+        clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
         loadAttendanceData();
       }
     };
@@ -225,15 +269,23 @@ function AttendanceContent() {
       const cachedInitial = getCachedData<{
         employees: Employee[];
         timeCodes: TimeCode[];
+        groups: Group[];
       }>('attendance:initial');
       if (cachedInitial) {
         setEmployees(cachedInitial.employees);
         setTimeCodes(cachedInitial.timeCodes);
+        if (cachedInitial.groups) setGroups(cachedInitial.groups);
         if (cachedInitial.employees.length > 0 && !selectedEmployeeId) {
-          const linkedEmployee = user?.employee_id
-            ? cachedInitial.employees.find((e: Employee) => e.id === user.employee_id)
-            : null;
-          setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : cachedInitial.employees[0].id);
+          if (cachedInitial.employees.length > 1) {
+            setViewAll(true);
+          } else {
+            const linkedEmployee = user?.employee_id
+              ? cachedInitial.employees.find((e: Employee) => e.id === user.employee_id)
+              : null;
+            setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : cachedInitial.employees[0].id);
+          }
+        } else if (cachedInitial.employees.length === 0) {
+          setEntriesReady(true);
         }
         setLoading(false);
       }
@@ -272,10 +324,14 @@ function AttendanceContent() {
               : null;
             setSelectedEmployeeId(linkedEmployee ? linkedEmployee.id : employeesData[0].id);
           }
+        } else if (employeesData.length === 0) {
+          // No employees — nothing to load, unblock the gate
+          setEntriesReady(true);
         }
       } else {
         console.error('Invalid employees data:', employeesData);
         setEmployees([]);
+        setEntriesReady(true);
       }
 
       if (Array.isArray(timeCodesData)) {
@@ -288,6 +344,7 @@ function AttendanceContent() {
       setCachedData('attendance:initial', {
         employees: Array.isArray(employeesData) ? employeesData : [],
         timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
+        groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
       });
     } catch (error) {
       console.error('Failed to load initial data:', error);
@@ -319,6 +376,7 @@ function AttendanceContent() {
       setMaxOutOfOffice(cachedAttendance.maxOutOfOffice);
       setCapacityWarningCount(cachedAttendance.capacityWarningCount);
       setCapacityCriticalCount(cachedAttendance.capacityCriticalCount);
+      setEntriesReady(true);
     }
 
     try {
@@ -342,24 +400,11 @@ function AttendanceContent() {
         return;
       }
 
-      const attendanceData = await attendanceRes.json();
-      const allocationsData = await allocationsRes.json();
+      const attendanceData = attendanceRes.ok ? await attendanceRes.json() : [];
+      const allocationsData = allocationsRes.ok ? await allocationsRes.json() : {};
 
-      // Validate that we received an array for attendance
-      if (Array.isArray(attendanceData)) {
-        setEntries(attendanceData);
-      } else {
-        console.error('Invalid attendance data:', attendanceData);
-        setEntries([]);
-      }
-
-      // Validate and set allocations
-      if (allocationsData && Array.isArray(allocationsData.allocations)) {
-        setAllocations(allocationsData.allocations);
-      } else {
-        console.error('Invalid allocations data:', allocationsData);
-        setAllocations([]);
-      }
+      setEntries(Array.isArray(attendanceData) ? attendanceData : []);
+      setAllocations(allocationsData && Array.isArray(allocationsData.allocations) ? allocationsData.allocations : []);
 
       // Process daily summary if available
       let nextDailySummary: DailySummary | null = null;
@@ -384,28 +429,40 @@ function AttendanceContent() {
 
       setCachedData(cacheKey, {
         entries: Array.isArray(attendanceData) ? attendanceData : [],
-        allocations: allocationsData && Array.isArray(allocationsData.allocations) ? allocationsData.allocations : [],
+        allocations: Array.isArray(allocationsData?.allocations) ? allocationsData.allocations : [],
         dailySummary: nextDailySummary,
         totalActiveEmployees: nextTotalActiveEmployees,
         maxOutOfOffice: nextMaxOutOfOffice,
         capacityWarningCount: nextCapacityWarningCount,
         capacityCriticalCount: nextCapacityCriticalCount,
       });
+      setEntriesReady(true);
     } catch (error) {
       console.error('Failed to load attendance:', error);
       setEntries([]);
       setAllocations([]);
+      setEntriesReady(true);
     }
   };
 
   const loadAllEmployeesData = async () => {
     if (!isAuthenticated) return;
+
+    const cacheKey = `attendance:all:${year}`;
+    const cached = getCachedData<AttendanceEntry[]>(cacheKey);
+    if (cached) {
+      setAllEmployeesEntries(cached);
+      setEntriesReady(true);
+    }
+
     try {
       const res = await authFetch(`/api/attendance?year=${year}`);
       if (res.status === 401) return;
       if (res.ok) {
         const data = await res.json();
-        setAllEmployeesEntries(Array.isArray(data) ? data : []);
+        const entries = Array.isArray(data) ? data : [];
+        setAllEmployeesEntries(entries);
+        setCachedData(cacheKey, entries);
       } else {
         setAllEmployeesEntries([]);
       }
@@ -421,9 +478,11 @@ function AttendanceContent() {
           setCapacityCriticalCount(summaryData.capacityCriticalCount ?? 5);
         }
       }
+      setEntriesReady(true);
     } catch (error) {
       console.error('Failed to load all employees data:', error);
       setAllEmployeesEntries([]);
+      setEntriesReady(true);
     }
   };
 
@@ -466,6 +525,7 @@ function AttendanceContent() {
 
       // Reload attendance data to show updated entries
       clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
+      clearCachedDataByPrefix('attendance:all:');
       if (viewAll) {
         await loadAllEmployeesData();
       } else {
@@ -516,6 +576,14 @@ function AttendanceContent() {
     }
   }, []);
 
+  const handleMonthChange = useCallback((month: number) => {
+    setCurrentDate(new Date(year, month, 1));
+  }, [year]);
+
+  const handleWeekChange = useCallback((weekStart: Date) => {
+    setCurrentDate(weekStart);
+  }, []);
+
   const handleViewChange = useCallback((newView: ViewType) => {
     setView(newView);
   }, []);
@@ -524,6 +592,11 @@ function AttendanceContent() {
     { length: 5 },
     (_, i) => new Date().getFullYear() - 2 + i
   );
+
+  const currentWeekMonday = view === 'week' ? formatDateStr(getWeekDates(currentDate)[0]) : '';
+  const weeksInMonth = view === 'week'
+    ? getWeeksInMonth(currentDate.getFullYear(), currentDate.getMonth())
+    : [];
 
   // Filter employees by selected group for the "All" view
   const filteredEmployees = selectedGroupId
@@ -557,7 +630,7 @@ function AttendanceContent() {
     readOnly: viewAll,
   };
 
-  if (authLoading || loading) {
+  if (authLoading || loading || !entriesReady) {
     return (
       <div className="min-h-screen p-3">
         <PageLoading label="Loading attendance..." />
@@ -573,23 +646,20 @@ function AttendanceContent() {
   return (
     <div className="min-h-screen p-3">
       <div className="max-w-full mx-auto space-y-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Attendance</h1>
-        </div>
         <div className="flex flex-wrap gap-2">
-          {/* Selects + View controls - inline */}
-          <div className="flex flex-wrap items-end gap-2 p-2 border rounded-lg bg-card">
+          {/* Selects + View controls */}
+          <div className="flex flex-wrap items-stretch gap-3 p-4 border rounded-lg bg-card">
+            {/* Left group: employee selectors */}
             {employees.length > 0 && (
-              <>
-                {/* Group filter — only when multiple non-master groups visible */}
+              <div className="flex flex-wrap items-end gap-4">
                 {groups.length > 1 && (
-                  <div className="w-40 space-y-1">
-                    <Label htmlFor="group-filter" className="text-xs">Group</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="group-filter" className="text-sm font-medium">Group</Label>
                     <Select
                       value={selectedGroupId?.toString() ?? 'all'}
                       onValueChange={(value) => setSelectedGroupId(value === 'all' ? null : parseInt(value))}
                     >
-                      <SelectTrigger id="group-filter" className="h-8 text-xs">
+                      <SelectTrigger id="group-filter" className="h-9 w-44 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -602,10 +672,9 @@ function AttendanceContent() {
                   </div>
                 )}
 
-                {/* Employee selector */}
-                <div className="w-64 space-y-1">
+                <div className="flex flex-col gap-1.5">
                   <HelpArea helpId="employee-selector" bubblePosition="bottom">
-                    <Label htmlFor="employee" className="text-xs cursor-help">Employee</Label>
+                    <Label htmlFor="employee" className="text-sm font-medium cursor-help">Employee</Label>
                   </HelpArea>
                   <Select
                     value={viewAll ? 'all' : (selectedEmployeeId?.toString() || '')}
@@ -619,39 +688,46 @@ function AttendanceContent() {
                       }
                     }}
                   >
-                    <SelectTrigger id="employee" className="h-8 text-xs ring-2 ring-primary">
+                    <SelectTrigger id="employee" className="h-9 w-48 text-sm">
                       <SelectValue placeholder="Select employee..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">
-                        <span className="font-semibold">All Employees</span>
-                      </SelectItem>
+                      <SelectItem value="all">All Employees</SelectItem>
                       {(selectedGroupId
                         ? employees.filter(e => e.group_id === selectedGroupId)
                         : employees
                       ).map(emp => (
                         <SelectItem key={emp.id} value={emp.id.toString()}>
-                          <span className="font-semibold">{emp.last_name}, {emp.first_name}</span>
+                          {emp.last_name}, {emp.first_name}
                           {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              </>
+              </div>
             )}
 
-            {/* Year selector (only in year view — month/week have it in PeriodNavigator) */}
-            {view === 'year' && (
-              <div className="w-20 space-y-1">
+            {/* Divider */}
+            <div className="w-px self-stretch bg-border mx-1" />
+
+            {/* Right group: view + period navigation */}
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-medium">View</Label>
+                <ViewToggle view={view} onViewChange={handleViewChange} />
+              </div>
+
+              {/* Year selector — always visible, same position across all views */}
+              <div className="flex flex-col gap-1.5">
                 <HelpArea helpId="year-selector" bubblePosition="bottom">
-                  <Label htmlFor="year" className="text-xs cursor-help">Year</Label>
+                  <Label htmlFor="year" className="text-sm font-medium cursor-help">Year</Label>
                 </HelpArea>
                 <Select
                   value={year.toString()}
                   onValueChange={(value) => handleYearChange(parseInt(value))}
                 >
-                  <SelectTrigger id="year" className="h-8 text-xs">
+                  <SelectTrigger id="year" className="h-9 w-[80px] text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -663,44 +739,80 @@ function AttendanceContent() {
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* View toggle */}
-            <div className="space-y-1">
-              <Label className="text-xs">View</Label>
-              <ViewToggle view={view} onViewChange={handleViewChange} />
+              {/* Month column — month and week views */}
+              {view !== 'year' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-sm font-medium">Month</Label>
+                  <Select
+                    value={currentDate.getMonth().toString()}
+                    onValueChange={(value) => handleMonthChange(parseInt(value))}
+                  >
+                    <SelectTrigger className="h-9 w-[124px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTH_NAMES.map((name, idx) => (
+                        <SelectItem key={idx} value={idx.toString()}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Week column — week view only */}
+              {view === 'week' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-sm font-medium">Week</Label>
+                  <Select
+                    value={currentWeekMonday}
+                    onValueChange={(value) => {
+                      const [y, m, d] = value.split('-').map(Number);
+                      handleWeekChange(new Date(y, m - 1, d));
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-[148px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weeksInMonth.map((monday) => {
+                        const val = formatDateStr(monday);
+                        return (
+                          <SelectItem key={val} value={val}>
+                            {getWeekLabelNoYear(monday)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Today button */}
+              {view !== 'year' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-sm invisible">&nbsp;</Label>
+                  <Button variant="outline" size="sm" className="h-9 text-sm px-3" onClick={handleToday}>
+                    Today
+                  </Button>
+                </div>
+              )}
+
+              {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-sm invisible">&nbsp;</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5"
+                    onClick={() => setBulkEntryOpen(true)}
+                  >
+                    <CalendarRange className="h-3.5 w-3.5" />
+                    Bulk
+                  </Button>
+                </div>
+              )}
             </div>
-
-            {/* Period navigator (month/week views) */}
-            {view !== 'year' && (
-              <div className="space-y-1">
-                <Label className="text-xs">Period</Label>
-                <PeriodNavigator
-                  view={view}
-                  year={year}
-                  currentDate={currentDate}
-                  onNavigate={handleNavigate}
-                  onToday={handleToday}
-                  onYearChange={handleYearChange}
-                />
-              </div>
-            )}
-
-            {/* Bulk Entry button */}
-            {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
-              <div className="space-y-1">
-                <Label className="text-xs">&nbsp;</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5"
-                  onClick={() => setBulkEntryOpen(true)}
-                >
-                  <CalendarRange className="h-3.5 w-3.5" />
-                  Bulk Add Attendance
-                </Button>
-              </div>
-            )}
           </div>
 
           {/* Balance Cards — only in single-employee view */}
@@ -713,54 +825,49 @@ function AttendanceContent() {
 
         {(viewAll || selectedEmployeeId) && (
           <>
-            <div className="space-y-3">
-              <HelpArea helpId="attendance-grid" bubblePosition="bottom">
-                <h2 className="text-lg font-semibold cursor-help">
-                  {view === 'year' && (viewAll ? `Staff Overview: ${year}` : `Attendance Record: ${year}`)}
-                  {view === 'month' && (viewAll ? `Staff Overview: ${getPeriodLabel('month', currentDate)}` : `Attendance: ${getPeriodLabel('month', currentDate)}`)}
-                  {view === 'week' && (viewAll ? `Staff Overview: ${getPeriodLabel('week', currentDate)}` : `Attendance: ${getPeriodLabel('week', currentDate)}`)}
-                </h2>
-              </HelpArea>
+            <HelpArea helpId="attendance-grid" bubblePosition="top">
+              <div className="space-y-3">
+                {view === 'year' && yearLayout === 'calendar' && (
+                  <AttendanceGridYearCalendar
+                    year={year}
+                    {...gridProps}
+                  />
+                )}
 
-              {view === 'year' && yearLayout === 'calendar' && (
-                <AttendanceGridYearCalendar
-                  year={year}
-                  {...gridProps}
-                />
-              )}
+                {view === 'year' && yearLayout !== 'calendar' && (
+                  <AttendanceGridYear
+                    year={year}
+                    {...gridProps}
+                  />
+                )}
 
-              {view === 'year' && yearLayout !== 'calendar' && (
-                <AttendanceGridYear
-                  year={year}
-                  {...gridProps}
-                />
-              )}
+                {view === 'month' && (
+                  <AttendanceGridMonth
+                    year={currentDate.getFullYear()}
+                    month={currentDate.getMonth() + 1}
+                    {...gridProps}
+                  />
+                )}
 
-              {view === 'month' && (
-                <AttendanceGridMonth
-                  year={currentDate.getFullYear()}
-                  month={currentDate.getMonth() + 1}
-                  {...gridProps}
-                />
-              )}
-
-              {view === 'week' && (
-                <AttendanceGridWeek
-                  weekStart={parseDateStr(getWeekBounds(currentDate).start)}
-                  {...gridProps}
-                />
-              )}
-            </div>
+                {view === 'week' && (
+                  <AttendanceGridWeek
+                    weekStart={parseDateStr(getWeekBounds(currentDate).start)}
+                    {...gridProps}
+                  />
+                )}
+              </div>
+            </HelpArea>
 
             <div className="mt-3 p-2 border rounded-lg bg-muted/50">
-              <h3 className="font-semibold mb-1 text-sm">Time Code Legend</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+              <h3 className="font-semibold mb-2 text-sm">Time Code Legend</h3>
+              <div className="columns-2 md:columns-3 lg:columns-4 gap-x-6 text-xs">
                 {timeCodes.map(tc => (
-                  <div key={tc.code}>
-                    <span className="font-mono font-bold">{tc.code}</span> - {tc.description}
-                    {tc.hours_limit && (
-                      <span className="text-muted-foreground"> ({tc.hours_limit}h limit)</span>
-                    )}
+                  <div key={tc.code} className="flex items-start gap-1 break-inside-avoid mb-1">
+                    <span className="mt-px text-muted-foreground select-none">•</span>
+                    <span>
+                      {tc.description}{' '}
+                      <span className="font-mono text-muted-foreground">({tc.code})</span>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -777,6 +884,8 @@ function AttendanceContent() {
             timeCodes={timeCodes}
             authFetch={authFetch}
             onSave={async () => {
+              clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
+              clearCachedDataByPrefix('attendance:all:');
               await loadAttendanceData();
               toast({
                 title: 'Bulk Entry Saved',

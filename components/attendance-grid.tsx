@@ -106,6 +106,16 @@ export function AttendanceGridYear({
     return new Date(year, month, 0).getDate();
   };
 
+  const getCellTooltip = (entries: AttendanceEntry[]): string => {
+    if (entries.length === 0) return '';
+    return entries
+      .map(e => {
+        const tc = timeCodes.find(t => t.code === e.time_code);
+        return `${tc ? tc.description : e.time_code}: ${e.hours}h`;
+      })
+      .join('\n');
+  };
+
   return (
     <div className="overflow-x-auto border rounded-lg">
       <table className="w-full border-collapse">
@@ -150,6 +160,7 @@ export function AttendanceGridYear({
                             variant="ghost"
                             className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate)}`}
                             onClick={() => handleCellClick(month.num, day)}
+                            title={getCellTooltip(entriesForDate)}
                           >
                             {getCellDisplay(entriesForDate)}
                             {hasNotes(entriesForDate) && (

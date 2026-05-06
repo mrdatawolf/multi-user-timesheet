@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 import { Providers } from "@/components/providers";
+import { PageTransition } from "@/components/page-transition";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -93,7 +94,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           <main className="min-h-[calc(100vh-2.5rem)]">
-            {children}
+            <PageTransition>{children}</PageTransition>
           </main>
         </Providers>
       </body>

@@ -5,16 +5,64 @@
   "timeCodes": [
     {
       "id": 13,
-      "code": "V",
+      "code": "VAC",
       "description": "Vacation",
       "hours_limit": null,
       "default_allocation": 80,
       "is_active": 1
     },
     {
+      "id": 7,
+      "code": "FLH",
+      "description": "Floating Holiday",
+      "hours_limit": 24,
+      "default_allocation": 24,
+      "is_active": 1
+    },
+    {
+      "id": 11,
+      "code": "PSL",
+      "description": "Paid Sick Leave",
+      "hours_limit": 40,
+      "default_allocation": 40,
+      "is_active": 1
+    },
+    {
+      "id": 1,
+      "code": "SUP",
+      "description": "Sick Unpaid",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
       "id": 9,
-      "code": "PERS",
+      "code": "PER",
       "description": "Personal",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
+      "id": 17,
+      "code": "LA",
+      "description": "Late Arrival",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
+      "id": 18,
+      "code": "LE",
+      "description": "Left Early",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
+      "id": 5,
+      "code": "HOL",
+      "description": "Holiday",
       "hours_limit": null,
       "default_allocation": null,
       "is_active": 1
@@ -28,59 +76,11 @@
       "is_active": 1
     },
     {
-      "id": 4,
-      "code": "FMLAUP",
-      "description": "FMLA Unpaid",
-      "hours_limit": null,
-      "default_allocation": null,
-      "is_active": 1
-    },
-    {
-      "id": 7,
-      "code": "FLH",
-      "description": "Floating Holiday",
-      "hours_limit": 24,
-      "default_allocation": 24,
-      "is_active": 1
-    },
-    {
-      "id": 17,
-      "code": "LA",
-      "description": "Late Arrival",
-      "hours_limit": null,
-      "default_allocation": null,
-      "is_active": 1
-    },
-    {
       "id": 16,
-      "code": "BRUP",
+      "code": "BRU",
       "description": "Bereavement Unpaid",
       "hours_limit": 16,
       "default_allocation": 16,
-      "is_active": 1
-    },
-    {
-      "id": 14,
-      "code": "WCP",
-      "description": "Workers Comp Paid",
-      "hours_limit": null,
-      "default_allocation": null,
-      "is_active": 1
-    },
-    {
-      "id": 11,
-      "code": "PSL",
-      "description": "Paid Sick Leave",
-      "hours_limit": 40,
-      "default_allocation": 40,
-      "is_active": 1
-    },
-    {
-      "id": 18,
-      "code": "LE",
-      "description": "Left Early",
-      "hours_limit": null,
-      "default_allocation": null,
       "is_active": 1
     },
     {
@@ -92,25 +92,25 @@
       "is_active": 1
     },
     {
-      "id": 1,
-      "code": "SUP",
-      "description": "Sick Unpaid",
-      "hours_limit": null,
-      "default_allocation": null,
-      "is_active": 1
-    },
-    {
-      "id": 5,
-      "code": "HL",
-      "description": "Holiday",
-      "hours_limit": null,
-      "default_allocation": null,
-      "is_active": 1
-    },
-    {
       "id": 10,
       "code": "VTO",
       "description": "Voting Time Off",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
+      "id": 4,
+      "code": "FMLA",
+      "description": "FMLA/CFRA",
+      "hours_limit": null,
+      "default_allocation": null,
+      "is_active": 1
+    },
+    {
+      "id": 14,
+      "code": "WC",
+      "description": "Worker's Comp",
       "hours_limit": null,
       "default_allocation": null,
       "is_active": 1

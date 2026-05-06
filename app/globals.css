@@ -46,6 +46,21 @@
     --tw-prose-counters: #9ca3af;
   }
 
+  .page-enter {
+    animation: page-enter 0.15s ease-out both;
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .login-floating-input:-webkit-autofill,
   .login-floating-input:-webkit-autofill:hover,
   .login-floating-input:-webkit-autofill:focus {

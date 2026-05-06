@@ -14,6 +14,7 @@ interface User {
   role_id?: number;
   employee_id?: number;
   employee_abbreviation?: string;
+  must_change_password?: number;
   role?: {
     id: number;
     name: string;
@@ -62,6 +63,10 @@ interface AuthContextType {
   // EMPLOYEE LINKING
   needsEmployeeLink: boolean;     // User needs to link to an employee before proceeding
   needsAbbreviation: boolean;     // User needs to set their office abbreviation
+
+  // PASSWORD CHANGE
+  needsPasswordChange: boolean;   // User must change their password before proceeding
+  clearPasswordChangeFlag: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -245,14 +250,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const needsEmployeeLink = !!user && !user.employee_id && user.group?.is_master !== 1;
   // Redirect linked users without abbreviation to set it (master admins exempt)
   const needsAbbreviation = !!user && !!user.employee_id && !user.employee_abbreviation && user.group?.is_master !== 1;
+  // User must change their password before proceeding (applies to all users)
+  const needsPasswordChange = !!user && user.must_change_password === 1;
+
+  const clearPasswordChangeFlag = () => {
+    if (!user) return;
+    const updated = { ...user, must_change_password: 0 };
+    setUser(updated);
+    localStorage.setItem('auth_user', JSON.stringify(updated));
+  };
 
   useEffect(() => {
-    if (!isLoading && needsEmployeeLink && pathname !== '/link-employee' && pathname !== '/login') {
+    if (!isLoading && needsPasswordChange && pathname !== '/change-password' && pathname !== '/login') {
+      router.push('/change-password');
+    } else if (!isLoading && needsEmployeeLink && pathname !== '/link-employee' && pathname !== '/login' && pathname !== '/change-password') {
       router.push('/link-employee');
-    } else if (!isLoading && needsAbbreviation && pathname !== '/set-abbreviation' && pathname !== '/link-employee' && pathname !== '/login') {
+    } else if (!isLoading && needsAbbreviation && pathname !== '/set-abbreviation' && pathname !== '/link-employee' && pathname !== '/login' && pathname !== '/change-password') {
       router.push('/set-abbreviation');
     }
-  }, [isLoading, needsEmployeeLink, needsAbbreviation, pathname, router]);
+  }, [isLoading, needsPasswordChange, needsEmployeeLink, needsAbbreviation, pathname, router]);
 
   const value: AuthContextType = {
     user,
@@ -278,6 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Employee linking
     needsEmployeeLink,
     needsAbbreviation,
+    // Password change
+    needsPasswordChange,
+    clearPasswordChangeFlag,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

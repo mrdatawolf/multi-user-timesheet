@@ -6,15 +6,15 @@ import type { BrandTimeCode } from './brand-time-codes';
  * Keys are lowercased for case-insensitive lookup.
  */
 export const DEFAULT_ABSENCE_MAPPINGS: Record<string, string> = {
-  'vacation': 'V',
-  'fmla': 'FMLAUP',
+  'vacation': 'VAC',
+  'fmla': 'FMLA',
   'floating holiday': 'FLH',
-  'personal': 'PERS',
+  'personal': 'PER',
   'sick leave - self': 'PSL',
   'sick leave - family': 'PSL',
   'sick leave': 'PSL',
-  "worker's comp": 'WCP',
-  'workers comp': 'WCP',
+  "worker's comp": 'WC',
+  'workers comp': 'WC',
 };
 
 /**
