@@ -21,10 +21,17 @@ function Calendar({
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
+        month: "space-y-4 relative",
         month_caption: "flex justify-center pt-1 relative items-center",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
+        dropdowns: "flex items-center gap-1",
+        dropdown_root: "relative inline-flex items-center [&>span]:hidden",
+        dropdown: cn(
+          "h-7 rounded-md border border-input bg-background px-2 text-sm font-medium",
+          "appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring",
+          "hover:bg-accent hover:text-accent-foreground"
+        ),
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -32,11 +39,11 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "absolute left-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+          "absolute left-1 top-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "absolute right-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+          "absolute right-1 top-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
