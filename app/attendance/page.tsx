@@ -383,7 +383,7 @@ function AttendanceContent() {
       // Build parallel fetch list
       const fetches: Promise<Response>[] = [
         authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
-        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${year}`),
+        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${new Date().getFullYear()}`),
       ];
 
       // Also fetch daily summary if global read access is enabled

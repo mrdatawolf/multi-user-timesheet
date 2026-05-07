@@ -22,13 +22,15 @@ export async function GET() {
       // Return only ACTIVE time codes for display
       const activeTimeCodes = getBrandTimeCodes();
       if (activeTimeCodes) {
-        const timeCodes = activeTimeCodes.map(tc => ({
-          id: tc.id,
-          code: tc.code,
-          description: tc.description,
-          hours_limit: tc.hours_limit ?? undefined,
-          is_active: tc.is_active,
-        }));
+        const timeCodes = activeTimeCodes
+          .filter(tc => !tc.spacer)
+          .map(tc => ({
+            id: tc.id,
+            code: tc.code,
+            description: tc.description,
+            hours_limit: tc.hours_limit ?? undefined,
+            is_active: tc.is_active,
+          }));
         return NextResponse.json(timeCodes);
       }
     }

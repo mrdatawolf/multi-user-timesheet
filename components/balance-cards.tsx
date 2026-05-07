@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BalanceBreakdownModal } from './balance-breakdown-modal';
 import { getBrandFeatures, getLeaveBalanceSummaryConfig, type LeaveTypeConfig } from '@/lib/brand-features';
 import { useAuth } from '@/lib/auth-context';
+import { formatDateStr } from '@/lib/date-helpers';
 
 interface AttendanceEntry {
   entry_date: string;
@@ -90,6 +91,7 @@ interface BalanceCardsProps {
 interface ModalState {
   isOpen: boolean;
   timeCode: string;
+  matchCodes?: string[];
   title: string;
   availableBalanceText?: string;
   annualUsageLimit?: number;
@@ -140,27 +142,9 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
   const [warningThreshold, setWarningThreshold] = useState(0.9);
   const [criticalThreshold, setCriticalThreshold] = useState(1.0);
   const [statusColors, setStatusColors] = useState<StatusColors>({ warning: 'amber', critical: 'red' });
-
-  const getBenefitYearWindow = useCallback((allocation: TimeAllocation): { start: string; end: string } | null => {
-    const details = allocation.accrual_details;
-    const tiered = details?.tieredSeniorityDetails;
-    if (tiered) {
-      return {
-        start: tiered.periodStart.substring(0, 10),
-        end: tiered.periodEnd.substring(0, 10),
-      };
-    }
-
-    const annualGrant = details?.annualGrantDetails;
-    if (annualGrant) {
-      return {
-        start: annualGrant.benefitYearStart.substring(0, 10),
-        end: annualGrant.benefitYearEnd.substring(0, 10),
-      };
-    }
-
-    return null;
-  }, []);
+  const [rawFeatureRules, setRawFeatureRules] = useState<Record<string, any>>({});
+  // Maps primary time code → [primary, ...aliases] for counting legacy entries
+  const [timeCodeAliases, setTimeCodeAliases] = useState<Map<string, string[]>>(new Map());
 
   // Load brand features and active time codes
   useEffect(() => {
@@ -173,8 +157,19 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
           const loadedLeaveTypes = features.features.leaveManagement.leaveTypes as LeaveTypes | undefined;
           if (loadedLeaveTypes) {
             setLeaveTypes(loadedLeaveTypes);
+            const aliasMap = new Map<string, string[]>();
+            for (const config of Object.values(loadedLeaveTypes)) {
+              const tc = (config as LeaveTypeConfig).timeCode;
+              const aliases = (config as LeaveTypeConfig).aliases;
+              if (tc && aliases?.length) {
+                aliasMap.set(tc, [tc, ...aliases]);
+              }
+            }
+            setTimeCodeAliases(aliasMap);
           }
         }
+
+        setRawFeatureRules((features?.features?.accrualCalculations?.rules as Record<string, any>) || {});
 
         // Load usage alert thresholds
         const reportConfig = getLeaveBalanceSummaryConfig(features);
@@ -230,42 +225,58 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
     loadColorConfig();
   }, [authFetch]);
 
-  // Fetch benefit-year-scoped entries for any time code that uses a non-calendar benefit year
-  // (e.g. NFL vacation: June 1 – May 31). Without this, usage from H2 of the prior calendar
-  // year is invisible when the user views the current year.
+  // Fetch benefit-year-scoped entries for time codes whose benefit year crosses calendar year
+  // boundaries (e.g. NFL VAC/FLH: June 1 – May 31). Reads the window from brand-features.json
+  // accrual rules directly so it works even when accrual_details are absent (null hire date).
   useEffect(() => {
-    if (!employeeId) return;
+    if (!employeeId || Object.keys(rawFeatureRules).length === 0) return;
 
-    const benefitYearAllocations = allocations.filter(a => getBenefitYearWindow(a));
-    if (benefitYearAllocations.length === 0) return;
+    const today = new Date();
+
+    const computeWindow = (rule: Record<string, any>): { start: string; end: string } | null => {
+      let sm: number, sd: number, em: number, ed: number;
+      if (rule.type === 'tieredSeniority' && rule.period && typeof rule.period === 'object') {
+        sm = rule.period.startMonth || 6; sd = rule.period.startDay || 1;
+        em = rule.period.endMonth || 5; ed = rule.period.endDay || 31;
+      } else if (rule.type === 'annualGrant' && rule.benefitYear) {
+        sm = rule.benefitYear.startMonth || 6; sd = rule.benefitYear.startDay || 1;
+        em = rule.benefitYear.endMonth || 5; ed = rule.benefitYear.endDay || 31;
+      } else {
+        return null;
+      }
+      const thisYearStart = new Date(today.getFullYear(), sm - 1, sd);
+      const byStart = today >= thisYearStart
+        ? thisYearStart
+        : new Date(today.getFullYear() - 1, sm - 1, sd);
+      const byEnd = today >= thisYearStart
+        ? new Date(today.getFullYear() + 1, em - 1, ed)
+        : new Date(today.getFullYear(), em - 1, ed);
+      if (byStart.getFullYear() === byEnd.getFullYear()) return null;
+      return { start: formatDateStr(byStart), end: formatDateStr(byEnd) };
+    };
 
     const fetchBenefitYearEntries = async () => {
       const map = new Map<string, AttendanceEntry[]>();
-
-      for (const alloc of benefitYearAllocations) {
-        const window = getBenefitYearWindow(alloc);
+      for (const leaveConfig of Object.values(leaveTypes)) {
+        const config = leaveConfig as LeaveTypeConfig;
+        if (!config?.timeCode) continue;
+        const timeCode = config.timeCode;
+        const rule = rawFeatureRules[timeCode];
+        if (!rule) continue;
+        const window = computeWindow(rule);
         if (!window) continue;
-
-        const startStr = window.start;
-        const endStr = window.end;
-        const startYear = parseInt(startStr.substring(0, 4));
-        const endYear = parseInt(endStr.substring(0, 4));
-
-        if (startYear !== endYear) {
-          try {
-            const res = await authFetch(
-              `/api/attendance?employeeId=${employeeId}&startDate=${startStr}&endDate=${endStr}`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              map.set(alloc.time_code, Array.isArray(data) ? data : []);
-            }
-          } catch (error) {
-            console.error('Failed to fetch benefit year entries for', alloc.time_code, error);
+        try {
+          const res = await authFetch(
+            `/api/attendance?employeeId=${employeeId}&startDate=${window.start}&endDate=${window.end}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            map.set(timeCode, Array.isArray(data) ? data : []);
           }
+        } catch (error) {
+          console.error('Failed to fetch benefit year entries for', timeCode, error);
         }
       }
-
       if (map.size > 0) {
         setBenefitYearEntriesMap(map);
       }
@@ -273,10 +284,11 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
 
     fetchBenefitYearEntries();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allocations, employeeId, authFetch, getBenefitYearWindow, entries.length]);
+  }, [employeeId, authFetch, leaveTypes, rawFeatureRules, entries.length]);
 
   const openModal = (timeCode: string, title: string, availableBalanceText?: string, annualUsageLimit?: number) => {
-    setModalState({ isOpen: true, timeCode, title, availableBalanceText, annualUsageLimit });
+    const matchCodes = timeCodeAliases.get(timeCode);
+    setModalState({ isOpen: true, timeCode, matchCodes, title, availableBalanceText, annualUsageLimit });
   };
 
   const closeModal = () => {
@@ -285,8 +297,9 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
 
   const calculateUsage = (code: string): number => {
     const sourceEntries = benefitYearEntriesMap.get(code) ?? entries;
+    const matchCodes = timeCodeAliases.get(code) ?? [code];
     return sourceEntries
-      .filter(e => e.time_code === code)
+      .filter(e => matchCodes.includes(e.time_code))
       .reduce((sum, e) => sum + (e.hours || 0), 0);
   };
 
@@ -411,6 +424,7 @@ export function BalanceCards({ entries, allocations, employeeId }: BalanceCardsP
         isOpen={modalState.isOpen}
         onClose={closeModal}
         timeCode={modalState.timeCode}
+        matchCodes={modalState.matchCodes}
         title={modalState.title}
         entries={benefitYearEntriesMap.get(modalState.timeCode) ?? entries}
         allocation={getSelectedAllocation()}

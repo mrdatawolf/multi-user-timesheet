@@ -98,6 +98,7 @@ interface BalanceBreakdownModalProps {
   isOpen: boolean;
   onClose: () => void;
   timeCode: string;
+  matchCodes?: string[]; // Primary code + any legacy aliases to count together
   title: string;
   entries: AttendanceEntry[];
   allocation: TimeAllocation | null;
@@ -109,15 +110,17 @@ export function BalanceBreakdownModal({
   isOpen,
   onClose,
   timeCode,
+  matchCodes,
   title,
   entries,
   allocation,
   availableBalanceText,
   annualUsageLimit,
 }: BalanceBreakdownModalProps) {
-  // Filter entries for this specific time code
+  const codesToMatch = matchCodes ?? [timeCode];
+  // Filter entries for this time code (including any legacy aliases)
   const relevantEntries = entries
-    .filter(e => e.time_code === timeCode)
+    .filter(e => codesToMatch.includes(e.time_code))
     .sort((a, b) => a.entry_date.localeCompare(b.entry_date));
 
   const totalUsed = relevantEntries.reduce((sum, e) => sum + (e.hours || 0), 0);

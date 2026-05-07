@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
     let allocations;
 
     if (brandTimeCodes) {
-      // Use brand-specific time codes from JSON
-      allocations = brandTimeCodes.map((tc) => {
+      // Use brand-specific time codes from JSON (skip legend-only spacers)
+      allocations = brandTimeCodes.filter(tc => !tc.spacer).map((tc) => {
         const override = allocationsResult.rows.find((a: any) => a.time_code_id === tc.id);
 
         // Check for accrual rules for this time code
@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
         let accrualDetails: AccrualResult | null = null;
         let allocatedHours = override ? (override as any).allocated_hours : tc.default_allocation;
 
-        if (accrualRule && hireDate) {
+        // Only calculate from hire date when no manual override exists.
+        // A manual override (set per-employee in the allocations table) always takes precedence.
+        if (!override && accrualRule && hireDate) {
           // Calculate accrued hours based on rules
           accrualDetails = calculateAccrual(
             hireDate,
@@ -78,8 +80,8 @@ export async function GET(request: NextRequest) {
           description: tc.description,
           default_allocation: tc.default_allocation,
           allocated_hours: allocatedHours,
-          is_override: !!override && !accrualRule, // Not an override if using accrual
-          is_accrual: !!accrualRule,
+          is_override: !!override,
+          is_accrual: !override && !!accrualRule,
           accrual_details: accrualDetails,
           notes: override ? (override as any).notes : null
         };
@@ -98,7 +100,8 @@ export async function GET(request: NextRequest) {
         let accrualDetails: AccrualResult | null = null;
         let allocatedHours = override ? override.allocated_hours : tc.default_allocation;
 
-        if (accrualRule && hireDate) {
+        // Manual override takes precedence over accrual calculation
+        if (!override && accrualRule && hireDate) {
           // Calculate accrued hours based on rules
           accrualDetails = calculateAccrual(
             hireDate,
@@ -116,8 +119,8 @@ export async function GET(request: NextRequest) {
           description: tc.description,
           default_allocation: tc.default_allocation,
           allocated_hours: allocatedHours,
-          is_override: !!override && !accrualRule,
-          is_accrual: !!accrualRule,
+          is_override: !!override,
+          is_accrual: !override && !!accrualRule,
           accrual_details: accrualDetails,
           notes: override?.notes || null
         };

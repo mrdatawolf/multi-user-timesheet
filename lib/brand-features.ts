@@ -13,6 +13,7 @@ import { getCurrentBrandId } from './brand-config';
 export interface LeaveTypeConfig {
   enabled: boolean;
   timeCode?: string;  // Maps to actual time code in database (e.g., "FLH", "PSL", "V")
+  aliases?: string[]; // Legacy/alternate time codes that should be counted the same (e.g., ["V"] for VAC)
   label?: string;     // Display label for UI (e.g., "Floating Holiday", "Paid Sick Leave")
   availableBalanceText?: string;  // Custom text instead of calculated balance (e.g., "Check ADP")
   annualUsageLimit?: number;      // Override the "total" shown on card (e.g., 40 for 40h/year cap)
@@ -116,7 +117,7 @@ export interface BrandFeatures {
     };
     approvalWorkflows: { enabled: boolean };
     policyEnforcement: { enabled: boolean };
-    accrualCalculations: { enabled: boolean };
+    accrualCalculations: { enabled: boolean; rules?: Record<string, any> };
     companyHolidays?: CompanyHolidaysConfig;
     reports?: ReportsConfig;
     colorCustomization?: ColorCustomizationConfig;

@@ -98,8 +98,9 @@ export async function syncTimeCodesFromJson(brandTimeCodes: {
   let updated = 0;
 
   for (const tc of brandTimeCodes) {
+    if ((tc as { spacer?: boolean }).spacer) continue;
+
     // Use INSERT OR REPLACE with code as the key
-    // This handles both insert and update cases
     const existing = await db.execute({
       sql: 'SELECT id FROM time_codes WHERE code = ?',
       args: [tc.code],

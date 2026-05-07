@@ -8,7 +8,8 @@ export interface BrandTimeCode {
   hours_limit: number | null;
   default_allocation: number | null;
   is_active: number;
-  color?: string;  // Optional semantic color name (e.g., 'blue', 'amber', 'teal')
+  color?: string;
+  spacer?: boolean;
 }
 
 interface TimeCodesFile {
