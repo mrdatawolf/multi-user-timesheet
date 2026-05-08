@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
+import { getCurrentBrandId } from '@/lib/brand-config';
 import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
@@ -55,12 +56,14 @@ export function Navbar() {
     return true;
   });
 
+  const isNFL = getCurrentBrandId() === 'NFL';
+
   const logoSrc = themeConfig.branding.logo || '/default.png';
   const logoAlt = themeConfig.branding.logoAlt || 'Logo';
   const appTitle = themeConfig.branding.appTitle;
 
   return (
-    <nav className="border-b sticky top-0 bg-background z-50">
+    <nav className={cn('border-b sticky top-0 z-50', isNFL ? 'bg-muted' : 'bg-background')}>
       <div className="max-w-full mx-auto px-3">
         <div className="flex h-10 items-center justify-between">
           <div className="flex items-center gap-3">
@@ -77,7 +80,7 @@ export function Navbar() {
                   />
                 </span>
               </span>
-              <span className="font-bold text-lg hidden sm:inline">{appTitle}</span>
+              <span className={cn('hidden sm:inline font-bold', isNFL ? 'text-xl' : 'text-lg')}>{appTitle}</span>
             </Link>
             {isAuthenticated && <OfficePresenceBar />}
           </div>
@@ -87,8 +90,16 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'text-sm font-medium transition-colors hover:text-primary',
-                  pathname === item.href ? 'text-primary' : 'text-muted-foreground'
+                  'text-sm transition-colors',
+                  isNFL
+                    ? cn(
+                        'font-semibold text-[#0F172A] dark:text-[#F8FAFC] hover:opacity-80',
+                        pathname === item.href && 'border-b-2 border-primary pb-0.5'
+                      )
+                    : cn(
+                        'font-medium hover:text-primary',
+                        pathname === item.href ? 'text-primary' : 'text-muted-foreground'
+                      )
                 )}
               >
                 {item.label}

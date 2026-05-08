@@ -151,6 +151,7 @@ function AttendanceContent() {
   const [viewAll, setViewAll] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
@@ -598,10 +599,12 @@ function AttendanceContent() {
     ? getWeeksInMonth(currentDate.getFullYear(), currentDate.getMonth())
     : [];
 
-  // Filter employees by selected group for the "All" view
-  const filteredEmployees = selectedGroupId
-    ? employees.filter(e => e.group_id === selectedGroupId)
-    : employees;
+  // Filter employees by selected group and/or role for the "All" view
+  const filteredEmployees = employees
+    .filter(e => !selectedGroupId || e.group_id === selectedGroupId)
+    .filter(e => !selectedRole || e.role === selectedRole);
+
+  const uniqueRoles = Array.from(new Set(employees.map(e => e.role).filter(Boolean))).sort();
 
   // When viewAll, use all employees' entries (filtered by group if needed)
   const activeEntries = viewAll
@@ -672,6 +675,26 @@ function AttendanceContent() {
                   </div>
                 )}
 
+                {uniqueRoles.length > 1 && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="role-filter" className="text-sm font-medium">Role</Label>
+                    <Select
+                      value={selectedRole ?? 'all'}
+                      onValueChange={(value) => setSelectedRole(value === 'all' ? null : value)}
+                    >
+                      <SelectTrigger id="role-filter" className="h-9 w-44 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        {uniqueRoles.map(r => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-1.5">
                   <HelpArea helpId="employee-selector" bubblePosition="bottom">
                     <Label htmlFor="employee" className="text-sm font-medium cursor-help">Employee</Label>
@@ -693,10 +716,7 @@ function AttendanceContent() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Employees</SelectItem>
-                      {(selectedGroupId
-                        ? employees.filter(e => e.group_id === selectedGroupId)
-                        : employees
-                      ).map(emp => (
+                      {filteredEmployees.map(emp => (
                         <SelectItem key={emp.id} value={emp.id.toString()}>
                           {emp.last_name}, {emp.first_name}
                           {emp.employee_number && <span className="text-muted-foreground"> ({emp.employee_number})</span>}

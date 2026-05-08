@@ -24,6 +24,14 @@ interface Employee {
   id: number;
   first_name: string;
   last_name: string;
+  role?: string;
+  group_id?: number;
+}
+
+interface Group {
+  id: number;
+  name: string;
+  is_master?: number;
 }
 
 interface TimeCode {
@@ -106,6 +114,9 @@ export default function ReportsPage() {
   // Attendance Summary state
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
   const [attendanceData, setAttendanceData] = useState<ReportEntry[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
   const [selectedTimeCode, setSelectedTimeCode] = useState<string>('all');
@@ -164,21 +175,24 @@ export default function ReportsPage() {
     const cachedReports = getCachedData<{
       employees: Employee[];
       timeCodes: TimeCode[];
+      groups: Group[];
       reportDefinitions: ReportDefinition[];
       selectedReportId: string;
     }>('reports:initial');
     if (cachedReports) {
       setEmployees(cachedReports.employees);
       setTimeCodes(cachedReports.timeCodes);
+      setGroups(cachedReports.groups ?? []);
       setReportDefinitions(cachedReports.reportDefinitions);
       setSelectedReportId(cachedReports.selectedReportId);
       setInitialLoading(false);
     }
 
     try {
-      const [employeesRes, timeCodesRes, reportDefsRes] = await Promise.all([
+      const [employeesRes, timeCodesRes, groupsRes, reportDefsRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
+        authFetch('/api/groups'),
         authFetch('/api/report-definitions'),
       ]);
 
@@ -188,6 +202,7 @@ export default function ReportsPage() {
 
       const employeesData = await employeesRes.json();
       const timeCodesData = await timeCodesRes.json();
+      const groupsData = groupsRes.ok ? await groupsRes.json() : [];
 
       if (Array.isArray(employeesData)) {
         setEmployees(employeesData);
@@ -195,6 +210,10 @@ export default function ReportsPage() {
 
       if (Array.isArray(timeCodesData)) {
         setTimeCodes(timeCodesData);
+      }
+
+      if (Array.isArray(groupsData)) {
+        setGroups(groupsData.filter((g: Group) => !g.is_master));
       }
 
       let nextReportDefinitions: ReportDefinition[] = [];
@@ -217,6 +236,7 @@ export default function ReportsPage() {
       setCachedData('reports:initial', {
         employees: Array.isArray(employeesData) ? employeesData : [],
         timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
+        groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
         reportDefinitions: nextReportDefinitions,
         selectedReportId: nextSelectedReportId,
       });
@@ -331,6 +351,8 @@ export default function ReportsPage() {
   const isAttendanceManagement = selectedReportId === 'attendance-management';
   const isBreakCompliance = selectedReportId === 'break-compliance';
 
+  const uniqueRoles = Array.from(new Set(employees.map(e => e.role).filter(Boolean) as string[])).sort();
+
   // Use report definition values or fall back to defaults
   const columns = selectedReport?.columns || DEFAULT_COLUMNS;
   const exportFilename = selectedReport?.export?.filename
@@ -431,6 +453,12 @@ export default function ReportsPage() {
             <ReportFilters
               employees={employees}
               timeCodes={timeCodes}
+              groups={groups}
+              selectedGroupId={selectedGroupId}
+              onGroupChange={setSelectedGroupId}
+              roles={uniqueRoles}
+              selectedRole={selectedRole}
+              onRoleChange={setSelectedRole}
               selectedEmployeeId={selectedEmployeeId}
               onEmployeeChange={setSelectedEmployeeId}
               selectedTimeCode={selectedTimeCode}
@@ -464,6 +492,12 @@ export default function ReportsPage() {
             <ReportFilters
               employees={employees}
               timeCodes={timeCodes}
+              groups={groups}
+              selectedGroupId={selectedGroupId}
+              onGroupChange={setSelectedGroupId}
+              roles={uniqueRoles}
+              selectedRole={selectedRole}
+              onRoleChange={setSelectedRole}
               selectedEmployeeId={selectedEmployeeId}
               onEmployeeChange={setSelectedEmployeeId}
               selectedTimeCode={selectedTimeCode}
