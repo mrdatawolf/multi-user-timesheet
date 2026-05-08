@@ -110,6 +110,18 @@ export async function GET(request: NextRequest) {
         label: config.label || config.timeCode!,
       }));
 
+    // Sort columns to match the attendance tab's timeCodeOrder
+    const timeCodeOrder: string[] = brandFeatures.features.attendanceManagement?.timeCodeOrder ?? [];
+    if (timeCodeOrder.length > 0) {
+      enabledLeaveTypes.sort((a, b) => {
+        const aIdx = timeCodeOrder.indexOf(a.timeCode);
+        const bIdx = timeCodeOrder.indexOf(b.timeCode);
+        const aOrder = aIdx === -1 ? timeCodeOrder.length : aIdx;
+        const bOrder = bIdx === -1 ? timeCodeOrder.length : bIdx;
+        return aOrder - bOrder;
+      });
+    }
+
     if (enabledLeaveTypes.length === 0) {
       return NextResponse.json({
         employees: [],
