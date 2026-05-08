@@ -34,6 +34,11 @@ interface Group {
   is_master?: number;
 }
 
+interface JobTitle {
+  id: number;
+  name: string;
+}
+
 interface TimeCode {
   id: number;
   code: string;
@@ -115,6 +120,7 @@ export default function ReportsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [attendanceData, setAttendanceData] = useState<ReportEntry[]>([]);
@@ -176,6 +182,7 @@ export default function ReportsPage() {
       employees: Employee[];
       timeCodes: TimeCode[];
       groups: Group[];
+      jobTitles: JobTitle[];
       reportDefinitions: ReportDefinition[];
       selectedReportId: string;
     }>('reports:initial');
@@ -183,16 +190,18 @@ export default function ReportsPage() {
       setEmployees(cachedReports.employees);
       setTimeCodes(cachedReports.timeCodes);
       setGroups(cachedReports.groups ?? []);
+      setJobTitles(cachedReports.jobTitles ?? []);
       setReportDefinitions(cachedReports.reportDefinitions);
       setSelectedReportId(cachedReports.selectedReportId);
       setInitialLoading(false);
     }
 
     try {
-      const [employeesRes, timeCodesRes, groupsRes, reportDefsRes] = await Promise.all([
+      const [employeesRes, timeCodesRes, groupsRes, jobTitlesRes, reportDefsRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
         authFetch('/api/groups'),
+        authFetch('/api/job-titles?active=true'),
         authFetch('/api/report-definitions'),
       ]);
 
@@ -216,6 +225,11 @@ export default function ReportsPage() {
         setGroups(groupsData.filter((g: Group) => !g.is_master));
       }
 
+      const jobTitlesData = jobTitlesRes.ok ? await jobTitlesRes.json() : [];
+      if (Array.isArray(jobTitlesData)) {
+        setJobTitles(jobTitlesData);
+      }
+
       let nextReportDefinitions: ReportDefinition[] = [];
       let nextSelectedReportId = '';
 
@@ -237,6 +251,7 @@ export default function ReportsPage() {
         employees: Array.isArray(employeesData) ? employeesData : [],
         timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
         groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
+        jobTitles: Array.isArray(jobTitlesData) ? jobTitlesData : [],
         reportDefinitions: nextReportDefinitions,
         selectedReportId: nextSelectedReportId,
       });
@@ -351,7 +366,7 @@ export default function ReportsPage() {
   const isAttendanceManagement = selectedReportId === 'attendance-management';
   const isBreakCompliance = selectedReportId === 'break-compliance';
 
-  const uniqueRoles = Array.from(new Set(employees.map(e => e.role).filter(Boolean) as string[])).sort();
+  const uniqueRoles = jobTitles.map(jt => jt.name);
 
   // Use report definition values or fall back to defaults
   const columns = selectedReport?.columns || DEFAULT_COLUMNS;

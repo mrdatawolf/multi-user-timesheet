@@ -44,6 +44,11 @@ interface Group {
   is_master?: number;
 }
 
+interface JobTitle {
+  id: number;
+  name: string;
+}
+
 interface TimeCode {
   id: number;
   code: string;
@@ -150,6 +155,7 @@ function AttendanceContent() {
   const [bulkEntryEnabled, setBulkEntryEnabled] = useState(false);
   const [viewAll, setViewAll] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
@@ -271,11 +277,13 @@ function AttendanceContent() {
         employees: Employee[];
         timeCodes: TimeCode[];
         groups: Group[];
+        jobTitles: JobTitle[];
       }>('attendance:initial');
       if (cachedInitial) {
         setEmployees(cachedInitial.employees);
         setTimeCodes(cachedInitial.timeCodes);
         if (cachedInitial.groups) setGroups(cachedInitial.groups);
+        if (cachedInitial.jobTitles) setJobTitles(cachedInitial.jobTitles);
         if (cachedInitial.employees.length > 0 && !selectedEmployeeId) {
           if (cachedInitial.employees.length > 1) {
             setViewAll(true);
@@ -291,10 +299,11 @@ function AttendanceContent() {
         setLoading(false);
       }
 
-      const [employeesRes, timeCodesRes, groupsRes] = await Promise.all([
+      const [employeesRes, timeCodesRes, groupsRes, jobTitlesRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
         authFetch('/api/groups'),
+        authFetch('/api/job-titles?active=true'),
       ]);
 
       // If redirected to login due to expired session, stop processing
@@ -305,11 +314,16 @@ function AttendanceContent() {
       const employeesData = await employeesRes.json();
       const timeCodesData = await timeCodesRes.json();
       const groupsData = groupsRes.ok ? await groupsRes.json() : [];
+      const jobTitlesData = jobTitlesRes.ok ? await jobTitlesRes.json() : [];
 
       // Validate that we received arrays
       if (Array.isArray(groupsData)) {
         // Exclude master groups from the filter (they're admin-only)
         setGroups(groupsData.filter((g: Group) => !g.is_master));
+      }
+
+      if (Array.isArray(jobTitlesData)) {
+        setJobTitles(jobTitlesData);
       }
 
       if (Array.isArray(employeesData)) {
@@ -346,6 +360,7 @@ function AttendanceContent() {
         employees: Array.isArray(employeesData) ? employeesData : [],
         timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
         groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
+        jobTitles: Array.isArray(jobTitlesData) ? jobTitlesData : [],
       });
     } catch (error) {
       console.error('Failed to load initial data:', error);
@@ -604,7 +619,7 @@ function AttendanceContent() {
     .filter(e => !selectedGroupId || e.group_id === selectedGroupId)
     .filter(e => !selectedRole || e.role === selectedRole);
 
-  const uniqueRoles = Array.from(new Set(employees.map(e => e.role).filter(Boolean))).sort();
+  const uniqueRoles = jobTitles.map(jt => jt.name);
 
   // When viewAll, use all employees' entries (filtered by group if needed)
   const activeEntries = viewAll
