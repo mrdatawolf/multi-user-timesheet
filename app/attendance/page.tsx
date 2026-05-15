@@ -158,6 +158,7 @@ function AttendanceContent() {
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [hideRoleFilter, setHideRoleFilter] = useState(false);
   const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
   const { toast } = useToast();
   const { theme: themeId } = useTheme();
@@ -272,6 +273,7 @@ function AttendanceContent() {
       setGlobalReadEnabled(isGlobalReadAccessEnabled(brandFeatures));
       setYearLayout(getAttendanceYearLayout(brandFeatures));
       setBulkEntryEnabled(getBulkEntryConfig(brandFeatures).enabled);
+      setHideRoleFilter(brandFeatures.features.attendanceManagement?.hideRoleFilter ?? false);
 
       const cachedInitial = getCachedData<{
         employees: Employee[];
@@ -619,7 +621,7 @@ function AttendanceContent() {
     .filter(e => !selectedGroupId || e.group_id === selectedGroupId)
     .filter(e => !selectedRole || e.role === selectedRole);
 
-  const uniqueRoles = jobTitles.map(jt => jt.name);
+  const uniqueRoles = hideRoleFilter ? [] : jobTitles.map(jt => jt.name);
 
   // When viewAll, use all employees' entries (filtered by group if needed)
   const activeEntries = viewAll

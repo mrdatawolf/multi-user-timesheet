@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { formatDateStr } from '@/lib/date-helpers';
+import { getBrandFeatures } from '@/lib/brand-features';
 import { PageLoading } from '@/components/page-loading';
 import { getCachedData, setCachedData } from '@/lib/client-cache';
 
@@ -123,6 +124,7 @@ export default function ReportsPage() {
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [hideRoleFilter, setHideRoleFilter] = useState(false);
   const [attendanceData, setAttendanceData] = useState<ReportEntry[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
   const [selectedTimeCode, setSelectedTimeCode] = useState<string>('all');
@@ -197,6 +199,9 @@ export default function ReportsPage() {
     }
 
     try {
+      const brandFeatures = await getBrandFeatures();
+      setHideRoleFilter(brandFeatures.features.attendanceManagement?.hideRoleFilter ?? false);
+
       const [employeesRes, timeCodesRes, groupsRes, jobTitlesRes, reportDefsRes] = await Promise.all([
         authFetch('/api/employees'),
         authFetch('/api/time-codes'),
@@ -366,7 +371,7 @@ export default function ReportsPage() {
   const isAttendanceManagement = selectedReportId === 'attendance-management';
   const isBreakCompliance = selectedReportId === 'break-compliance';
 
-  const uniqueRoles = jobTitles.map(jt => jt.name);
+  const uniqueRoles = hideRoleFilter ? [] : jobTitles.map(jt => jt.name);
 
   // Use report definition values or fall back to defaults
   const columns = selectedReport?.columns || DEFAULT_COLUMNS;
