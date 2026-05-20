@@ -1,7 +1,8 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
+/electron-app/node_modules
+/electron-app/package-lock.json
+package-lock.json
 /.pnp
 .pnp.js
 
@@ -15,9 +16,33 @@
 # production
 /build
 
+# electron build outputs
+/dist-electron
+/dist-server
+/dist-all-brands
+/temp-server-build
+
+# distribution
+/distribute
+/distribute_server
+
+# database
+*.db
+*.db-journal
+nul
+/databases
+
+# client-specific build/runtime config
+electron-builder.json
+lib/brand-selection.json
+
 # misc
 .DS_Store
 *.pem
+/examples
+/.node-portable
+/.claude
+/examples
 
 # debug
 npm-debug.log*
@@ -34,26 +59,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# database
-*.db
-*.db-journal
-nul
-/databases
-
-# electron build outputs
-/dist-electron
-/dist-server
-/dist-all-brands
-
-# electron dependencies
-/electron-app/node_modules
-/electron-app/package-lock.json
-/.claude
-/dist-server
-/examples
-/.node-portable
-/distribute
-/distribute_server
-package-lock.json
-/temp-server-build
