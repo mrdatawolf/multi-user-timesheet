@@ -42,7 +42,6 @@ lib/brand-selection.json
 /examples
 /.node-portable
 /.claude
-/examples
 
 # debug
 npm-debug.log*

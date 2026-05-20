@@ -34,9 +34,11 @@ if (electronPackage.version !== version) {
   console.log('✓ Versions already in sync');
 }
 
-// Update electron-builder.json with brand name
+// Update electron-builder.json with brand name (generate from template if missing)
 const electronBuilderPath = path.join(__dirname, '..', 'electron-builder.json');
-const electronBuilder = JSON.parse(fs.readFileSync(electronBuilderPath, 'utf8'));
+const electronBuilderTemplatePath = path.join(__dirname, '..', 'electron-builder.template.json');
+const electronBuilderSource = fs.existsSync(electronBuilderPath) ? electronBuilderPath : electronBuilderTemplatePath;
+const electronBuilder = JSON.parse(fs.readFileSync(electronBuilderSource, 'utf8'));
 
 // Create product name with brand prefix
 const productName = brandId === 'Default'
