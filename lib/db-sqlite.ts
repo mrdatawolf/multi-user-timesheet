@@ -1,7 +1,7 @@
 import { createClient } from '@libsql/client';
 import { getDatabasePath, getDataDirectory } from './data-paths';
 import { isDemoMode, logDemoModeBanner } from './demo-mode';
-import { getBrandTimeCodes } from './brand-time-codes';
+import { getBrandTimeCodes, getCurrentBrand } from './brand-time-codes';
 import packageJson from '../package.json';
 
 // Uses centralized data paths for cross-platform compatibility
@@ -235,53 +235,57 @@ export async function initializeDatabase() {
     }
   }
 
-  // Migrate legacy NFL time code names to current codes (run before JSON sync)
-  const codeRenames: Array<[string, string]> = [
-    ['V', 'VAC'],
-    ['PERS', 'PER'],
-    ['HL', 'HOL'],
-    ['BRUP', 'BRU'],
-    ['FMLAUP', 'FMLA'],
-    ['WCP', 'WC'],
-  ];
-  // Disable FK enforcement for the duration of the renames so that updating
-  // child tables (attendance_entries, allocations) before the parent (time_codes)
-  // doesn't trigger constraint violations in either direction.
-  await db.execute('PRAGMA foreign_keys = OFF');
-  try {
-    for (const [oldCode, newCode] of codeRenames) {
-      try {
-        const oldExists   = await db.execute({ sql: 'SELECT code FROM time_codes WHERE code = ?', args: [oldCode] });
-        const newExists   = await db.execute({ sql: 'SELECT code FROM time_codes WHERE code = ?', args: [newCode] });
-        const oldInEntries = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM attendance_entries WHERE time_code = ?', args: [oldCode] });
-        const oldInAllocs  = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM employee_time_allocations WHERE time_code = ?', args: [oldCode] });
+  // Migrate legacy NFL time code names to current codes (run before JSON sync).
+  // These renames are NFL-specific (e.g. NFL's "VAC" replaced "V") and must
+  // not run for other brands, which use "V" as their valid, current code.
+  if (getCurrentBrand() === 'NFL') {
+    const codeRenames: Array<[string, string]> = [
+      ['V', 'VAC'],
+      ['PERS', 'PER'],
+      ['HL', 'HOL'],
+      ['BRUP', 'BRU'],
+      ['FMLAUP', 'FMLA'],
+      ['WCP', 'WC'],
+    ];
+    // Disable FK enforcement for the duration of the renames so that updating
+    // child tables (attendance_entries, allocations) before the parent (time_codes)
+    // doesn't trigger constraint violations in either direction.
+    await db.execute('PRAGMA foreign_keys = OFF');
+    try {
+      for (const [oldCode, newCode] of codeRenames) {
+        try {
+          const oldExists   = await db.execute({ sql: 'SELECT code FROM time_codes WHERE code = ?', args: [oldCode] });
+          const newExists   = await db.execute({ sql: 'SELECT code FROM time_codes WHERE code = ?', args: [newCode] });
+          const oldInEntries = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM attendance_entries WHERE time_code = ?', args: [oldCode] });
+          const oldInAllocs  = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM employee_time_allocations WHERE time_code = ?', args: [oldCode] });
 
-        const hasOldEntries = Number((oldInEntries.rows[0] as any)?.cnt || 0) > 0;
-        const hasOldAllocs  = Number((oldInAllocs.rows[0] as any)?.cnt || 0) > 0;
+          const hasOldEntries = Number((oldInEntries.rows[0] as any)?.cnt || 0) > 0;
+          const hasOldAllocs  = Number((oldInAllocs.rows[0] as any)?.cnt || 0) > 0;
 
-        if (hasOldEntries) {
-          await db.execute({ sql: 'UPDATE attendance_entries SET time_code = ? WHERE time_code = ?', args: [newCode, oldCode] });
-          console.log(`  ✓ Migrated attendance_entries ${oldCode} → ${newCode}`);
-        }
-        if (hasOldAllocs) {
-          await db.execute({ sql: 'UPDATE employee_time_allocations SET time_code = ? WHERE time_code = ?', args: [newCode, oldCode] });
-          console.log(`  ✓ Migrated employee_time_allocations ${oldCode} → ${newCode}`);
-        }
-        if (oldExists.rows.length > 0) {
-          if (newExists.rows.length > 0) {
-            // New code already exists — delete the now-unused old row
-            await db.execute({ sql: 'DELETE FROM time_codes WHERE code = ?', args: [oldCode] });
-          } else {
-            await db.execute({ sql: 'UPDATE time_codes SET code = ? WHERE code = ?', args: [newCode, oldCode] });
+          if (hasOldEntries) {
+            await db.execute({ sql: 'UPDATE attendance_entries SET time_code = ? WHERE time_code = ?', args: [newCode, oldCode] });
+            console.log(`  ✓ Migrated attendance_entries ${oldCode} → ${newCode}`);
           }
-          console.log(`  ✓ Renamed time_codes ${oldCode} → ${newCode}`);
+          if (hasOldAllocs) {
+            await db.execute({ sql: 'UPDATE employee_time_allocations SET time_code = ? WHERE time_code = ?', args: [newCode, oldCode] });
+            console.log(`  ✓ Migrated employee_time_allocations ${oldCode} → ${newCode}`);
+          }
+          if (oldExists.rows.length > 0) {
+            if (newExists.rows.length > 0) {
+              // New code already exists — delete the now-unused old row
+              await db.execute({ sql: 'DELETE FROM time_codes WHERE code = ?', args: [oldCode] });
+            } else {
+              await db.execute({ sql: 'UPDATE time_codes SET code = ? WHERE code = ?', args: [newCode, oldCode] });
+            }
+            console.log(`  ✓ Renamed time_codes ${oldCode} → ${newCode}`);
+          }
+        } catch (err) {
+          console.warn(`  ⚠ Could not rename time code ${oldCode} → ${newCode}:`, err);
         }
-      } catch (err) {
-        console.warn(`  ⚠ Could not rename time code ${oldCode} → ${newCode}:`, err);
       }
+    } finally {
+      await db.execute('PRAGMA foreign_keys = ON');
     }
-  } finally {
-    await db.execute('PRAGMA foreign_keys = ON');
   }
 
   // Sync time codes from brand JSON (JSON is source of truth)
@@ -430,6 +434,8 @@ async function clearDatabaseForDemo() {
   const tablesToClear = [
     'attendance_entries',
     'employee_time_allocations',
+    'break_entries',
+    'office_presence',
     'employees',
   ];
 

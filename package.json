@@ -17,7 +17,7 @@
     "sync-version": "node scripts/sync-version.js",
     "select-brand": "node scripts/select-brand.js",
     "electron:start": "node scripts/start-electron.js",
-    "electron:build": "node scripts/sync-version.js && node scripts/generate-icon.js && electron-builder --config electron-builder.json",
+    "electron:build": "node scripts/sync-version.js && node scripts/generate-icon.js && electron-builder --win --config electron-builder.json",
     "server:installer": "node scripts/generate-icon.js && node scripts/build-server-installer.js",
     "build:all": "npm run clean:all && npm run select-brand && npm run build && node scripts/package-standalone.js && npm run electron:build && npm run server:installer && node scripts/copy-to-distribute.js",
     "build:all:brands": "node scripts/build-all-brands.js",
