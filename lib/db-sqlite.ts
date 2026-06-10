@@ -426,7 +426,7 @@ async function validateSchema() {
  * Clear all data from tables (for demo mode)
  * This preserves the schema but removes all rows
  */
-async function clearDatabaseForDemo() {
+export async function clearDatabaseForDemo() {
   console.log('');
   console.log('Clearing database for demo mode...');
 

@@ -14,6 +14,7 @@ import { GroupManagement } from '@/components/group-management';
 import { JobTitleManagement } from '@/components/job-title-management';
 import { ColorConfigManagement } from '@/components/color-config-management';
 import { OfficeCapacitySettings } from '@/components/office-capacity-settings';
+import { SeedDemoDataCard } from '@/components/seed-demo-data-card';
 import { EmployeeLinkSettings } from '@/components/employee-link-settings';
 import { ImportAttendanceDialog } from '@/components/import-attendance';
 import { useHelp } from '@/lib/help-context';
@@ -178,6 +179,9 @@ export default function SettingsPage() {
 
         {/* Database Backups - Admin Only */}
         {isAdmin && <BackupCard />}
+
+        {/* Demo Data Seeding - Admin Only */}
+        {isAdmin && <SeedDemoDataCard />}
       </div>
     </div>
   );
