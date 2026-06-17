@@ -46,7 +46,7 @@ interface VacationTier {
 interface TieredSeniorityAccrualDetails {
   baseYears: number;
   currentTier: VacationTier;
-  employeeType: 'fullTime' | 'partTime' | 'exempt';
+  employeeType: 'fullTime' | 'partTime' | 'exempt' | 'pendingEligibility';
   periodStart: string;
   periodEnd: string;
   hoursThreshold: number;
@@ -197,7 +197,12 @@ export function BalanceBreakdownModal({
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Employee Type:</span>
-                        <span className="font-medium capitalize">{accrualDetails.tieredSeniorityDetails.employeeType === 'fullTime' ? 'Full-Time' : accrualDetails.tieredSeniorityDetails.employeeType === 'partTime' ? 'Part-Time' : 'Exempt'}</span>
+                        <span className="font-medium capitalize">
+                          {accrualDetails.tieredSeniorityDetails.employeeType === 'fullTime' ? 'Full-Time'
+                            : accrualDetails.tieredSeniorityDetails.employeeType === 'partTime' ? 'Part-Time'
+                            : accrualDetails.tieredSeniorityDetails.employeeType === 'pendingEligibility' ? 'Not Yet Eligible'
+                            : 'Exempt'}
+                        </span>
                       </div>
                       {accrualDetails.tieredSeniorityDetails.employeeType !== 'exempt' && (
                         <div className="flex justify-between text-xs">
@@ -229,7 +234,7 @@ export function BalanceBreakdownModal({
                         <span className="text-muted-foreground">Years Range:</span>
                         <span>{accrualDetails.tieredSeniorityDetails.currentTier.minBaseYears}{accrualDetails.tieredSeniorityDetails.currentTier.maxBaseYears !== null ? `-${accrualDetails.tieredSeniorityDetails.currentTier.maxBaseYears}` : '+'} years</span>
                       </div>
-                      {accrualDetails.tieredSeniorityDetails.employeeType === 'fullTime' || accrualDetails.tieredSeniorityDetails.employeeType === 'exempt' ? (
+                      {accrualDetails.tieredSeniorityDetails.employeeType === 'fullTime' || accrualDetails.tieredSeniorityDetails.employeeType === 'exempt' || accrualDetails.tieredSeniorityDetails.employeeType === 'pendingEligibility' ? (
                         <>
                           <div className="flex justify-between text-xs">
                             <span className="text-muted-foreground">Weeks Vacation:</span>

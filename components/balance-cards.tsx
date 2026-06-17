@@ -49,7 +49,7 @@ interface AccrualDetails {
       fullTime: { weeks: number; hours: number };
       partTime: { earnHours: number; perHoursWorked: number; maxHours: number };
     };
-    employeeType: 'fullTime' | 'partTime' | 'exempt';
+    employeeType: 'fullTime' | 'partTime' | 'exempt' | 'pendingEligibility';
     periodStart: string;
     periodEnd: string;
     hoursThreshold: number;

@@ -153,6 +153,80 @@ describe('NFL Vacation accrual', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FULL-TIME ELIGIBILITY GATE (1,200-hour threshold, employmentType-driven)
+//
+// Policy: "A base year is established when an employee works 1,200 hours
+// during the vacation base year in progress, as a full-time employee...
+// Vacations may be scheduled once eligibility has been met."
+//
+// This is a one-time, permanent gate, not an annual ramp:
+//   - Once established in any base year (including a prior, partial one),
+//     a full-time employee gets the FULL tier amount on day one of every
+//     subsequent benefit year — they never get reset to "pending" just
+//     because a new period rolled over.
+//   - Until established, a full-time employee gets 0h — no prorated credit
+//     while working toward the threshold. They jump straight to the full
+//     tier amount the moment they cross 1,200 hours.
+//   - These calls go through the employmentType param (not the explicit
+//     totalHoursWorked override used elsewhere in this file), since that's
+//     the path real callers (the API routes) actually use.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Vacation full-time eligibility gate', () => {
+  it('genuine new hire mid-base-year with too few hours gets 0h, not yet eligible', () => {
+    // Hired ~2 months before asOfDate (the real Maguire case) — nowhere
+    // near 1,200 hours either before or within the current base year.
+    const hire = d(2026, 4, 22);
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 16), V_RULE, undefined, false, 'full_time');
+    expect(result.isEligible).toBe(false);
+    expect(result.accruedHours).toBe(0);
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+  });
+
+  it('established veteran is not reset to pending just because a new period rolled over', () => {
+    // The original bug: a 7-year employee evaluated right at period rollover.
+    const hire = d(2019, 5, 13);
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+    expect(result.isEligible).toBe(true);
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+    expect(result.accruedHours).toBe(80); // 7 base years -> 3-7yr tier
+  });
+
+  describe('boundary: hours accumulated before the period started', () => {
+    it('29 weeks of prior tenure (1,160h, just under 1,200h) has NOT established eligibility', () => {
+      const hire = d(2025, 11, 9); // ~29 weeks before Jun 1 2026
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+      expect(result.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+      expect(result.accruedHours).toBe(0);
+    });
+
+    it('31 weeks of prior tenure (1,240h, over 1,200h) HAS established eligibility', () => {
+      const hire = d(2025, 10, 26); // ~31 weeks before Jun 1 2026
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+      expect(result.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+      expect(result.accruedHours).toBe(40); // 0-2yr tier
+    });
+  });
+
+  it('a new hire becomes eligible mid-base-year the moment they cross the threshold', () => {
+    const hire = d(2026, 6, 1); // hired exactly at this period's start
+
+    const before = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 11, 1), V_RULE, undefined, false, 'full_time');
+    expect(before.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+    expect(before.accruedHours).toBe(0);
+
+    const after = calculateTieredSeniorityAccrual(hire, 2026, d(2027, 2, 1), V_RULE, undefined, false, 'full_time');
+    expect(after.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+    expect(after.accruedHours).toBe(40); // jumps straight to the full tier amount, no partial credit
+  });
+
+  it('part-time employees still use the prorated earn-rate ramp, unaffected by the full-time gate', () => {
+    const hire = d(2020, 6, 1); // 6 base years -> 3-7yr tier
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 16), V_RULE, undefined, false, 'part_time');
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('partTime');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FLOATING HOLIDAY  (annualGrant, 24 h on Jun 1, benefit year Jun 1 – May 31)
 //
 // Rules:

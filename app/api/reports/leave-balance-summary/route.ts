@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
 
     // Build employee query with permission filtering
     let employeeSql = `
-      SELECT id, first_name, last_name, date_of_hire
+      SELECT id, first_name, last_name, date_of_hire, employment_type
       FROM employees
       WHERE is_active = 1
     `;
@@ -175,6 +175,7 @@ export async function GET(request: NextRequest) {
       first_name: string;
       last_name: string;
       date_of_hire: string | null;
+      employment_type: 'full_time' | 'part_time' | null;
     }>;
 
     if (employees.length === 0) {
@@ -219,7 +220,7 @@ export async function GET(request: NextRequest) {
     const calendarWindow = { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
 
     const resolveBalanceWindow = (
-      emp: { id: number; date_of_hire: string | null },
+      emp: { id: number; date_of_hire: string | null; employment_type: 'full_time' | 'part_time' | null },
       lt: EnabledLeaveType
     ): BalanceWindow => {
       const empAllocations = allocationsMap.get(emp.id) || new Map();
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
       const accrualRule = accrualRules[lt.timeCode];
 
       if (accrualRule && emp.date_of_hire) {
-        const result = calculateAccrual(emp.date_of_hire, year, asOfDate, accrualRule);
+        const result = calculateAccrual(emp.date_of_hire, year, asOfDate, accrualRule, emp.employment_type ?? undefined);
         const accrualWindow = getAccrualWindow(result) || calendarWindow;
         return {
           ...accrualWindow,

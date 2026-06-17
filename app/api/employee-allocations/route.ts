@@ -26,13 +26,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get employee's hire date for accrual calculations
+    // Get employee's hire date and employment type for accrual calculations
     const employeeResult = await db.execute({
-      sql: 'SELECT date_of_hire FROM employees WHERE id = ?',
+      sql: 'SELECT date_of_hire, employment_type FROM employees WHERE id = ?',
       args: [parseInt(employeeId)]
     });
     const hireDate = employeeResult.rows.length > 0
       ? (employeeResult.rows[0] as any).date_of_hire
+      : null;
+    const employmentType = employeeResult.rows.length > 0
+      ? (employeeResult.rows[0] as any).employment_type
       : null;
 
     // Try to get time codes from brand JSON first
@@ -68,7 +71,8 @@ export async function GET(request: NextRequest) {
             hireDate,
             targetYear,
             asOfDate,
-            accrualRule as AccrualRule
+            accrualRule as AccrualRule,
+            employmentType
           );
           // Use accrued hours instead of static allocation
           allocatedHours = accrualDetails.accruedHours;
@@ -107,7 +111,8 @@ export async function GET(request: NextRequest) {
             hireDate,
             targetYear,
             asOfDate,
-            accrualRule as AccrualRule
+            accrualRule as AccrualRule,
+            employmentType
           );
           // Use accrued hours instead of static allocation
           allocatedHours = accrualDetails.accruedHours;

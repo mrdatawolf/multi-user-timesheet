@@ -130,7 +130,7 @@ export interface HoursWorkedAccrualDetails {
 export interface TieredSeniorityAccrualDetails {
   baseYears: number;
   currentTier: VacationTier;
-  employeeType: 'fullTime' | 'partTime' | 'exempt';
+  employeeType: 'fullTime' | 'partTime' | 'exempt' | 'pendingEligibility';
   periodStart: Date;
   periodEnd: Date;
   hoursThreshold: number;
@@ -513,7 +513,8 @@ export function calculateTieredSeniorityAccrual(
   asOfDate: Date,
   rule: AccrualRule,
   totalHoursWorked?: number,
-  isExempt: boolean = false
+  isExempt: boolean = false,
+  employmentType?: 'full_time' | 'part_time'
 ): AccrualResult {
   // Get period configuration
   const periodConfig = typeof rule.period === 'object' ? rule.period : null;
@@ -575,30 +576,63 @@ export function calculateTieredSeniorityAccrual(
     };
   }
 
-  // Estimate hours worked if not provided
+  // Determine employee type and estimate hours worked toward the full-time
+  // threshold. Eligibility under this rule is a one-time gate, not a ramp:
+  // "vacations may be scheduled once eligibility has been met." A full-time
+  // employee gets either the full tier amount or nothing — never a prorated
+  // amount while still working toward their first established base year.
   const hoursThreshold = rule.eligibility?.fullTime?.hoursThreshold || 1200;
   let estimatedHoursWorked: number;
+  let employeeType: 'fullTime' | 'partTime' | 'exempt' | 'pendingEligibility';
+
   if (totalHoursWorked !== undefined) {
+    // Explicit hours-worked figure supplied by the caller — use it directly
+    // against the threshold, same contract as before.
     estimatedHoursWorked = totalHoursWorked;
+    if (isExempt) {
+      employeeType = 'exempt';
+    } else if (estimatedHoursWorked >= hoursThreshold) {
+      employeeType = 'fullTime';
+    } else {
+      employeeType = 'partTime';
+    }
+  } else if (isExempt) {
+    employeeType = 'exempt';
+    estimatedHoursWorked = hoursThreshold;
+  } else if (employmentType === 'full_time') {
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    // Did the employee already have enough continuous full-time tenure
+    // *before this period started* to have cleared the threshold in an
+    // earlier (possibly partial) base year?
+    const weeksBeforePeriodStart = Math.max(0, (periodStart.getTime() - hireDate.getTime()) / msPerWeek);
+    const hoursBeforePeriodStart = Math.floor(weeksBeforePeriodStart * 40);
+
+    if (hoursBeforePeriodStart >= hoursThreshold) {
+      // Eligibility was already established in a prior base year. That's a
+      // permanent status, not an annual requirement — don't reset them to
+      // "not yet eligible" just because a new period started.
+      employeeType = 'fullTime';
+      estimatedHoursWorked = hoursBeforePeriodStart;
+    } else {
+      // Still working toward establishing their first base year. Count hours
+      // worked within *this* base year only — from hire date or period
+      // start, whichever is later — with no partial credit before the
+      // threshold is crossed.
+      const windowStart = hireDate > periodStart ? hireDate : periodStart;
+      const weeksInBaseYear = Math.max(0, (asOfDate.getTime() - windowStart.getTime()) / msPerWeek);
+      estimatedHoursWorked = Math.floor(weeksInBaseYear * 40);
+      employeeType = estimatedHoursWorked >= hoursThreshold ? 'fullTime' : 'pendingEligibility';
+    }
   } else {
-    // Estimate based on time since period start (assume 40h/week)
+    // Genuinely part-time (or unknown employment type): earn vacation
+    // incrementally based on hours worked this benefit period.
     const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const weeksSincePeriodStart = Math.max(0, (asOfDate.getTime() - periodStart.getTime()) / msPerWeek);
     estimatedHoursWorked = Math.floor(weeksSincePeriodStart * 40);
-  }
-
-  // Determine if full-time qualified (1,200+ hours)
-  const isFullTimeQualified = estimatedHoursWorked >= hoursThreshold;
-
-  // Determine employee type
-  let employeeType: 'fullTime' | 'partTime' | 'exempt';
-  if (isExempt) {
-    employeeType = 'exempt';
-  } else if (isFullTimeQualified) {
-    employeeType = 'fullTime';
-  } else {
     employeeType = 'partTime';
   }
+
+  const isFullTimeQualified = employeeType === 'fullTime';
 
   // Calculate accrued hours based on employee type
   let accruedHours: number;
@@ -607,6 +641,10 @@ export function calculateTieredSeniorityAccrual(
   if (employeeType === 'exempt' || employeeType === 'fullTime') {
     // Full-time or exempt: get full allocation
     accruedHours = currentTier.fullTime.hours;
+    maxHours = currentTier.fullTime.hours;
+  } else if (employeeType === 'pendingEligibility') {
+    // Eligibility not yet established — no vacation can be scheduled yet.
+    accruedHours = 0;
     maxHours = currentTier.fullTime.hours;
   } else {
     // Part-time: earn hours based on hours worked
@@ -625,12 +663,14 @@ export function calculateTieredSeniorityAccrual(
     message = `Full-time (${hoursThreshold}+ hours): ${currentTier.fullTime.weeks} week(s) = ${accruedHours}h vacation`;
   } else if (employeeType === 'exempt') {
     message = `Exempt employee: ${currentTier.fullTime.weeks} week(s) = ${accruedHours}h vacation`;
+  } else if (employeeType === 'pendingEligibility') {
+    message = `Not yet eligible: needs ${hoursThreshold}h worked in the current base year (~${estimatedHoursWorked}h so far) before vacation can be scheduled.`;
   } else {
     message = `Part-time: ${currentTier.partTime.earnHours}h per ${currentTier.partTime.perHoursWorked}h worked, up to ${maxHours}h. Currently ${accruedHours}h accrued.`;
   }
 
   return {
-    isEligible,
+    isEligible: isEligible && employeeType !== 'pendingEligibility',
     eligibilityDate,
     accruedHours,
     maxHours,
@@ -827,12 +867,21 @@ export function calculateAnnualGrantAccrual(
 
 /**
  * Main function to calculate accrual based on rule type
+ *
+ * `employmentType` comes from the employee record (full_time/part_time). For
+ * tieredSeniority rules it's passed through so the full-time hours-worked
+ * threshold is measured against the employee's actual hire date rather than
+ * the start of the current benefit period — otherwise every full-time
+ * employee looks part-time for months right after each period rollover,
+ * while genuine new hires still correctly ramp up until they clear the
+ * threshold.
  */
 export function calculateAccrual(
   hireDate: Date | string,
   targetYear: number,
   asOfDate: Date | string,
-  rule: AccrualRule
+  rule: AccrualRule,
+  employmentType?: 'full_time' | 'part_time'
 ): AccrualResult {
   const hireDateObj = typeof hireDate === 'string' ? new Date(hireDate) : hireDate;
   const asOfDateObj = typeof asOfDate === 'string' ? new Date(asOfDate) : asOfDate;
@@ -843,7 +892,7 @@ export function calculateAccrual(
     case 'hoursWorked':
       return calculateHoursWorkedAccrual(hireDateObj, targetYear, asOfDateObj, rule);
     case 'tieredSeniority':
-      return calculateTieredSeniorityAccrual(hireDateObj, targetYear, asOfDateObj, rule);
+      return calculateTieredSeniorityAccrual(hireDateObj, targetYear, asOfDateObj, rule, undefined, false, employmentType);
     case 'annualGrant':
       return calculateAnnualGrantAccrual(hireDateObj, targetYear, asOfDateObj, rule);
     default:
