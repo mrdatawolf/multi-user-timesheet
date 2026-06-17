@@ -23,11 +23,16 @@ function d(year: number, month: number, day: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 // VACATION  (tieredSeniority, benefit year Jun 1 – May 31)
 //
-// Expected tiers per NFL policy:
-//   0–2 years  =  40 h  (5 days)
-//   3–7 years  =  80 h  (10 days)
-//   8–14 years = 120 h  (15 days)
-//   15+ years  = 160 h  (20 days)
+// Expected tiers per the official NFL "Vacation Policy" document. The table
+// has 5 base-year columns, but the operative benefit is the "Weeks Vacation"
+// row (actual usable time off), not the "Hours/Pay" row (a separate pay
+// calculation, not a count of usable vacation hours). Weeks go 1, 2, 2, 3, 4
+// across the five columns — 3-4 years and 5-7 years both land on "2 weeks" —
+// so for actual usable hours there are only 4 distinct tiers:
+//   0–2 years   =  40 h  (1 week)
+//   3–7 years   =  80 h  (2 weeks — 3-4yr and 5-7yr columns both say 2 weeks)
+//   8–14 years  = 120 h  (3 weeks)
+//   15+ years   = 160 h  (4 weeks)
 //
 // Base years are measured as of the benefit-year start (Jun 1).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +67,7 @@ describe('NFL Vacation accrual', () => {
     });
 
     it('5 years of service → 80 h', () => {
+      // 5-7yr column also says "2 Weeks" — same tier as 3-4yr, not a new one.
       const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
       const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
       expect(result.accruedHours).toBe(80);
@@ -98,6 +104,24 @@ describe('NFL Vacation accrual', () => {
     });
   });
 
+  describe('part-time earn-rate formula matches policy per tier', () => {
+    // Mirrors the "Weeks Vacation" tiers above (not the "Hours/Pay" row):
+    // rate and cap both scale with the same 4 tiers a full-time employee uses.
+    const cases: Array<[number, { earnHours: number; perHoursWorked: number; maxHours: number }]> = [
+      [0, { earnHours: 1, perHoursWorked: 30, maxHours: 40 }],
+      [3, { earnHours: 2, perHoursWorked: 30, maxHours: 80 }],
+      [5, { earnHours: 2, perHoursWorked: 30, maxHours: 80 }],
+      [8, { earnHours: 3, perHoursWorked: 30, maxHours: 120 }],
+      [15, { earnHours: 4, perHoursWorked: 30, maxHours: 160 }],
+    ];
+
+    it.each(cases)('base years %i picks the matching partTime earn-rate tier', (baseYears, expected) => {
+      const hire = new Date(2025 - baseYears, 5, 1); // Jun 1, `baseYears` years before 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, undefined, false, 'part_time');
+      expect(result.tieredSeniorityDetails?.currentTier.partTime).toEqual(expected);
+    });
+  });
+
   describe('benefit year boundaries cross calendar years', () => {
     it('asOfDate before Jun 1 uses previous benefit year start for base-year calc', () => {
       // Employee with 3 base years: hired Jun 1 2022.
@@ -110,14 +134,14 @@ describe('NFL Vacation accrual', () => {
 
     it('asOfDate just before Jun 1 uses benefit year starting previous Jun', () => {
       // May 31 is still in the old benefit year
-      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
+      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025 -> 3-7yr tier
       const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 5, 31), V_RULE, FULL_TIME_HOURS);
       expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2025, 6, 1));
       expect(result.accruedHours).toBe(80);
     });
 
     it('asOfDate on Jun 1 starts new benefit year and recalculates base years', () => {
-      // Hired Jun 1 2020: as of Jun 1 2026 → 6 base years → still 80 h
+      // Hired Jun 1 2020: as of Jun 1 2026 → 6 base years → still 3-7yr tier = 80 h
       const hire = d(2020, 6, 1);
       const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, FULL_TIME_HOURS);
       expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2026, 6, 1));
@@ -126,8 +150,8 @@ describe('NFL Vacation accrual', () => {
     });
 
     it('tier changes correctly when benefit year flips and pushes employee into new tier', () => {
-      // Hired Jun 1 2017: 8 base years at Jun 1 2025 → 120 h
-      //                   9 base years at Jun 1 2026 → still 120 h
+      // Hired Jun 1 2017: 8 base years at Jun 1 2025 → 8-14yr tier = 120 h
+      //                   9 base years at Jun 1 2026 → still 8-14yr tier = 120 h
       const hire = d(2017, 6, 1);
       const result2025 = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
       const result2026 = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 10, 1), V_RULE, FULL_TIME_HOURS);
