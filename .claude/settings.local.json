@@ -78,7 +78,8 @@
       "Bash(gh pr *)",
       "Bash(sqlite3 attendance.db \".tables\")",
       "Bash(cat > *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(python3 -c \"import docx\")"
     ],
     "additionalDirectories": [
       "/tmp"
