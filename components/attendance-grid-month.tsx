@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
-import type { AttendanceEntry, DailySummary } from '@/lib/attendance-types';
+import type { AttendanceEntry, DailySummary, EntryChangeResult } from '@/lib/attendance-types';
 import { useAttendanceCell } from '@/hooks/use-attendance-cell';
 import { getMonthCalendarGrid, formatDateStr, isToday, isWeekend, DAY_NAMES_SHORT } from '@/lib/date-helpers';
 
@@ -18,7 +18,7 @@ interface AttendanceGridMonthProps {
   employeeId: number;
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
-  onEntryChange: (date: string, entries: AttendanceEntry[]) => void;
+  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   companyHolidays?: Set<string>;
   dailySummary?: DailySummary | null;
   totalActiveEmployees?: number;
@@ -74,8 +74,8 @@ export function AttendanceGridMonth({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[]) => {
-    onEntryChange(date, updatedEntries);
+  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+    return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 
   const getCellTooltip = (entries: AttendanceEntry[]): string => {

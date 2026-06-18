@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Minus, Plus, Trash2, PlusCircle, Clock } from 'lucide-react';
-import type { AttendanceEntry } from '@/lib/attendance-types';
+import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
 import { HelpArea } from '@/components/help-area';
 
 interface TimeCode {
@@ -34,7 +34,9 @@ interface MultiEntryDialogProps {
   date: string;
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
-  onSave: (date: string, entries: AttendanceEntry[]) => void;
+  // `originalDate` is passed when the user changed the date field, so the
+  // caller knows which date to move entries away from.
+  onSave: (date: string, entries: AttendanceEntry[], originalDate?: string) => Promise<EntryChangeResult> | void;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
 }
@@ -60,9 +62,14 @@ export function MultiEntryDialog({
   readOnly = false,
 }: MultiEntryDialogProps) {
   const [editableEntries, setEditableEntries] = useState<EditableEntry[]>([]);
+  const [localDate, setLocalDate] = useState(date);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setLocalDate(date);
+      setSaveError(null);
       // Convert entries to editable format
       if (entries.length === 0) {
         // Start with one empty entry
@@ -155,11 +162,16 @@ export function MultiEntryDialog({
       .reduce((sum, e) => sum + e.hours + e.minutes / 60, 0);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const totalHours = getTotalHours();
 
     if (totalHours > 24) {
       alert('Total hours cannot exceed 24 hours per day.');
+      return;
+    }
+
+    if (!localDate) {
+      setSaveError('Please choose a date.');
       return;
     }
 
@@ -168,14 +180,25 @@ export function MultiEntryDialog({
       .filter(e => e.time_code !== '__NONE__')
       .map(e => ({
         id: e.id,
-        entry_date: date,
+        entry_date: localDate,
         time_code: e.time_code,
         hours: e.hours + e.minutes / 60,
         notes: e.notes.trim() || undefined,
       }));
 
-    onSave(date, savedEntries);
-    onOpenChange(false);
+    const dateChanged = localDate !== date;
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const result = await onSave(localDate, savedEntries, dateChanged ? date : undefined);
+      if (result && !result.success) {
+        setSaveError(result.error || 'Failed to save entries.');
+        return;
+      }
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalHours = getTotalHours();
@@ -188,6 +211,23 @@ export function MultiEntryDialog({
           <DialogTitle>{readOnly ? 'Entries for' : 'Edit Entries for'} {date}</DialogTitle>
         </DialogHeader>
 
+        {!readOnly && (
+          <div className="space-y-1">
+            <HelpArea helpId="entry-date" bubblePosition="right" showHighlight={false}>
+              <Label htmlFor="multi-entry-date" className="text-xs cursor-help">
+                Date
+              </Label>
+            </HelpArea>
+            <Input
+              id="multi-entry-date"
+              type="date"
+              value={localDate}
+              onChange={e => setLocalDate(e.target.value)}
+              className="h-9 w-[200px]"
+            />
+          </div>
+        )}
+
         <div className="space-y-4 py-4">
           {editableEntries.map((entry, index) => (
             <div key={entry.tempId} className="p-4 border rounded-lg space-y-3 bg-muted/30">
@@ -197,13 +237,14 @@ export function MultiEntryDialog({
                     ? employeeNameMap[entry.employee_id]
                     : `Entry ${index + 1}`}
                 </h3>
-                {!readOnly && editableEntries.length > 1 && (
+                {!readOnly && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoveEntry(entry.tempId)}
                     className="text-red-600 hover:text-red-700"
+                    title="Delete entry"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -330,6 +371,12 @@ export function MultiEntryDialog({
             </div>
           ))}
 
+          {editableEntries.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              No entries for this date. Saving will delete any existing entries.
+            </p>
+          )}
+
           {!readOnly && (
             <Button
               type="button"
@@ -338,7 +385,7 @@ export function MultiEntryDialog({
               className="w-full gap-2"
             >
               <PlusCircle className="h-4 w-4" />
-              Add Another Entry
+              {editableEntries.length === 0 ? 'Add Entry' : 'Add Another Entry'}
             </Button>
           )}
         </div>
@@ -348,6 +395,9 @@ export function MultiEntryDialog({
             <span>Total Hours:</span>
             <span>{totalHours.toFixed(2)} {isOverLimit && '(exceeds 24 hour limit!)'}</span>
           </div>
+          {saveError && (
+            <p className="text-sm text-red-600 mt-2">{saveError}</p>
+          )}
         </div>
 
         <DialogFooter>
@@ -365,8 +415,8 @@ export function MultiEntryDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={isOverLimit}>
-                Save All Changes
+              <Button onClick={handleSave} disabled={isOverLimit || saving}>
+                {saving ? 'Saving...' : 'Save All Changes'}
               </Button>
             </>
           )}

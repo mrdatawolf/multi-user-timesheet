@@ -345,7 +345,8 @@ export async function POST(request: NextRequest) {
         skipped_dates: skippedDates,
       });
     } else if (body.action === 'update_day') {
-      // Batch update: replace all entries for a specific date
+      // Batch update: replace all entries for a specific date, optionally
+      // moving them to a different date (target_entry_date) in the same call.
       // Validate total hours
       const entries = body.entries || [];
       const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
@@ -356,19 +357,38 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const targetEntryDate = body.target_entry_date || body.entry_date;
+      const isMovingDate = targetEntryDate !== body.entry_date;
+
+      if (isMovingDate) {
+        // The target date isn't shown in this dialog, so we can't safely
+        // merge with whatever might already be there — block instead of
+        // risking an overwrite of unrelated entries.
+        const targetExisting = await db.execute({
+          sql: 'SELECT COUNT(*) as count FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+          args: [body.employee_id, targetEntryDate],
+        });
+        if (Number((targetExisting.rows[0] as any).count) > 0) {
+          return NextResponse.json({
+            error: 'date_occupied',
+            message: `${targetEntryDate} already has entries. Edit that day directly instead of moving entries onto it.`,
+          }, { status: 400 });
+        }
+      }
+
       // Get old entries for audit log
       const oldEntries = await db.execute({
         sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
-      // Delete all existing entries for this date
+      // Delete all existing entries for the source date
       await db.execute({
         sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
-      // Insert all new entries
+      // Insert all new entries at the target date (same as source date unless moving)
       const newEntries = [];
       for (const entry of entries) {
         const result = await db.execute({
@@ -376,14 +396,14 @@ export async function POST(request: NextRequest) {
                 VALUES (?, ?, ?, ?, ?)`,
           args: [
             body.employee_id,
-            body.entry_date,
+            targetEntryDate,
             entry.time_code,
             entry.hours || 0,
             entry.notes || null,
           ],
         });
         // Convert BigInt to Number for JSON serialization
-        newEntries.push({ id: Number(result.lastInsertRowid), ...entry });
+        newEntries.push({ id: Number(result.lastInsertRowid), ...entry, entry_date: targetEntryDate });
       }
 
       // Log audit entry (non-critical - don't fail the operation if this fails)

@@ -7,7 +7,7 @@ import { AttendanceGridMonth } from '@/components/attendance-grid-month';
 import { AttendanceGridWeek } from '@/components/attendance-grid-week';
 import { AttendanceGridYearCalendar } from '@/components/attendance-grid-year-calendar';
 import { ViewToggle } from '@/components/view-toggle';
-import type { AttendanceEntry, DailySummary, ViewType } from '@/lib/attendance-types';
+import type { AttendanceEntry, DailySummary, ViewType, EntryChangeResult } from '@/lib/attendance-types';
 import { formatDateStr, parseDateStr, getWeekBounds, getWeekDates, navigatePeriod, getPeriodLabel } from '@/lib/date-helpers';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { BalanceCards } from '@/components/balance-cards';
@@ -504,7 +504,12 @@ function AttendanceContent() {
     }
   };
 
-  const handleEntryChange = async (date: string, updatedEntries: AttendanceEntry[], employeeId?: number) => {
+  const handleEntryChange = async (
+    date: string,
+    updatedEntries: AttendanceEntry[],
+    employeeId?: number,
+    originalDate?: string
+  ): Promise<EntryChangeResult> => {
     const targetEmployeeId = employeeId ?? selectedEmployeeId;
     if (!targetEmployeeId || !isAuthenticated) {
       if (viewAll && isAuthenticated) {
@@ -513,11 +518,12 @@ function AttendanceContent() {
           description: 'Choose a specific employee from the dropdown to make changes.',
         });
       }
-      return;
+      return { success: false };
     }
 
     try {
-      // Send batch update to API
+      // entry_date is the source day to clear; target_entry_date is where the
+      // entries end up. They're the same unless the date field was changed.
       const response = await authFetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -526,18 +532,23 @@ function AttendanceContent() {
         body: JSON.stringify({
           action: 'update_day',
           employee_id: targetEmployeeId,
-          entry_date: date,
+          entry_date: originalDate ?? date,
+          target_entry_date: date,
           entries: updatedEntries,
         }),
       });
 
       // If redirected to login due to expired session, stop processing
       if (response.status === 401) {
-        return;
+        return { success: false };
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (errorData.error === 'date_occupied') {
+          // Let the dialog show this inline instead of a generic toast.
+          return { success: false, error: errorData.message };
+        }
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
 
@@ -556,6 +567,7 @@ function AttendanceContent() {
           ? 'Entries deleted successfully.'
           : `${updatedEntries.length} ${updatedEntries.length === 1 ? 'entry' : 'entries'} saved successfully.`,
       });
+      return { success: true };
     } catch (error) {
       console.error('Failed to save attendance:', error);
       toast({
@@ -563,6 +575,7 @@ function AttendanceContent() {
         description: error instanceof Error ? error.message : 'There was an error saving your attendance. Please try again.',
         variant: 'destructive',
       });
+      return { success: false, error: error instanceof Error ? error.message : 'Save failed' };
     }
   };
 
