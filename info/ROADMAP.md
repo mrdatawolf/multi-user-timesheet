@@ -31,75 +31,9 @@ Transform Excel-based timesheet tracking into a modern, secure web application w
 - [x] Data protection automated (Phase 4)
 - [x] White labeling & brand URI (Phase 4.5)
 - [x] Interactive help system (Phase 6)
-- [ ] Reporting system (Phase 7) ← **Current**
-- [ ] Approval workflows (Phase 8)
-- [ ] Policy automation (Phase 9)
-
----
-
-## Current Phase
-
-### Phase 7: Reporting System
-**Status:** In Progress
-**Plan:** [PHASE-7-PLAN.md](PHASE-7-PLAN.md)
-
-Flexible reporting system that supports both common reports shared across all brands and brand-specific custom reports.
-
-**Key Deliverables:**
-- ✅ Reports landing page
-- ✅ Report filters and table components
-- ✅ Leave Balance Summary report
-- ✅ CSV export functionality
-- ✅ Permission-filtered report data
-- ✅ Color customization for time codes and status indicators
-- ⏳ Additional common reports (Attendance Summary, Time-Off Calendar)
-- ⏳ Custom report engine (JSON-driven)
-
-**Impact:** Better visibility into attendance data, customizable appearance.
-
----
-
-## Completed Phases
-
-| Phase | Description | Plan |
-|-------|-------------|------|
-| **Phase 1** | Core Attendance System - Excel replacement with web-based attendance grid | - |
-| **Phase 2** | Permission System - Multi-user security with granular permissions | [COMPLETE/PHASE-2-PLAN.md](COMPLETE/PHASE-2-PLAN.md) |
-| **Phase 3** | Multiple Entries Per Day - Split shifts, multiple time codes | [COMPLETE/PHASE-3-PLAN.md](COMPLETE/PHASE-3-PLAN.md) |
-| **Phase 4** | Automated Backups - 7-day, 4-week, 12-month retention | [COMPLETE/PHASE-4-PLAN.md](COMPLETE/PHASE-4-PLAN.md) |
-| **Phase 4.5** | White Labeling & Brand URI - Build-time brand selection with configurable API URLs | - |
-| **Phase 6** | Contextual Help & Admin Settings - Help system, groups/job titles management, color customization | [PHASE-6-PLAN.md](PHASE-6-PLAN.md) |
-
----
-
-## Approved Roadmap
-
-These phases have been approved for development after the current phase.
-
-### Phase 8: Leave Request & Approval Workflow
-**Plan:** [ROADMAP/PHASE-8-PLAN.md](ROADMAP/PHASE-8-PLAN.md)
-
-Core request and approval workflow allowing managers to submit and approve leave requests on behalf of employees.
-
-**Key Deliverables:**
-- Leave request submission (by managers)
-- Request states: Draft, Pending, Approved, Denied, Cancelled
-- Supervisor approval workflow
-- Manager approval dashboard
-- Balance deduction on approval
-
----
-
-### Phase 9: Policy Engine
-**Plan:** [ROADMAP/PHASE-9-PLAN.md](ROADMAP/PHASE-9-PLAN.md)
-
-Enforce organization-specific leave policies including eligibility rules, usage limits, and increment requirements.
-
-**Key Deliverables:**
-- Eligibility rules (90-day, 1-year, employment type requirements)
-- Increment validation (full-day for floating holiday, 2hr minimum for sick)
-- Maximum usage limits and bank caps
-- Period lockouts for payroll processing
+- [X] Reporting system (Phase 7)
+- [X] Approval workflows (Phase 8)
+- [X] Policy automation (Phase 9)
 
 ---
 
@@ -146,5 +80,5 @@ The following features may be considered for future phases:
 
 ---
 
-**Document Version:** 4.0
+**Document Version:** 4.1
 **Visibility:** Superuser Only
