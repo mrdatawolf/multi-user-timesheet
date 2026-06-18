@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
 
     // Build employee query with permission filtering
     let employeeSql = `
-      SELECT id, first_name, last_name, date_of_hire
+      SELECT id, first_name, last_name, date_of_hire, rehire_date, employment_type
       FROM employees
       WHERE is_active = 1
     `;
@@ -175,6 +175,8 @@ export async function GET(request: NextRequest) {
       first_name: string;
       last_name: string;
       date_of_hire: string | null;
+      rehire_date: string | null;
+      employment_type: 'full_time' | 'part_time' | null;
     }>;
 
     if (employees.length === 0) {
@@ -219,7 +221,7 @@ export async function GET(request: NextRequest) {
     const calendarWindow = { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
 
     const resolveBalanceWindow = (
-      emp: { id: number; date_of_hire: string | null },
+      emp: { id: number; date_of_hire: string | null; rehire_date: string | null; employment_type: 'full_time' | 'part_time' | null },
       lt: EnabledLeaveType
     ): BalanceWindow => {
       const empAllocations = allocationsMap.get(emp.id) || new Map();
@@ -227,7 +229,10 @@ export async function GET(request: NextRequest) {
       const accrualRule = accrualRules[lt.timeCode];
 
       if (accrualRule && emp.date_of_hire) {
-        const result = calculateAccrual(emp.date_of_hire, year, asOfDate, accrualRule);
+        // Rules that reset on rehire (e.g. floating holiday) anchor to the
+        // rehire date instead of the original hire date.
+        const anchorDate = accrualRule.resetOnRehire && emp.rehire_date ? emp.rehire_date : emp.date_of_hire;
+        const result = calculateAccrual(anchorDate, year, asOfDate, accrualRule, emp.employment_type ?? undefined);
         const accrualWindow = getAccrualWindow(result) || calendarWindow;
         return {
           ...accrualWindow,

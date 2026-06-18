@@ -75,7 +75,13 @@
       "Bash(git stash *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Public\\\\Projects\\\\GitHub\\\\multi-user-timesheet\" -Recurse -Filter \"*.tsx\" -Filter \"*.ts\")",
       "Bash(Select-Object -First 20)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(sqlite3 attendance.db \".tables\")",
+      "Bash(cat > *)",
+      "Bash(npx vitest *)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }

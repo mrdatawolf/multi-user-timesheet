@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateTieredSeniorityAccrual,
   calculateAnnualGrantAccrual,
+  calculateHoursWorkedAccrual,
   type AccrualRule,
 } from '../accrual-calculations';
 import nflFeatures from '../../public/NFL/brand-features.json';
@@ -9,6 +10,7 @@ import nflFeatures from '../../public/NFL/brand-features.json';
 // Pull rules directly from NFL brand config so tests catch config bugs too
 const V_RULE = nflFeatures.features.accrualCalculations.rules.VAC as unknown as AccrualRule;
 const FLH_RULE = nflFeatures.features.accrualCalculations.rules.FLH as unknown as AccrualRule;
+const PSL_RULE = nflFeatures.features.accrualCalculations.rules.PSL as unknown as AccrualRule;
 
 // Enough hours to qualify as full-time (threshold is 1,200)
 const FULL_TIME_HOURS = 1300;
@@ -23,11 +25,16 @@ function d(year: number, month: number, day: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 // VACATION  (tieredSeniority, benefit year Jun 1 – May 31)
 //
-// Expected tiers per NFL policy:
-//   0–2 years  =  40 h  (5 days)
-//   3–7 years  =  80 h  (10 days)
-//   8–14 years = 120 h  (15 days)
-//   15+ years  = 160 h  (20 days)
+// Expected tiers per the official NFL "Vacation Policy" document. The table
+// has 5 base-year columns, but the operative benefit is the "Weeks Vacation"
+// row (actual usable time off), not the "Hours/Pay" row (a separate pay
+// calculation, not a count of usable vacation hours). Weeks go 1, 2, 2, 3, 4
+// across the five columns — 3-4 years and 5-7 years both land on "2 weeks" —
+// so for actual usable hours there are only 4 distinct tiers:
+//   0–2 years   =  40 h  (1 week)
+//   3–7 years   =  80 h  (2 weeks — 3-4yr and 5-7yr columns both say 2 weeks)
+//   8–14 years  = 120 h  (3 weeks)
+//   15+ years   = 160 h  (4 weeks)
 //
 // Base years are measured as of the benefit-year start (Jun 1).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +69,7 @@ describe('NFL Vacation accrual', () => {
     });
 
     it('5 years of service → 80 h', () => {
+      // 5-7yr column also says "2 Weeks" — same tier as 3-4yr, not a new one.
       const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
       const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
       expect(result.accruedHours).toBe(80);
@@ -98,6 +106,24 @@ describe('NFL Vacation accrual', () => {
     });
   });
 
+  describe('part-time earn-rate formula matches policy per tier', () => {
+    // Mirrors the "Weeks Vacation" tiers above (not the "Hours/Pay" row):
+    // rate and cap both scale with the same 4 tiers a full-time employee uses.
+    const cases: Array<[number, { earnHours: number; perHoursWorked: number; maxHours: number }]> = [
+      [0, { earnHours: 1, perHoursWorked: 30, maxHours: 40 }],
+      [3, { earnHours: 2, perHoursWorked: 30, maxHours: 80 }],
+      [5, { earnHours: 2, perHoursWorked: 30, maxHours: 80 }],
+      [8, { earnHours: 3, perHoursWorked: 30, maxHours: 120 }],
+      [15, { earnHours: 4, perHoursWorked: 30, maxHours: 160 }],
+    ];
+
+    it.each(cases)('base years %i picks the matching partTime earn-rate tier', (baseYears, expected) => {
+      const hire = new Date(2025 - baseYears, 5, 1); // Jun 1, `baseYears` years before 2025
+      const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, undefined, false, 'part_time');
+      expect(result.tieredSeniorityDetails?.currentTier.partTime).toEqual(expected);
+    });
+  });
+
   describe('benefit year boundaries cross calendar years', () => {
     it('asOfDate before Jun 1 uses previous benefit year start for base-year calc', () => {
       // Employee with 3 base years: hired Jun 1 2022.
@@ -110,14 +136,14 @@ describe('NFL Vacation accrual', () => {
 
     it('asOfDate just before Jun 1 uses benefit year starting previous Jun', () => {
       // May 31 is still in the old benefit year
-      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025
+      const hire = d(2020, 6, 1);        // 5 base years at Jun 1 2025 -> 3-7yr tier
       const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 5, 31), V_RULE, FULL_TIME_HOURS);
       expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2025, 6, 1));
       expect(result.accruedHours).toBe(80);
     });
 
     it('asOfDate on Jun 1 starts new benefit year and recalculates base years', () => {
-      // Hired Jun 1 2020: as of Jun 1 2026 → 6 base years → still 80 h
+      // Hired Jun 1 2020: as of Jun 1 2026 → 6 base years → still 3-7yr tier = 80 h
       const hire = d(2020, 6, 1);
       const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, FULL_TIME_HOURS);
       expect(result.tieredSeniorityDetails?.periodStart).toEqual(d(2026, 6, 1));
@@ -126,8 +152,8 @@ describe('NFL Vacation accrual', () => {
     });
 
     it('tier changes correctly when benefit year flips and pushes employee into new tier', () => {
-      // Hired Jun 1 2017: 8 base years at Jun 1 2025 → 120 h
-      //                   9 base years at Jun 1 2026 → still 120 h
+      // Hired Jun 1 2017: 8 base years at Jun 1 2025 → 8-14yr tier = 120 h
+      //                   9 base years at Jun 1 2026 → still 8-14yr tier = 120 h
       const hire = d(2017, 6, 1);
       const result2025 = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
       const result2026 = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 10, 1), V_RULE, FULL_TIME_HOURS);
@@ -149,6 +175,80 @@ describe('NFL Vacation accrual', () => {
       const result = calculateTieredSeniorityAccrual(hire, 2025, d(2025, 10, 1), V_RULE, FULL_TIME_HOURS);
       expect(result.tieredSeniorityDetails?.baseYears).toBe(7);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FULL-TIME ELIGIBILITY GATE (1,200-hour threshold, employmentType-driven)
+//
+// Policy: "A base year is established when an employee works 1,200 hours
+// during the vacation base year in progress, as a full-time employee...
+// Vacations may be scheduled once eligibility has been met."
+//
+// This is a one-time, permanent gate, not an annual ramp:
+//   - Once established in any base year (including a prior, partial one),
+//     a full-time employee gets the FULL tier amount on day one of every
+//     subsequent benefit year — they never get reset to "pending" just
+//     because a new period rolled over.
+//   - Until established, a full-time employee gets 0h — no prorated credit
+//     while working toward the threshold. They jump straight to the full
+//     tier amount the moment they cross 1,200 hours.
+//   - These calls go through the employmentType param (not the explicit
+//     totalHoursWorked override used elsewhere in this file), since that's
+//     the path real callers (the API routes) actually use.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Vacation full-time eligibility gate', () => {
+  it('genuine new hire mid-base-year with too few hours gets 0h, not yet eligible', () => {
+    // Hired ~2 months before asOfDate (the real Maguire case) — nowhere
+    // near 1,200 hours either before or within the current base year.
+    const hire = d(2026, 4, 22);
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 16), V_RULE, undefined, false, 'full_time');
+    expect(result.isEligible).toBe(false);
+    expect(result.accruedHours).toBe(0);
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+  });
+
+  it('established veteran is not reset to pending just because a new period rolled over', () => {
+    // The original bug: a 7-year employee evaluated right at period rollover.
+    const hire = d(2019, 5, 13);
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+    expect(result.isEligible).toBe(true);
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+    expect(result.accruedHours).toBe(80); // 7 base years -> 3-7yr tier
+  });
+
+  describe('boundary: hours accumulated before the period started', () => {
+    it('29 weeks of prior tenure (1,160h, just under 1,200h) has NOT established eligibility', () => {
+      const hire = d(2025, 11, 9); // ~29 weeks before Jun 1 2026
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+      expect(result.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+      expect(result.accruedHours).toBe(0);
+    });
+
+    it('31 weeks of prior tenure (1,240h, over 1,200h) HAS established eligibility', () => {
+      const hire = d(2025, 10, 26); // ~31 weeks before Jun 1 2026
+      const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 1), V_RULE, undefined, false, 'full_time');
+      expect(result.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+      expect(result.accruedHours).toBe(40); // 0-2yr tier
+    });
+  });
+
+  it('a new hire becomes eligible mid-base-year the moment they cross the threshold', () => {
+    const hire = d(2026, 6, 1); // hired exactly at this period's start
+
+    const before = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 11, 1), V_RULE, undefined, false, 'full_time');
+    expect(before.tieredSeniorityDetails?.employeeType).toBe('pendingEligibility');
+    expect(before.accruedHours).toBe(0);
+
+    const after = calculateTieredSeniorityAccrual(hire, 2026, d(2027, 2, 1), V_RULE, undefined, false, 'full_time');
+    expect(after.tieredSeniorityDetails?.employeeType).toBe('fullTime');
+    expect(after.accruedHours).toBe(40); // jumps straight to the full tier amount, no partial credit
+  });
+
+  it('part-time employees still use the prorated earn-rate ramp, unaffected by the full-time gate', () => {
+    const hire = d(2020, 6, 1); // 6 base years -> 3-7yr tier
+    const result = calculateTieredSeniorityAccrual(hire, 2026, d(2026, 6, 16), V_RULE, undefined, false, 'part_time');
+    expect(result.tieredSeniorityDetails?.employeeType).toBe('partTime');
   });
 });
 
@@ -240,5 +340,47 @@ describe('NFL Floating Holiday accrual', () => {
       expect(result.annualGrantDetails?.benefitYearStart).toEqual(d(2025, 6, 1));
       expect(result.annualGrantDetails?.benefitYearEnd).toEqual(d(2026, 5, 31));
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAID SICK LEAVE  (hoursWorked, 1h per 30h worked, max 80h)
+//
+// Policy: "Starting from the first day of employment, you'll accrue paid
+// sick leave... eligible to USE sick leave as of their 90th day."
+//
+// Accrual and usage eligibility are two different gates:
+//   - Accrual starts day 1 (waitPeriod: 0 days) — hours tick in the
+//     background even before day 90.
+//   - The accrued balance isn't usable/schedulable until day 90
+//     (usageWaitPeriod: 90 days). It doesn't reset at day 90 — everything
+//     accrued during the wait becomes available all at once.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Paid Sick Leave accrual', () => {
+  it('accrues in the background but is not usable before day 90', () => {
+    // Hired Jan 1 2026, checked on day 89 (Mar 31 2026).
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 3, 31), PSL_RULE);
+    expect(result.isEligible).toBe(false);
+    expect(result.accruedHours).toBe(0);
+    expect(result.hoursWorkedDetails?.isUsable).toBe(false);
+    // Hours are still accruing under the hood even though they're not usable yet.
+    expect(result.hoursWorkedDetails?.accruedRegardlessOfUsageGate).toBeGreaterThan(0);
+  });
+
+  it('unlocks the full accrued balance (not reset to 0) the moment day 90 hits', () => {
+    // Hired Jan 1 2026, checked on exactly day 90 (Apr 1 2026).
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 4, 1), PSL_RULE);
+    expect(result.isEligible).toBe(true);
+    expect(result.hoursWorkedDetails?.isUsable).toBe(true);
+    // What was usable equals everything accrued so far, not a fraction of it.
+    expect(result.accruedHours).toBe(result.hoursWorkedDetails?.accruedRegardlessOfUsageGate);
+    expect(result.accruedHours).toBeGreaterThan(0);
+  });
+
+  it('continues accruing normally well past day 90', () => {
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 10, 1), PSL_RULE);
+    expect(result.isEligible).toBe(true);
+    expect(result.accruedHours).toBeGreaterThan(0);
+    expect(result.accruedHours).toBeLessThanOrEqual(80); // maxAccrual cap
   });
 });

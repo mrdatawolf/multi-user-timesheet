@@ -26,13 +26,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get employee's hire date for accrual calculations
+    // Get employee's hire date, rehire date, and employment type for accrual calculations
     const employeeResult = await db.execute({
-      sql: 'SELECT date_of_hire FROM employees WHERE id = ?',
+      sql: 'SELECT date_of_hire, rehire_date, employment_type FROM employees WHERE id = ?',
       args: [parseInt(employeeId)]
     });
     const hireDate = employeeResult.rows.length > 0
       ? (employeeResult.rows[0] as any).date_of_hire
+      : null;
+    const rehireDate = employeeResult.rows.length > 0
+      ? (employeeResult.rows[0] as any).rehire_date
+      : null;
+    const employmentType = employeeResult.rows.length > 0
+      ? (employeeResult.rows[0] as any).employment_type
       : null;
 
     // Try to get time codes from brand JSON first
@@ -63,12 +69,16 @@ export async function GET(request: NextRequest) {
         // Only calculate from hire date when no manual override exists.
         // A manual override (set per-employee in the allocations table) always takes precedence.
         if (!override && accrualRule && hireDate) {
+          // Rules that reset on rehire (e.g. floating holiday) anchor to the
+          // rehire date instead of the original hire date.
+          const anchorDate = (accrualRule as AccrualRule).resetOnRehire && rehireDate ? rehireDate : hireDate;
           // Calculate accrued hours based on rules
           accrualDetails = calculateAccrual(
-            hireDate,
+            anchorDate,
             targetYear,
             asOfDate,
-            accrualRule as AccrualRule
+            accrualRule as AccrualRule,
+            employmentType
           );
           // Use accrued hours instead of static allocation
           allocatedHours = accrualDetails.accruedHours;
@@ -102,12 +112,16 @@ export async function GET(request: NextRequest) {
 
         // Manual override takes precedence over accrual calculation
         if (!override && accrualRule && hireDate) {
+          // Rules that reset on rehire (e.g. floating holiday) anchor to the
+          // rehire date instead of the original hire date.
+          const anchorDate = (accrualRule as AccrualRule).resetOnRehire && rehireDate ? rehireDate : hireDate;
           // Calculate accrued hours based on rules
           accrualDetails = calculateAccrual(
-            hireDate,
+            anchorDate,
             targetYear,
             asOfDate,
-            accrualRule as AccrualRule
+            accrualRule as AccrualRule,
+            employmentType
           );
           // Use accrued hours instead of static allocation
           allocatedHours = accrualDetails.accruedHours;

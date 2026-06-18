@@ -225,15 +225,20 @@ export async function POST(request: NextRequest) {
         const entryYear = new Date(start_date + 'T00:00:00').getFullYear();
 
         if (accrualRule) {
-          // Get employee hire date for accrual calculation
+          // Get employee hire date, rehire date, and employment type for accrual calculation
           const empResult = await db.execute({
-            sql: 'SELECT date_of_hire FROM employees WHERE id = ?',
+            sql: 'SELECT date_of_hire, rehire_date, employment_type FROM employees WHERE id = ?',
             args: [body.employee_id],
           });
           const hireDate = empResult.rows.length > 0 ? (empResult.rows[0] as any).date_of_hire : null;
+          const rehireDate = empResult.rows.length > 0 ? (empResult.rows[0] as any).rehire_date : null;
+          const employmentType = empResult.rows.length > 0 ? (empResult.rows[0] as any).employment_type : null;
 
           if (hireDate) {
-            const accrualResult = calculateAccrual(hireDate, entryYear, new Date(), accrualRule as AccrualRule);
+            // Rules that reset on rehire (e.g. floating holiday) anchor to the
+            // rehire date instead of the original hire date.
+            const anchorDate = (accrualRule as AccrualRule).resetOnRehire && rehireDate ? rehireDate : hireDate;
+            const accrualResult = calculateAccrual(anchorDate, entryYear, new Date(), accrualRule as AccrualRule, employmentType);
             effectiveLimit = accrualResult.accruedHours;
           }
         }
