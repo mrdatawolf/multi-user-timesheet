@@ -40,6 +40,9 @@ interface AccrualDetails {
       exemptFullTime: { assumedWeeklyHours: number; condition: string };
       exemptPartTime: string;
     };
+    accruedRegardlessOfUsageGate: number;
+    isUsable: boolean;
+    usableFromDate: string | null;
   };
   tieredSeniorityDetails?: {
     baseYears: number;
