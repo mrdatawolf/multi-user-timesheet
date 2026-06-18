@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { MultiEntryDialog } from './multi-entry-dialog';
-import type { AttendanceEntry } from '@/lib/attendance-types';
+import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
 import { CELL_BG_COLOR_MAP } from '@/hooks/use-attendance-cell';
 import { getWeekDates, formatDateStr, isToday, isWeekend, DAY_NAMES_SHORT } from '@/lib/date-helpers';
 import { useAuth } from '@/lib/auth-context';
@@ -40,7 +40,7 @@ interface AttendanceGridStaffProps {
   weekStart?: Date;
   viewType: 'month' | 'week';
   companyHolidays: Set<string>;
-  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId: number) => void;
+  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId: number, originalDate?: string) => Promise<EntryChangeResult>;
 }
 
 const SHORT_MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -233,10 +233,9 @@ export function AttendanceGridStaff({
         date={dialogDate}
         entries={dialogEntries}
         timeCodes={timeCodes}
-        onSave={(date, updatedEntries) => {
-          onEntryChange(date, updatedEntries, dialogEmployeeId);
-          setDialogOpen(false);
-        }}
+        onSave={(date, updatedEntries, originalDate) =>
+          onEntryChange(date, updatedEntries, dialogEmployeeId, originalDate)
+        }
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
-import type { AttendanceEntry, DailySummary, DailySummaryDay } from '@/lib/attendance-types';
+import type { AttendanceEntry, DailySummary, DailySummaryDay, EntryChangeResult } from '@/lib/attendance-types';
 import { useAttendanceCell } from '@/hooks/use-attendance-cell';
 
 // Re-export types for backward compatibility
@@ -21,7 +21,7 @@ interface AttendanceGridProps {
   employeeId: number;
   entries: AttendanceEntry[];
   timeCodes: TimeCode[];
-  onEntryChange: (date: string, entries: AttendanceEntry[]) => void;
+  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   companyHolidays?: Set<string>;
   dailySummary?: DailySummary | null;
   totalActiveEmployees?: number;
@@ -98,8 +98,8 @@ export function AttendanceGridYear({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[]) => {
-    onEntryChange(date, updatedEntries);
+  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+    return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 
   const getDaysInMonth = (month: number): number => {

@@ -14,3 +14,8 @@ export interface DailySummaryDay {
 export type DailySummary = Record<string, DailySummaryDay>;
 
 export type ViewType = 'year' | 'month' | 'week';
+
+export interface EntryChangeResult {
+  success: boolean;
+  error?: string;
+}

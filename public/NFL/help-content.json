@@ -92,6 +92,17 @@
       "order": 8
     },
     {
+      "id": "entry-date",
+      "screen": "attendance",
+      "section": "entry-date",
+      "title": "Date",
+      "whatItIs": "The date these entries apply to.",
+      "howToUse": "Change this to move all entries in this dialog to a different date. If the new date already has entries, save will be blocked - edit that day directly instead.",
+      "howToUpdate": "Pick a new date, then click 'Save All Changes' to move the entries.",
+      "position": "right",
+      "order": 9
+    },
+    {
       "id": "entry-time-code",
       "screen": "attendance",
       "section": "entry-time-code",

@@ -114,9 +114,9 @@ export function BulkEntryDialog({
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
-      resetForm();
-    }
+    // Always reset so the next time this dialog opens (whether closed via
+    // Cancel, a successful save, Escape, or clicking outside) it starts fresh.
+    resetForm();
     onOpenChange(newOpen);
   };
 
@@ -156,7 +156,7 @@ export function BulkEntryDialog({
       }
 
       onSave();
-      onOpenChange(false);
+      handleOpenChange(false);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to save bulk entries');
     } finally {
@@ -342,7 +342,7 @@ export function BulkEntryDialog({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={!isValid || saving}>
