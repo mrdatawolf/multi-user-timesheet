@@ -34,6 +34,9 @@ interface HoursWorkedAccrualDetails {
     exemptFullTime: { assumedWeeklyHours: number; condition: string };
     exemptPartTime: string;
   };
+  accruedRegardlessOfUsageGate: number;
+  isUsable: boolean;
+  usableFromDate: string | null;
 }
 
 interface VacationTier {
@@ -300,6 +303,12 @@ export function BalanceBreakdownModal({
                       <span className="text-muted-foreground">Starts:</span>
                       <span>First day of employment</span>
                     </div>
+                    {!accrualDetails.hoursWorkedDetails.isUsable && accrualDetails.hoursWorkedDetails.usableFromDate && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Usable from:</span>
+                        <span>{formatDate(accrualDetails.hoursWorkedDetails.usableFromDate)}</span>
+                      </div>
+                    )}
 
                     {/* Accrual Rate */}
                     <div className="mt-2 pt-2 border-t">
@@ -312,6 +321,12 @@ export function BalanceBreakdownModal({
                         <span className="text-muted-foreground">Est. Hours Worked:</span>
                         <span>~{accrualDetails.hoursWorkedDetails.totalHoursWorked}h</span>
                       </div>
+                      {!accrualDetails.hoursWorkedDetails.isUsable && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Accruing (not yet usable):</span>
+                          <span>{accrualDetails.hoursWorkedDetails.accruedRegardlessOfUsageGate}h</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Accrued Hours */}

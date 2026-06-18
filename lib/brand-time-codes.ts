@@ -117,6 +117,11 @@ export interface AccrualRuleConfig {
       months?: number;
       days?: number;
     };
+    usageWaitPeriod?: {
+      years?: number;
+      months?: number;
+      days?: number;
+    };
     fullTime?: {
       hoursThreshold?: number;
       includesHolidayPay?: boolean;
@@ -128,6 +133,7 @@ export interface AccrualRuleConfig {
       expectedUsage?: number;
     };
   };
+  resetOnRehire?: boolean;
   accrualExclusions?: string[];
   hoursCountedBy?: {
     nonexempt: string[];

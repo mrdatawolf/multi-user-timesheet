@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     // Get employee details
     const empResult = await db.execute({
-      sql: 'SELECT id, first_name, last_name, group_id, date_of_hire, employment_type FROM employees WHERE id = ? AND is_active = 1',
+      sql: 'SELECT id, first_name, last_name, group_id, date_of_hire, rehire_date, employment_type FROM employees WHERE id = ? AND is_active = 1',
       args: [empId],
     });
     const employee = empResult.rows[0] as unknown as {
@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       last_name: string;
       group_id: number | null;
       date_of_hire: string | null;
+      rehire_date: string | null;
       employment_type: 'full_time' | 'part_time' | null;
     } | undefined;
 
@@ -133,7 +134,12 @@ export async function GET(request: NextRequest) {
       }
       const accrualRule = accrualRules[tc.code];
       if (accrualRule && employee.date_of_hire) {
-        const result = calculateAccrual(employee.date_of_hire, year, asOfDate, accrualRule as AccrualRule, employee.employment_type ?? undefined);
+        // Rules that reset on rehire (e.g. floating holiday) anchor to the
+        // rehire date instead of the original hire date.
+        const anchorDate = (accrualRule as AccrualRule).resetOnRehire && employee.rehire_date
+          ? employee.rehire_date
+          : employee.date_of_hire;
+        const result = calculateAccrual(anchorDate, year, asOfDate, accrualRule as AccrualRule, employee.employment_type ?? undefined);
         allocations.set(tc.code, result.accruedHours);
       }
     }

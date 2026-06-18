@@ -36,6 +36,7 @@
           "eligibility": {
             "waitPeriod": { "years": 1 }
           },
+          "resetOnRehire": true,
           "benefitYear": { "startMonth": 6, "startDay": 1, "endMonth": 5, "endDay": 31 },
           "prorationBrackets": [
             { "startMonth": 6, "startDay": 1, "endMonth": 8, "endDay": 31, "units": 3 },
@@ -58,7 +59,8 @@
           },
           "period": "12month",
           "eligibility": {
-            "waitPeriod": { "days": 0 }
+            "waitPeriod": { "days": 0 },
+            "usageWaitPeriod": { "days": 90 }
           },
           "accrualExclusions": ["paidLeave", "unpaidLeave"],
           "hoursCountedBy": {

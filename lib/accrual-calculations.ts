@@ -70,6 +70,15 @@ export interface AccrualRule {
       months?: number;
       days?: number;
     };
+    // Separate, later wait period before accrued hours become usable/
+    // schedulable. Accrual itself still starts at `waitPeriod` (e.g. day 1);
+    // this only gates when the accrued balance becomes available. Defaults
+    // to the same as `waitPeriod` when omitted.
+    usageWaitPeriod?: {
+      years?: number;
+      months?: number;
+      days?: number;
+    };
     fullTime?: {
       hoursThreshold?: number;
       includesHolidayPay?: boolean;
@@ -81,6 +90,9 @@ export interface AccrualRule {
       expectedUsage?: number;
     };
   };
+  // When true, eligibility/proration is anchored to the employee's
+  // rehire_date (if set) instead of their original date_of_hire.
+  resetOnRehire?: boolean;
   accrualExclusions?: string[];  // e.g., ["paidLeave", "unpaidLeave"]
   hoursCountedBy?: {
     nonexempt: string[];
@@ -125,6 +137,12 @@ export interface HoursWorkedAccrualDetails {
     exemptFullTime: { assumedWeeklyHours: number; condition: string };
     exemptPartTime: string;
   };
+  // True running accrual regardless of usage eligibility (see isUsable below).
+  accruedRegardlessOfUsageGate: number;
+  // False while still serving the usageWaitPeriod — hours are accruing in
+  // the background but not yet schedulable.
+  isUsable: boolean;
+  usableFromDate: string | null;
 }
 
 export interface TieredSeniorityAccrualDetails {
@@ -390,6 +408,15 @@ export function calculateHoursWorkedAccrual(
   const eligibilityDate = calculateEligibilityDate(hireDate, waitPeriod);
   const isEligible = asOfDate >= eligibilityDate;
 
+  // Accrual itself starts at eligibilityDate (often day 1), but the accrued
+  // balance may not become usable/schedulable until later — e.g. PSL accrues
+  // from day 1 but can't be used until day 90. Defaults to eligibilityDate
+  // (immediately usable) when usageWaitPeriod isn't configured.
+  const usageWaitPeriod = rule.eligibility?.usageWaitPeriod;
+  const usageEligibilityDate = usageWaitPeriod
+    ? calculateEligibilityDate(hireDate, usageWaitPeriod)
+    : eligibilityDate;
+
   const maxAccrual = rule.maxAccrual || 80;
   const maxUsage = rule.maxUsage || { hours: 40, days: 5, rule: 'whicheverGreater' };
   const accrualRate = rule.accrualRate || { earnHours: 1, perHoursWorked: 30 };
@@ -431,7 +458,10 @@ export function calculateHoursWorkedAccrual(
           nonexempt: ['straightTime', 'overtime'],
           exemptFullTime: { assumedWeeklyHours: 40, condition: 'anyWorkPerformed' },
           exemptPartTime: 'regularSchedule'
-        }
+        },
+        accruedRegardlessOfUsageGate: 0,
+        isUsable: false,
+        usableFromDate: usageEligibilityDate.toISOString()
       }
     };
   }
@@ -471,17 +501,28 @@ export function calculateHoursWorkedAccrual(
 
   // Calculate accrued hours: (hoursWorked / perHoursWorked) * earnHours
   const rawAccrued = Math.floor(estimatedHoursWorked / accrualRate.perHoursWorked) * accrualRate.earnHours;
-  const accruedHours = Math.min(rawAccrued, maxAccrual);
+  const accruedRegardlessOfUsageGate = Math.min(rawAccrued, maxAccrual);
+
+  // Hours keep accruing from day 1 regardless, but aren't usable/schedulable
+  // until usageEligibilityDate (e.g. day 90) — they don't reset once unlocked,
+  // they simply become available all at once, including everything accrued
+  // during the wait.
+  const isUsable = asOfDate >= usageEligibilityDate;
+  const accruedHours = isUsable ? accruedRegardlessOfUsageGate : 0;
+
+  const message = isUsable
+    ? `Accruing ${accrualRate.earnHours}h per ${accrualRate.perHoursWorked}h worked. ${accruedHours}h accrued based on ~${estimatedHoursWorked}h worked.`
+    : `Accruing ${accrualRate.earnHours}h per ${accrualRate.perHoursWorked}h worked (~${accruedRegardlessOfUsageGate}h so far), but not usable until ${usageEligibilityDate.toLocaleDateString()}.`;
 
   return {
-    isEligible: true,
+    isEligible: isUsable,
     eligibilityDate,
     accruedHours,
     maxHours: effectiveUsageLimit,
     quartersEarned: 0,
     quarterDetails: [],
-    nextAccrualDate: null,
-    message: `Accruing ${accrualRate.earnHours}h per ${accrualRate.perHoursWorked}h worked. ${accruedHours}h accrued based on ~${estimatedHoursWorked}h worked.`,
+    nextAccrualDate: isUsable ? null : usageEligibilityDate,
+    message,
     accrualType: 'hoursWorked',
     hoursWorkedDetails: {
       totalHoursWorked: estimatedHoursWorked,
@@ -494,7 +535,10 @@ export function calculateHoursWorkedAccrual(
         nonexempt: ['straightTime', 'overtime'],
         exemptFullTime: { assumedWeeklyHours: 40, condition: 'anyWorkPerformed' },
         exemptPartTime: 'regularSchedule'
-      }
+      },
+      accruedRegardlessOfUsageGate,
+      isUsable,
+      usableFromDate: isUsable ? null : usageEligibilityDate.toISOString()
     }
   };
 }

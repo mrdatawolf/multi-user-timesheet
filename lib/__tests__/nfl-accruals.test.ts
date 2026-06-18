@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateTieredSeniorityAccrual,
   calculateAnnualGrantAccrual,
+  calculateHoursWorkedAccrual,
   type AccrualRule,
 } from '../accrual-calculations';
 import nflFeatures from '../../public/NFL/brand-features.json';
@@ -9,6 +10,7 @@ import nflFeatures from '../../public/NFL/brand-features.json';
 // Pull rules directly from NFL brand config so tests catch config bugs too
 const V_RULE = nflFeatures.features.accrualCalculations.rules.VAC as unknown as AccrualRule;
 const FLH_RULE = nflFeatures.features.accrualCalculations.rules.FLH as unknown as AccrualRule;
+const PSL_RULE = nflFeatures.features.accrualCalculations.rules.PSL as unknown as AccrualRule;
 
 // Enough hours to qualify as full-time (threshold is 1,200)
 const FULL_TIME_HOURS = 1300;
@@ -338,5 +340,47 @@ describe('NFL Floating Holiday accrual', () => {
       expect(result.annualGrantDetails?.benefitYearStart).toEqual(d(2025, 6, 1));
       expect(result.annualGrantDetails?.benefitYearEnd).toEqual(d(2026, 5, 31));
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAID SICK LEAVE  (hoursWorked, 1h per 30h worked, max 80h)
+//
+// Policy: "Starting from the first day of employment, you'll accrue paid
+// sick leave... eligible to USE sick leave as of their 90th day."
+//
+// Accrual and usage eligibility are two different gates:
+//   - Accrual starts day 1 (waitPeriod: 0 days) — hours tick in the
+//     background even before day 90.
+//   - The accrued balance isn't usable/schedulable until day 90
+//     (usageWaitPeriod: 90 days). It doesn't reset at day 90 — everything
+//     accrued during the wait becomes available all at once.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('NFL Paid Sick Leave accrual', () => {
+  it('accrues in the background but is not usable before day 90', () => {
+    // Hired Jan 1 2026, checked on day 89 (Mar 31 2026).
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 3, 31), PSL_RULE);
+    expect(result.isEligible).toBe(false);
+    expect(result.accruedHours).toBe(0);
+    expect(result.hoursWorkedDetails?.isUsable).toBe(false);
+    // Hours are still accruing under the hood even though they're not usable yet.
+    expect(result.hoursWorkedDetails?.accruedRegardlessOfUsageGate).toBeGreaterThan(0);
+  });
+
+  it('unlocks the full accrued balance (not reset to 0) the moment day 90 hits', () => {
+    // Hired Jan 1 2026, checked on exactly day 90 (Apr 1 2026).
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 4, 1), PSL_RULE);
+    expect(result.isEligible).toBe(true);
+    expect(result.hoursWorkedDetails?.isUsable).toBe(true);
+    // What was usable equals everything accrued so far, not a fraction of it.
+    expect(result.accruedHours).toBe(result.hoursWorkedDetails?.accruedRegardlessOfUsageGate);
+    expect(result.accruedHours).toBeGreaterThan(0);
+  });
+
+  it('continues accruing normally well past day 90', () => {
+    const result = calculateHoursWorkedAccrual(d(2026, 1, 1), 2026, d(2026, 10, 1), PSL_RULE);
+    expect(result.isEligible).toBe(true);
+    expect(result.accruedHours).toBeGreaterThan(0);
+    expect(result.accruedHours).toBeLessThanOrEqual(80); // maxAccrual cap
   });
 });
