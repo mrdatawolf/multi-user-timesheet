@@ -78,11 +78,10 @@ export function SeedDemoDataCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>Seed demo data?</AlertDialogTitle>
               <AlertDialogDescription>
-                This deletes all employees, attendance entries, leave allocations,
-                office presence, and break records, then replaces them with the
-                standard demo dataset: 10 sample employees, a year of attendance
-                history, and demo logins for the manager, HR, and employee roles
-                (password <span className="font-mono">demo123</span>).
+                This deletes all employees and attendance entries, then replaces
+                them with the standard demo dataset: 10 sample employees, a few
+                months of hours-worked history, and demo logins for the manager,
+                HR, and employee roles (password <span className="font-mono">demo123</span>).
                 <span className="block mt-2 text-destructive font-medium">
                   This cannot be undone. Only do this on a fresh install or a
                   server you intend to use for demos.

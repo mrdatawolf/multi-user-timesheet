@@ -22,23 +22,11 @@ import {
 import { Palette, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface FeatureConfig {
-  enabled: boolean;
-  allowTimeCodeColors: boolean;
-  allowStatusColors: boolean;
-}
-
 interface ColorConfig {
   id: number;
-  config_type: 'time_code' | 'status';
+  config_type: 'status';
   config_key: string;
   color_name: string;
-}
-
-interface TimeCodeInfo {
-  code: string;
-  description: string;
-  defaultColor: string;
 }
 
 interface AvailableColor {
@@ -75,19 +63,18 @@ function ColorSwatch({ colorName }: { colorName: string }) {
   );
 }
 
+const STATUS_OPTIONS = [
+  { key: 'warning', label: 'Warning', description: 'Approaching the overtime threshold', defaultColor: 'amber' },
+  { key: 'critical', label: 'Overtime', description: 'Hours worked exceed the overtime threshold', defaultColor: 'red' },
+];
+
 export function ColorConfigManagement() {
   const { token } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
 
-  const [featureConfig, setFeatureConfig] = useState<FeatureConfig>({
-    enabled: false,
-    allowTimeCodeColors: false,
-    allowStatusColors: false,
-  });
   const [colorConfigs, setColorConfigs] = useState<ColorConfig[]>([]);
-  const [timeCodes, setTimeCodes] = useState<TimeCodeInfo[]>([]);
   const [availableColors, setAvailableColors] = useState<AvailableColor[]>([]);
 
   const fetchColorConfigs = useCallback(async () => {
@@ -101,9 +88,7 @@ export function ColorConfigManagement() {
 
       if (res.ok) {
         const data = await res.json();
-        setFeatureConfig(data.featureConfig || { enabled: false, allowTimeCodeColors: false, allowStatusColors: false });
         setColorConfigs(data.colorConfigs || []);
-        setTimeCodes(data.timeCodes || []);
         setAvailableColors(data.availableColors || []);
       } else {
         console.error('Failed to fetch color configs:', res.status);
@@ -119,20 +104,19 @@ export function ColorConfigManagement() {
     fetchColorConfigs();
   }, [fetchColorConfigs]);
 
-  const getCurrentColor = (configType: 'time_code' | 'status', configKey: string, defaultColor: string): string => {
-    const config = colorConfigs.find(c => c.config_type === configType && c.config_key === configKey);
+  const getCurrentColor = (configKey: string, defaultColor: string): string => {
+    const config = colorConfigs.find(c => c.config_type === 'status' && c.config_key === configKey);
     return config?.color_name || defaultColor;
   };
 
-  const isCustomized = (configType: 'time_code' | 'status', configKey: string): boolean => {
-    return colorConfigs.some(c => c.config_type === configType && c.config_key === configKey);
+  const isCustomized = (configKey: string): boolean => {
+    return colorConfigs.some(c => c.config_type === 'status' && c.config_key === configKey);
   };
 
-  const handleColorChange = async (configType: 'time_code' | 'status', configKey: string, colorName: string) => {
+  const handleColorChange = async (configKey: string, colorName: string) => {
     if (!token) return;
 
-    const savingKey = `${configType}-${configKey}`;
-    setIsSaving(savingKey);
+    setIsSaving(configKey);
 
     try {
       const res = await fetch('/api/color-config', {
@@ -141,7 +125,7 @@ export function ColorConfigManagement() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ configType, configKey, colorName }),
+        body: JSON.stringify({ configType: 'status', configKey, colorName }),
       });
 
       if (res.ok) {
@@ -169,14 +153,13 @@ export function ColorConfigManagement() {
     }
   };
 
-  const handleReset = async (configType: 'time_code' | 'status', configKey: string) => {
+  const handleReset = async (configKey: string) => {
     if (!token) return;
 
-    const savingKey = `${configType}-${configKey}`;
-    setIsSaving(savingKey);
+    setIsSaving(configKey);
 
     try {
-      const res = await fetch(`/api/color-config?configType=${configType}&configKey=${configKey}`, {
+      const res = await fetch(`/api/color-config?configType=status&configKey=${configKey}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -206,10 +189,6 @@ export function ColorConfigManagement() {
     }
   };
 
-  if (!featureConfig.enabled) {
-    return null;
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -218,7 +197,7 @@ export function ColorConfigManagement() {
           Color Configuration
         </CardTitle>
         <CardDescription>
-          Customize colors for time codes and status indicators
+          Customize colors for overtime status indicators
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -227,146 +206,69 @@ export function ColorConfigManagement() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <>
-            {/* Time Code Colors */}
-            {featureConfig.allowTimeCodeColors && timeCodes.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Time Code Colors</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">Code</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="w-[180px]">Color</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {timeCodes.map((tc) => {
-                      const currentColor = getCurrentColor('time_code', tc.code, tc.defaultColor);
-                      const customized = isCustomized('time_code', tc.code);
-                      const savingKey = `time_code-${tc.code}`;
+          <div className="space-y-3">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="w-[180px]">Color</TableHead>
+                  <TableHead className="w-[80px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {STATUS_OPTIONS.map((status) => {
+                  const currentColor = getCurrentColor(status.key, status.defaultColor);
+                  const customized = isCustomized(status.key);
+                  const savingKey = status.key;
 
-                      return (
-                        <TableRow key={tc.code}>
-                          <TableCell className="font-mono font-medium">{tc.code}</TableCell>
-                          <TableCell>{tc.description}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={currentColor}
-                              onValueChange={(value) => handleColorChange('time_code', tc.code, value)}
-                              disabled={isSaving === savingKey}
-                            >
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue>
-                                  <ColorSwatch colorName={currentColor} />
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableColors.map((color) => (
-                                  <SelectItem key={color.name} value={color.name}>
-                                    <ColorSwatch colorName={color.name} />
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {customized && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleReset('time_code', tc.code)}
-                                disabled={isSaving === savingKey}
-                                title="Reset to default"
-                              >
-                                {isSaving === savingKey ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="h-4 w-4" />
-                                )}
-                              </Button>
+                  return (
+                    <TableRow key={status.key}>
+                      <TableCell className="font-medium">{status.label}</TableCell>
+                      <TableCell className="text-muted-foreground">{status.description}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={currentColor}
+                          onValueChange={(value) => handleColorChange(status.key, value)}
+                          disabled={isSaving === savingKey}
+                        >
+                          <SelectTrigger className="w-[150px]">
+                            <SelectValue>
+                              <ColorSwatch colorName={currentColor} />
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.map((color) => (
+                              <SelectItem key={color.name} value={color.name}>
+                                <ColorSwatch colorName={color.name} />
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {customized && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleReset(status.key)}
+                            disabled={isSaving === savingKey}
+                            title="Reset to default"
+                          >
+                            {isSaving === savingKey ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4" />
                             )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {/* Status Colors */}
-            {featureConfig.allowStatusColors && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Status Colors</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="w-[180px]">Color</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[
-                      { key: 'warning', label: 'Warning', description: 'Usage at 90%+ of allocation', defaultColor: 'amber' },
-                      { key: 'critical', label: 'Critical', description: 'Usage at 100%+ of allocation', defaultColor: 'red' },
-                    ].map((status) => {
-                      const currentColor = getCurrentColor('status', status.key, status.defaultColor);
-                      const customized = isCustomized('status', status.key);
-                      const savingKey = `status-${status.key}`;
-
-                      return (
-                        <TableRow key={status.key}>
-                          <TableCell className="font-medium">{status.label}</TableCell>
-                          <TableCell className="text-muted-foreground">{status.description}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={currentColor}
-                              onValueChange={(value) => handleColorChange('status', status.key, value)}
-                              disabled={isSaving === savingKey}
-                            >
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue>
-                                  <ColorSwatch colorName={currentColor} />
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableColors.map((color) => (
-                                  <SelectItem key={color.name} value={color.name}>
-                                    <ColorSwatch colorName={color.name} />
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {customized && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleReset('status', status.key)}
-                                disabled={isSaving === savingKey}
-                                title="Reset to default"
-                              >
-                                {isSaving === savingKey ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="h-4 w-4" />
-                                )}
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>

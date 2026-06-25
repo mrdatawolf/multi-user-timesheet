@@ -6,11 +6,9 @@ import {
   getColorConfig,
   saveColorConfig,
   deleteColorConfig,
-  isColorCustomizationEnabled,
   getAvailableColors,
   SemanticColor,
 } from '@/lib/color-config';
-import { getBrandTimeCodes } from '@/lib/brand-time-codes';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,26 +24,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if feature is enabled
-    const featureConfig = await isColorCustomizationEnabled();
-
     // Get all color configs from database
     const colorConfigs = await getColorConfigs();
-
-    // Get time codes for reference
-    const timeCodes = getBrandTimeCodes() || [];
 
     // Get available colors
     const availableColors = getAvailableColors();
 
     return NextResponse.json({
-      featureConfig,
       colorConfigs,
-      timeCodes: timeCodes.map((tc) => ({
-        code: tc.code,
-        description: tc.description,
-        defaultColor: tc.color || 'gray',
-      })),
       availableColors,
     });
   } catch (error) {
@@ -57,7 +43,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/color-config
  * Create or update a color configuration
- * Body: { configType: 'time_code' | 'status', configKey: string, colorName: string }
+ * Body: { configType: 'status', configKey: string, colorName: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -75,37 +61,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if feature is enabled
-    const featureConfig = await isColorCustomizationEnabled();
-    if (!featureConfig.enabled) {
-      return NextResponse.json(
-        { error: 'Color customization is not enabled for this brand' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { configType, configKey, colorName } = body;
 
     // Validate config type
-    if (!configType || !['time_code', 'status'].includes(configType)) {
+    if (configType !== 'status') {
       return NextResponse.json(
-        { error: 'Invalid config type. Must be "time_code" or "status"' },
+        { error: 'Invalid config type. Must be "status"' },
         { status: 400 }
-      );
-    }
-
-    // Check specific feature flags
-    if (configType === 'time_code' && !featureConfig.allowTimeCodeColors) {
-      return NextResponse.json(
-        { error: 'Time code color customization is not enabled' },
-        { status: 403 }
-      );
-    }
-    if (configType === 'status' && !featureConfig.allowStatusColors) {
-      return NextResponse.json(
-        { error: 'Status color customization is not enabled' },
-        { status: 403 }
       );
     }
 
@@ -128,7 +91,7 @@ export async function POST(request: NextRequest) {
     const oldConfig = await getColorConfig(configType, configKey);
 
     // Save the configuration
-    await saveColorConfig(configType as 'time_code' | 'status', configKey, colorName as SemanticColor);
+    await saveColorConfig(configType, configKey, colorName as SemanticColor);
 
     // Log audit entry
     await logAudit({
@@ -169,15 +132,6 @@ export async function DELETE(request: NextRequest) {
     if (!authUser.is_superuser && !authUser.group?.is_master) {
       return NextResponse.json(
         { error: 'Forbidden: Only administrators can configure colors' },
-        { status: 403 }
-      );
-    }
-
-    // Check if feature is enabled
-    const featureConfig = await isColorCustomizationEnabled();
-    if (!featureConfig.enabled) {
-      return NextResponse.json(
-        { error: 'Color customization is not enabled for this brand' },
         { status: 403 }
       );
     }

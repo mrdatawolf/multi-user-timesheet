@@ -29,9 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, Clock, RotateCcw, Search } from 'lucide-react';
-import { EmployeeAllocationsDialog } from '@/components/employee-allocations-dialog';
-import { getBrandFeatures, type BrandFeatures } from '@/lib/brand-features';
+import { Plus, Pencil, Trash2, Calendar, Eye, EyeOff, RotateCcw, Search } from 'lucide-react';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import { parseDateStr } from '@/lib/date-helpers';
@@ -51,7 +49,7 @@ interface Employee {
   employment_type?: string;
   seniority_rank?: number;
   abbreviation?: string;
-  show_in_office_presence?: number;
+  overtime_threshold_hours?: number | null;
   created_by?: number;
   is_active: number;
 }
@@ -79,14 +77,8 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-  const [allocationsDialogOpen, setAllocationsDialogOpen] = useState(false);
-  const [selectedEmployeeForAllocations, setSelectedEmployeeForAllocations] = useState<Employee | null>(null);
-  const [brandFeatures, setBrandFeatures] = useState<BrandFeatures | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Check if leave management is enabled for this brand
-  const leaveManagementEnabled = brandFeatures?.features?.leaveManagement?.enabled ?? false;
-  const officePresenceEnabled = brandFeatures?.features?.officePresenceTracking?.enabled ?? false;
   const isAdmin = user?.group?.is_master === 1 || user?.role_id === 1;
 
   // Set the current screen for help context
@@ -107,7 +99,7 @@ export default function UsersPage() {
     employment_type: 'full_time',
     seniority_rank: '',
     abbreviation: '',
-    show_in_office_presence: '1',
+    overtime_threshold_hours: '',
   });
 
   useEffect(() => {
@@ -115,11 +107,6 @@ export default function UsersPage() {
       router.push('/login');
     }
   }, [isAuthenticated, authLoading, router]);
-
-  // Load brand features on mount
-  useEffect(() => {
-    getBrandFeatures().then(setBrandFeatures);
-  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -173,11 +160,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleOpenAllocationsDialog = (employee: Employee) => {
-    setSelectedEmployeeForAllocations(employee);
-    setAllocationsDialogOpen(true);
-  };
-
   const handleOpenDialog = (employee?: Employee) => {
     if (employee) {
       setEditingEmployee(employee);
@@ -193,7 +175,7 @@ export default function UsersPage() {
         employment_type: employee.employment_type || 'full_time',
         seniority_rank: employee.seniority_rank?.toString() || '',
         abbreviation: employee.abbreviation || '',
-        show_in_office_presence: (employee.show_in_office_presence ?? 1).toString(),
+        overtime_threshold_hours: employee.overtime_threshold_hours?.toString() || '',
       });
     } else {
       setEditingEmployee(null);
@@ -209,7 +191,7 @@ export default function UsersPage() {
         employment_type: 'full_time',
         seniority_rank: '',
         abbreviation: '',
-        show_in_office_presence: '1',
+        overtime_threshold_hours: '',
       });
     }
     setIsDialogOpen(true);
@@ -231,7 +213,7 @@ export default function UsersPage() {
       employment_type: formData.employment_type || 'full_time',
       seniority_rank: formData.seniority_rank ? parseInt(formData.seniority_rank) : null,
       abbreviation: formData.abbreviation || null,
-      show_in_office_presence: parseInt(formData.show_in_office_presence),
+      overtime_threshold_hours: formData.overtime_threshold_hours ? parseFloat(formData.overtime_threshold_hours) : null,
     };
 
     try {
@@ -433,7 +415,7 @@ export default function UsersPage() {
       })
     : employees;
 
-  if (authLoading || isLoading || brandFeatures === null) {
+  if (authLoading || isLoading) {
     return (
       <div className="container mx-auto p-8">
         <PageLoading label="Loading employees..." />
@@ -501,11 +483,10 @@ export default function UsersPage() {
             <TableRow>
               <TableHead>Employee #</TableHead>
               <TableHead>Name</TableHead>
-              {officePresenceEnabled && <TableHead>Abbrev</TableHead>}
+              <TableHead>Abbrev</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Job Title</TableHead>
               <TableHead>Group</TableHead>
-              {leaveManagementEnabled && <TableHead>Employment</TableHead>}
               <TableHead>Date of Hire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -513,7 +494,7 @@ export default function UsersPage() {
           <TableBody>
             {filteredEmployees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7 + (leaveManagementEnabled ? 1 : 0) + (officePresenceEnabled ? 1 : 0)} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   {searchQuery.trim() ? 'No employees match your search' : 'No employees found'}
                 </TableCell>
               </TableRow>
@@ -532,11 +513,9 @@ export default function UsersPage() {
                   <TableCell className="font-medium">
                     {employee.first_name} {employee.last_name}
                   </TableCell>
-                  {officePresenceEnabled && (
-                    <TableCell className="font-mono text-xs">
-                      {employee.abbreviation || '-'}
-                    </TableCell>
-                  )}
+                  <TableCell className="font-mono text-xs">
+                    {employee.abbreviation || '-'}
+                  </TableCell>
                   <TableCell>{employee.email || '-'}</TableCell>
                   <TableCell className="capitalize">{employee.role}</TableCell>
                   <TableCell>
@@ -544,11 +523,6 @@ export default function UsersPage() {
                       ? groups.find((g) => g.id === employee.group_id)?.name || '-'
                       : '-'}
                   </TableCell>
-                  {leaveManagementEnabled && (
-                    <TableCell className="capitalize">
-                      {employee.employment_type?.replace('_', '-') || 'Full-time'}
-                    </TableCell>
-                  )}
                   <TableCell>
                     {employee.date_of_hire
                       ? parseDateStr(employee.date_of_hire).toLocaleDateString()
@@ -565,18 +539,6 @@ export default function UsersPage() {
                             title="Edit Employee"
                           >
                             <Pencil className="h-4 w-4" />
-                          </Button>
-                        </HelpArea>
-                      )}
-                      {canEditEmployee(employee) && employee.is_active === 1 && (
-                        <HelpArea helpId="allocations" bubblePosition="left" showHighlight={false}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenAllocationsDialog(employee)}
-                            title="Manage Time Allocations"
-                          >
-                            <Clock className="h-4 w-4" />
                           </Button>
                         </HelpArea>
                       )}
@@ -719,44 +681,19 @@ export default function UsersPage() {
               />
             </div>
 
-            {officePresenceEnabled && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="abbreviation">Abbreviation</Label>
-                  <Input
-                    id="abbreviation"
-                    value={formData.abbreviation}
-                    onChange={(e) =>
-                      setFormData({ ...formData, abbreviation: e.target.value.toUpperCase().slice(0, 3) })
-                    }
-                    maxLength={3}
-                    placeholder="e.g. JDS"
-                  />
-                  <p className="text-xs text-muted-foreground">Unique 1-3 character ID for office presence bar</p>
-                </div>
-
-                {isAdmin && (
-                  <div className="space-y-2">
-                    <Label htmlFor="show_in_office_presence">Show in Office Presence</Label>
-                    <Select
-                      value={formData.show_in_office_presence}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, show_in_office_presence: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Shown</SelectItem>
-                        <SelectItem value="0">Hidden</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Hide C-suite or remote employees from office bar</p>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="abbreviation">Abbreviation</Label>
+              <Input
+                id="abbreviation"
+                value={formData.abbreviation}
+                onChange={(e) =>
+                  setFormData({ ...formData, abbreviation: e.target.value.toUpperCase().slice(0, 3) })
+                }
+                maxLength={3}
+                placeholder="e.g. JDS"
+              />
+              <p className="text-xs text-muted-foreground">Unique 1-3 character identifier</p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -793,54 +730,23 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {leaveManagementEnabled && (
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employment_type">Employment Type</Label>
-                  <Select
-                    value={formData.employment_type}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, employment_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full_time">Full-time</SelectItem>
-                      <SelectItem value="part_time">Part-time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rehire_date">Rehire Date</Label>
-                  <Input
-                    id="rehire_date"
-                    type="date"
-                    value={formData.rehire_date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, rehire_date: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="seniority_rank">Seniority Rank (1-5)</Label>
-                  <Input
-                    id="seniority_rank"
-                    type="number"
-                    min="1"
-                    max="5"
-                    value={formData.seniority_rank}
-                    onChange={(e) =>
-                      setFormData({ ...formData, seniority_rank: e.target.value })
-                    }
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="overtime_threshold_hours">Weekly Overtime Threshold (hours)</Label>
+              <Input
+                id="overtime_threshold_hours"
+                type="number"
+                min="0"
+                step="0.5"
+                value={formData.overtime_threshold_hours}
+                onChange={(e) =>
+                  setFormData({ ...formData, overtime_threshold_hours: e.target.value })
+                }
+                placeholder="Default: 40 (or group default)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Overrides the group/app default for this employee. Leave blank to inherit.
+              </p>
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={handleCloseDialog}>
@@ -853,15 +759,6 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {selectedEmployeeForAllocations && (
-        <EmployeeAllocationsDialog
-          open={allocationsDialogOpen}
-          onOpenChange={setAllocationsDialogOpen}
-          employeeId={selectedEmployeeForAllocations.id}
-          employeeName={`${selectedEmployeeForAllocations.first_name} ${selectedEmployeeForAllocations.last_name}`}
-        />
-      )}
     </div>
   );
 }

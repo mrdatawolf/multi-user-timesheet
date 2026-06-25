@@ -1,5 +1,4 @@
 import { authDb } from './db-auth';
-import { getBrandFeatures } from './brand-features';
 
 /**
  * Get an app setting by key from auth.db
@@ -47,41 +46,21 @@ export async function getAllAppSettings(): Promise<Record<string, string>> {
 }
 
 /**
- * Get max out-of-office limit.
- * Resolution: DB override → brand-features.json default → 0 (no limit)
+ * Get the overtime threshold (hours/week) for an employee.
+ * Resolution: employee override → group override → app_settings default → 40
  */
-export async function getMaxOutOfOffice(): Promise<number> {
-  // Check DB first
-  const dbValue = await getAppSetting('maxOutOfOffice');
+export async function getOvertimeThresholdHours(
+  employeeOverride: number | null | undefined,
+  groupOverride: number | null | undefined
+): Promise<number> {
+  if (employeeOverride != null) return employeeOverride;
+  if (groupOverride != null) return groupOverride;
+
+  const dbValue = await getAppSetting('overtime_threshold_hours');
   if (dbValue !== null) {
-    const parsed = parseInt(dbValue, 10);
+    const parsed = parseFloat(dbValue);
     if (!isNaN(parsed)) return parsed;
   }
 
-  // Fall back to brand-features.json
-  const features = await getBrandFeatures();
-  return features.features.globalReadAccess?.maxOutOfOffice ?? 0;
-}
-
-/**
- * Get capacity bar thresholds (number of people OUT that triggers color change).
- * Resolution: DB override → brand-features.json default → hardcoded defaults
- * warningCount: bar turns yellow when this many staff are out (default 3)
- * criticalCount: bar turns red when this many staff are out (default 5)
- */
-export async function getCapacityThresholds(): Promise<{ warningCount: number; criticalCount: number }> {
-  const features = await getBrandFeatures();
-  const brandWarning = features.features.globalReadAccess?.capacityWarningCount ?? 3;
-  const brandCritical = features.features.globalReadAccess?.capacityCriticalCount ?? 5;
-
-  const dbWarning = await getAppSetting('capacityWarningCount');
-  const dbCritical = await getAppSetting('capacityCriticalCount');
-
-  const warningCount = dbWarning !== null ? parseInt(dbWarning, 10) : brandWarning;
-  const criticalCount = dbCritical !== null ? parseInt(dbCritical, 10) : brandCritical;
-
-  return {
-    warningCount: isNaN(warningCount) ? 3 : warningCount,
-    criticalCount: isNaN(criticalCount) ? 5 : criticalCount,
-  };
+  return 40;
 }

@@ -4,7 +4,7 @@
  * This script will:
  * 1. Delete the existing database
  * 2. Recreate it with a fresh schema including auth tables
- * 3. Add default time codes, groups, and admin user
+ * 3. Add default groups and admin user
  *
  * WARNING: This will DELETE ALL DATA!
  */
@@ -77,9 +77,7 @@ async function resetDatabase() {
     // Drop all attendance database tables
     const attendanceTablesToDrop = [
       'attendance_entries',
-      'employee_time_allocations',
       'employees',
-      'time_codes',
       'migrations'
     ];
 
@@ -132,7 +130,6 @@ async function resetDatabase() {
   console.log('  - Default admin user (username: admin, password: admin123)');
   console.log('  - Empty employees table');
   console.log('  - Empty attendance entries');
-  console.log('  - 14 default time codes');
   console.log('');
   console.log('⚠️  IMPORTANT: Change the default admin password!');
   console.log('');

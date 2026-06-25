@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
 import { getCurrentBrandId } from '@/lib/brand-config';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, lastVisitedPageKey } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User, LogOut, Shield, Map, FlaskConical, Settings, HelpCircle, KeyRound } from 'lucide-react';
 import { useHelp } from '@/lib/help-context';
-import { OfficePresenceBar } from '@/components/office-presence-bar';
 import { ChangePasswordDialog } from '@/components/change-password-dialog';
 
 const NAV_ITEMS = [
@@ -42,13 +41,15 @@ export function Navbar() {
   const themeConfig = getTheme(themeId);
   const showAdminMenu = isMaster || isAdministrator;
 
-  // Persist the last visited main page so the app can return to it on re-open
+  // Persist the last visited main page so the app can return to it on
+  // re-open or on next login, keyed per-user so a shared browser doesn't
+  // hand one user's last page to the next person who logs in.
   const TRACKED_PATHS = ['/attendance', '/employees', '/users', '/dashboard', '/reports', '/settings'];
   useEffect(() => {
-    if (isAuthenticated && TRACKED_PATHS.includes(pathname)) {
-      localStorage.setItem('last_visited_page', pathname);
+    if (isAuthenticated && user && TRACKED_PATHS.includes(pathname)) {
+      localStorage.setItem(lastVisitedPageKey(user.username), pathname);
     }
-  }, [pathname, isAuthenticated]);
+  }, [pathname, isAuthenticated, user]);
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
     // superuserOnly items are visible to admins and managers
@@ -63,7 +64,7 @@ export function Navbar() {
   const appTitle = themeConfig.branding.appTitle;
 
   return (
-    <nav className={cn('border-b sticky top-0 z-50', isNFL ? 'bg-muted' : 'bg-background')}>
+    <nav className={cn('print:hidden border-b sticky top-0 z-50', isNFL ? 'bg-muted' : 'bg-background')}>
       <div className="max-w-full mx-auto px-3">
         <div className="flex h-10 items-center justify-between">
           <div className="flex items-center gap-3">
@@ -82,7 +83,6 @@ export function Navbar() {
               </span>
               <span className={cn('hidden sm:inline font-bold', isNFL ? 'text-xl' : 'text-lg')}>{appTitle}</span>
             </Link>
-            {isAuthenticated && <OfficePresenceBar />}
           </div>
           <div className="flex items-center space-x-4">
             {isAuthenticated && enabledItems.map(item => (

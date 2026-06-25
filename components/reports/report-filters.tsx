@@ -19,15 +19,8 @@ interface Group {
   name: string;
 }
 
-interface TimeCode {
-  id: number;
-  code: string;
-  description: string;
-}
-
 interface ReportFiltersProps {
   employees: Employee[];
-  timeCodes: TimeCode[];
   groups?: Group[];
   selectedGroupId?: string;
   onGroupChange?: (value: string) => void;
@@ -36,8 +29,6 @@ interface ReportFiltersProps {
   onRoleChange?: (value: string) => void;
   selectedEmployeeId: string;
   onEmployeeChange: (value: string) => void;
-  selectedTimeCode: string;
-  onTimeCodeChange: (value: string) => void;
   startDate: Date | undefined;
   onStartDateChange: (date: Date | undefined) => void;
   endDate: Date | undefined;
@@ -45,13 +36,11 @@ interface ReportFiltersProps {
   onGenerate: () => void;
   loading: boolean;
   actionButtons?: React.ReactNode;
-  hideTimeCode?: boolean;
   requireEmployee?: boolean;
 }
 
 export function ReportFilters({
   employees,
-  timeCodes,
   groups = [],
   selectedGroupId = 'all',
   onGroupChange,
@@ -60,8 +49,6 @@ export function ReportFilters({
   onRoleChange,
   selectedEmployeeId,
   onEmployeeChange,
-  selectedTimeCode,
-  onTimeCodeChange,
   startDate,
   onStartDateChange,
   endDate,
@@ -69,24 +56,19 @@ export function ReportFilters({
   onGenerate,
   loading,
   actionButtons,
-  hideTimeCode,
   requireEmployee,
 }: ReportFiltersProps) {
   const dateRangeInvalid = !!(startDate && endDate && startDate > endDate);
 
   const today = new Date();
   const ytdStart = new Date(today.getFullYear(), 0, 1);
-  const thisYearJune1 = new Date(today.getFullYear(), 5, 1);
-  const vacStart = today >= thisYearJune1
-    ? thisYearJune1
-    : new Date(today.getFullYear() - 1, 5, 1);
-  const vacEnd = new Date(vacStart.getFullYear() + 1, 4, 31); // May 31 of following year
+  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const isSameDay = (a: Date | undefined, b: Date) =>
     !!a && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const isYtdActive = isSameDay(startDate, ytdStart) && isSameDay(endDate, today);
-  const isVacActive = isSameDay(startDate, vacStart) && isSameDay(endDate, vacEnd);
+  const isMonthActive = isSameDay(startDate, thisMonthStart) && isSameDay(endDate, today);
 
   const filteredEmployees = employees
     .filter(e => selectedGroupId === 'all' || e.group_id?.toString() === selectedGroupId)
@@ -94,7 +76,7 @@ export function ReportFilters({
 
   return (
     <HelpArea helpId="report-filters" bubblePosition="bottom">
-      <div className="flex flex-wrap items-end gap-4 p-3 border rounded-lg bg-muted">
+      <div className="print:hidden flex flex-wrap items-end gap-4 p-3 border rounded-lg bg-muted">
         {groups.length > 1 && onGroupChange && (
           <div className="flex flex-col flex-1 min-w-[160px] gap-1.5">
             <label className="text-sm font-medium">Group</label>
@@ -146,33 +128,14 @@ export function ReportFilters({
           </Select>
         </div>
 
-        {!hideTimeCode && (
-          <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
-            <label className="text-sm font-medium">Time Code</label>
-            <Select value={selectedTimeCode} onValueChange={onTimeCodeChange}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time Codes</SelectItem>
-                {timeCodes.map(tc => (
-                  <SelectItem key={tc.code} value={tc.code}>
-                    {tc.code} - {tc.description}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">Start Date</label>
-          <DatePicker date={startDate} setDate={onStartDateChange} invalid={dateRangeInvalid} />
+          <DatePicker date={startDate} setDate={onStartDateChange} invalid={dateRangeInvalid} className="w-[140px]" />
         </div>
 
-        <div className="flex flex-col flex-1 min-w-[200px] gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">End Date</label>
-          <DatePicker date={endDate} setDate={onEndDateChange} invalid={dateRangeInvalid} />
+          <DatePicker date={endDate} setDate={onEndDateChange} invalid={dateRangeInvalid} className="w-[140px]" />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -192,16 +155,17 @@ export function ReportFilters({
               YTD
             </Button>
             <Button
-              variant={isVacActive ? 'default' : 'outline'}
+              variant={isMonthActive ? 'default' : 'outline'}
               size="sm"
               className="h-9 text-sm px-3"
               onClick={() => {
-                onStartDateChange(vacStart);
-                onEndDateChange(vacEnd);
+                const now = new Date();
+                onStartDateChange(new Date(now.getFullYear(), now.getMonth(), 1));
+                onEndDateChange(now);
               }}
-              title="Full vacation year: June 1 – May 31"
+              title="First of this month through today"
             >
-              Vacation Year
+              This Month
             </Button>
           </div>
         </div>

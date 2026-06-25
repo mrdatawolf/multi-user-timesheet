@@ -39,6 +39,7 @@ export interface Group {
   is_master: number;
   can_view_all: number;
   can_edit_all: number;
+  overtime_threshold_hours?: number | null;
   created_at: string;
   updated_at: string;
 }

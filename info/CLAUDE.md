@@ -1,13 +1,21 @@
 # Claude Project Summary
 
 **Quick Reference for AI Assistants**
-*Last Updated: February 5, 2026*
 
 ---
 
 ## What This Project Is
 
-A **Next.js-based employee attendance/timesheet management system** that replaces Excel templates. It tracks employee time off (vacation, sick, holidays, etc.) with a calendar grid interface.
+A **Next.js-based employee hours-worked tracking system** that replaces Excel
+templates. Employees log daily hours (with an on-site/remote tag and optional
+notes) on a calendar grid; weekly hours over a configurable threshold are
+flagged as overtime.
+
+This app was forked from an earlier PTO/vacation tracker (`AttendanceTracker`,
+now a separate repo) and had its leave-type/accrual/time-code system removed
+entirely in favor of this simpler hours-worked model. If you see references
+to "time codes," "leave balances," or "accrual" anywhere, they're leftover —
+flag them, don't extend them.
 
 ---
 
@@ -31,67 +39,59 @@ A **Next.js-based employee attendance/timesheet management system** that replace
 app/                    # Next.js pages and API routes
   api/                  # REST endpoints
     employees/          # Employee CRUD
-    attendance/         # Time entries
-    color-config/       # Color configuration (admin)
-    dashboard/          # Dashboard-specific endpoints
-      upcoming-staffing/ # Upcoming staffing (all users visible)
+    attendance/         # Hours-worked entries CRUD
+    color-config/       # Status color configuration (admin)
     groups/             # Group management
     job-titles/         # Job title management
-    reports/            # Report generation (permission-filtered)
-      leave-balance-summary/ # Leave balance pivot report
-    time-codes/         # Time code definitions
+    reports/            # Hours Worked report (permission-filtered)
   attendance/           # Main attendance page
-  dashboard/            # Dashboard page with staffing overview
+  dashboard/            # Dashboard page (hours/location summary)
   employees/            # Employee management page
+  reports/              # Hours Worked report page
   settings/             # Settings page
   users/                # User management (admin)
 
 components/
   ui/                   # shadcn/ui base components
   reports/              # Report components
-    leave-balance-summary.tsx  # Leave balance pivot table
-    leave-balance-export.tsx   # CSV export for leave balances
-    report-table.tsx    # Generic report table
-    report-filters.tsx  # Report filter controls
-    report-export.tsx   # Generic CSV export
+    hours-worked-report.tsx   # Per-employee/group totals table
+    hours-worked-export.tsx   # CSV export
+    report-filters.tsx  # Date range / employee / group filter controls
   group-management.tsx  # Groups CRUD UI
   job-title-management.tsx  # Job titles CRUD UI
-  color-config-management.tsx  # Color customization UI (admin)
-  balance-cards.tsx     # Time balance display (with usage alerts)
-  attendance-grid.tsx   # Year view calendar grid (with company holidays, time code colors)
+  color-config-management.tsx  # Overtime status color customization UI
+  multi-entry-dialog.tsx     # Entry editing modal (hours + location + notes)
+  bulk-entry-dialog.tsx      # Bulk date-range entry dialog
+  attendance-grid.tsx   # Year view (table) calendar grid
+  attendance-grid-year-calendar.tsx  # Year view (calendar cards) — user toggle
   attendance-grid-month.tsx  # Month view (7-column calendar grid)
   attendance-grid-week.tsx   # Week view (7 day-cards, responsive)
   view-toggle.tsx       # Year/Month/Week segmented toggle
-  period-navigator.tsx  # Prev/next/today navigation for month/week views
   help-area.tsx         # Contextual help wrapper
 
 hooks/
-  use-attendance-cell.ts  # Shared attendance cell logic (colors, display, capacity)
+  use-attendance-cell.ts  # Shared attendance cell logic (display, color, overtime-week detection)
   use-media-query.ts      # SSR-safe responsive breakpoint hook
 
 lib/
-  attendance-types.ts   # Shared attendance types (AttendanceEntry, DailySummary, ViewType)
-  date-helpers.ts       # Date utilities (calendar grids, week bounds, period navigation)
-  db-auth.ts            # Auth database init + migrations
-  db-sqlite.ts          # Main database connection
-  queries-auth.ts       # Auth-related queries
-  queries-sqlite.ts     # Data queries
-  auth-context.tsx      # Auth state provider
-  help-context.tsx      # Help system provider
-  accrual-calculations.ts  # Leave accrual calculation engine
-  color-config.ts       # Color configuration utilities
-  migrations/           # Database migrations
-    auth/               # Auth DB migrations
-      005_seed_job_titles.ts  # Seeds default job titles
-      006_color_config.ts     # Color configuration table
+  attendance-types.ts   # Shared attendance types (AttendanceEntry, ViewType)
+  date-helpers.ts        # Date utilities (calendar grids, week bounds, period navigation)
+  db-auth.ts             # Auth database init + migrations
+  db-sqlite.ts           # Main database connection + schema
+  queries-auth.ts        # Auth-related queries
+  queries-sqlite.ts      # Employee + attendance entry queries
+  app-settings.ts        # App settings helpers (overtime threshold resolution)
+  auth-context.tsx       # Auth state provider
+  help-context.tsx       # Help system provider
+  color-config.ts        # Overtime status color configuration utilities
+  brand-config.ts        # App branding (logo, title) — see Brand System below
+  migrations/             # Database migrations
+    auth/                 # Auth DB migrations
 
 public/
-  {brand}/              # Brand-specific assets (TRL, NFL, etc.)
+  {brand}/              # Brand-specific assets (only `Default` is actively used)
     help-content.json   # Help tooltips content
-    time-codes.json     # Time code definitions
-    brand-features.json # Feature flags, holidays, report config
-    reports/
-      report-definitions.json  # Available reports for this brand
+    logo.png
 
 databases/              # SQLite database files (gitignored)
 ```
@@ -102,7 +102,7 @@ databases/              # SQLite database files (gitignored)
 
 ### Authentication Model
 - **Users** = System login accounts (managers, admins)
-- **Employees** = People whose time is tracked (may not have logins)
+- **Employees** = People whose hours are tracked (may not have logins)
 - **Groups** = Control data visibility (Master, Managers, HR, Employees)
 - **Roles** = Control actions (Administrator, Manager, Editor, Viewer)
 
@@ -110,127 +110,36 @@ databases/              # SQLite database files (gitignored)
 
 ### Database Architecture
 Two separate SQLite databases:
-1. **auth.db** - Users, groups, roles, permissions, job_titles, audit_log
-2. **attendance.db** - Employees, time_codes, attendance_entries, allocations
+1. **auth.db** - Users, groups, roles, permissions, job_titles, audit_log, app_settings, color_config
+2. **attendance.db** - Employees, attendance_entries
 
-### Brand System
-Multi-tenant via `public/{brand}/` folders. Each brand can have:
-- Custom time codes with colors (`time-codes.json`)
-- Custom help content (`help-content.json`)
-- Feature flags, accrual rules, holidays, reports, color config (`brand-features.json`)
-- Report definitions (`reports/report-definitions.json`)
+### Hours Worked Model
+`attendance_entries` has one row per employee per day worked: `employee_id`,
+`entry_date`, `hours`, `work_location` (`'onsite' | 'remote' | null`), `notes`.
+There's no time-code/category column — an employee can still log more than
+one entry for the same day (e.g. half day on-site + half day remote), but
+each entry just records hours + an optional location tag.
 
-Brand selected at build time via `lib/brand-selection.json`.
+### Overtime Threshold
+Weekly overtime threshold defaults to 40 hours and resolves in this order:
+1. `employees.overtime_threshold_hours` (per-employee override)
+2. `groups.overtime_threshold_hours` (per-group override)
+3. `app_settings` key `overtime_threshold_hours` (app-wide default)
+4. Hardcoded fallback of 40
 
-### Company Holidays
-Company-wide holidays are defined in `brand-features.json` under `features.companyHolidays`:
-```json
-"companyHolidays": {
-  "enabled": true,
-  "year": 2026,
-  "dates": [
-    { "date": "2026-01-01", "name": "New Year's Day" },
-    { "date": "2026-12-25", "name": "Christmas Day" }
-  ]
-}
-```
-- Holidays appear **greyed out** on the attendance grid (like invalid month days)
-- Employees cannot enter time on company holidays
-- Holidays must be updated yearly in the JSON file
-- Different from **Floating Holidays** which employees can use anytime
+Weeks where an employee's logged hours exceed their resolved threshold are
+highlighted amber on every attendance grid view (`useAttendanceCell` hook)
+and totaled separately in the Hours Worked report.
 
-### Usage Alert Thresholds
-Leave balance cards and reports show color-coded warnings when usage approaches limits:
-```json
-"reports": {
-  "leaveBalanceSummary": {
-    "enabled": true,
-    "warningThreshold": 0.9,
-    "criticalThreshold": 1.0
-  }
-}
-```
-- **Warning (amber)**: Usage >= 90% of allocation
-- **Critical (red)**: Usage >= 100% of allocation
-- Applied to both attendance page balance cards and Leave Balance Summary report
-
-### Color Customization
-Admins can customize colors for time codes and status indicators via Settings > Color Configuration.
-
-**Feature flag** in `brand-features.json`:
-```json
-"colorCustomization": {
-  "enabled": true,
-  "allowTimeCodeColors": true,
-  "allowStatusColors": true
-}
-```
-
-**Time code colors** in `time-codes.json`:
-```json
-{
-  "code": "V",
-  "description": "Vacation",
-  "color": "blue"
-}
-```
-
-**Available colors**: blue, amber, red, teal, purple, green, gray
-
-**Resolution priority**:
-1. Database (admin customizations via Settings UI)
-2. Brand JSON defaults (`time-codes.json`, `brand-features.json`)
-3. System hardcoded defaults
-
-Colors are applied to:
-- Attendance grid cells (time code colors)
-- Balance cards (status colors for warning/critical)
-- Leave Balance Summary report cells (status colors)
-
-### Accrual Calculation Engine
-The system supports multiple leave accrual types defined in `brand-features.json`:
-
-| Type | Description | Example |
-|------|-------------|---------|
-| `quarterly` | Earns hours per quarter | Floating Holiday: 8 hrs/quarter, max 24/year |
-| `hoursWorked` | Earns hours based on hours worked | PSL: 1 hr per 30 hrs worked, max 80 |
-| `tieredSeniority` | Earns based on years of service | Vacation: Tiers from 40-200 hrs based on tenure |
-
-Accrual rules are brand-specific and support:
-- Eligibility wait periods (days, months, years)
-- Maximum accrual and usage limits
-- Custom accrual periods (calendar year, fiscal year, custom dates)
-- Employee type differentiation (full-time, part-time, exempt)
-
----
-
-## Current Phase: 7 (Reporting)
-
-**Goal:** Build a flexible reporting system with common reports shared across brands and brand-specific custom reports.
-
-**Architecture:**
-- Common report components in `components/reports/common/`
-- Brand-specific report definitions in `public/{brand}/reports/report-definitions.json`
-- Generic report engine that renders reports based on JSON configuration
-- Hybrid approach: coded components for complex reports, JSON-driven for simpler custom reports
-
-**See:** [PHASE-7-PLAN.md](PHASE-7-PLAN.md) for detailed implementation plan
-
----
-
-## Development Phases
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1 | ✅ | Core attendance grid, entry dialogs, balance cards |
-| 2 | ✅ | User permissions, groups, roles, audit logging |
-| 3 | ✅ | Multiple entries per day |
-| 4 | ✅ | Automated backups (7-day, 4-week, 12-month) |
-| 4.5 | ✅ | White labeling, brand URI configuration |
-| 6 | ✅ | Contextual help, groups/job titles management |
-| **7** | **In Progress** | Reporting system (common + brand-specific reports) |
-| 8 | Planned | Leave request & approval workflows |
-| 9 | Planned | Policy engine (eligibility, limits, lockouts) |
+### Brand System (mostly vestigial)
+The app still has white-label branding machinery (`lib/brand-config.ts`,
+`lib/brand-selection.json`, `scripts/select-brand.js`, per-brand Electron
+builds) — this was kept intentionally rather than ripped out, but in practice
+only the `Default` brand folder exists now. Don't read "brand" as meaning
+"leave-type feature flags" — that system (`brand-features.ts`,
+`brand-time-codes.ts`, `brand-reports.ts`) was deleted entirely along with
+the PTO model. If you find code still importing those modules, it's dead and
+should be fixed, not preserved.
 
 ---
 
@@ -244,6 +153,11 @@ npm run dev
 ### Reset Database
 ```bash
 npm run db:reset
+```
+
+### Seed Demo Data
+```bash
+npm run db:seed-demo
 ```
 
 ### Create Migration
@@ -272,6 +186,10 @@ headers: { Authorization: `Bearer ${token}` }
 - `PUT /api/{resource}` - Update (id in body)
 - `DELETE /api/{resource}?id=X` - Delete
 
+**Attendance entries** don't follow strict REST verbs — `POST /api/attendance`
+takes an `action` field (`bulk_update_range`, `update_day`, `delete`, or
+omitted for a plain upsert) since a single day can hold multiple entries.
+
 ---
 
 ## Important Files
@@ -281,19 +199,15 @@ headers: { Authorization: `Bearer ${token}` }
 | Auth DB init | `lib/db-auth.ts` |
 | Auth queries | `lib/queries-auth.ts` |
 | Migrations | `lib/migrations/auth/migrations.ts` |
-| Brand config | `lib/brand-selection.json` |
-| Help content | `public/{brand}/help-content.json` |
-| Time codes | `public/{brand}/time-codes.json` |
-| Feature flags | `public/{brand}/brand-features.json` |
-| Report definitions | `public/{brand}/reports/report-definitions.json` |
-| Accrual engine | `lib/accrual-calculations.ts` |
-| Brand features API | `lib/brand-features.ts` |
-| Brand reports API | `lib/brand-reports.ts` |
+| Main schema | `lib/db-sqlite.ts` |
+| Overtime threshold resolution | `lib/app-settings.ts` |
 | Color config API | `lib/color-config.ts` |
 | Attendance types | `lib/attendance-types.ts` |
 | Date helpers | `lib/date-helpers.ts` |
 | Attendance cell hook | `hooks/use-attendance-cell.ts` |
 | Media query hook | `hooks/use-media-query.ts` |
+| Hours Worked report API | `app/api/reports/route.ts` |
+| Brand config (logo/title) | `lib/brand-config.ts` |
 
 ---
 
@@ -303,59 +217,41 @@ headers: { Authorization: `Bearer ${token}` }
 
 2. **useCallback + toast = infinite loop** - Don't include `toast` in useCallback dependencies; it causes re-renders
 
-3. **Brand folders** - Each brand (TRL, NFL, etc.) needs its own folder in `public/` with JSON config files
+3. **Job titles use name strings** - Currently `employees.role` stores job title name, not ID (future: add foreign key)
 
-4. **Job titles use name strings** - Currently `employees.role` stores job title name, not ID (future: add foreign key)
+4. **Settings page is super-admin only** - Groups and Job Titles management only visible to superusers
 
-5. **Settings page is super-admin only** - Groups and Job Titles management only visible to superusers
+5. **Employees are soft-deleted** - DELETE on employees sets `is_active = 0`, not actual deletion. Reactivation is done via PUT with `is_active: 1`. Master users can view inactive employees via "Show Inactive" toggle and reactivate them.
 
-6. **Time codes are configured in leaveTypes** - In `brand-features.json`, each leave type in `leaveManagement.leaveTypes` must include a `timeCode` property that maps to the actual code in the database/time-codes.json. Example: `"floatingHoliday": { "enabled": true, "timeCode": "FLH", "label": "Floating Holiday" }`. The accrual rules keys (e.g., `"PSL"`, `"FLH"`, `"V"`) must also match these time codes.
+6. **Username login is case-insensitive** - Usernames are matched using `COLLATE NOCASE` in SQLite. "Patrick", "patrick", and "PATRICK" all match the same user.
 
-7. **Employees are soft-deleted** - DELETE on employees sets `is_active = 0`, not actual deletion. Reactivation is done via PUT with `is_active: 1`. Master users can view inactive employees via "Show Inactive" toggle and reactivate them.
+7. **Users have automatic CRUD access to their own group** - Users don't need explicit `user_group_permissions` entries to CRUD employees in their own group. The permission functions (`canUserCreateInGroup`, `canUserReadGroup`, `canUserUpdateInGroup`, `canUserDeleteInGroup`) automatically return true if `groupId === user.group_id`.
 
-8. **Username login is case-insensitive** - Usernames are matched using `COLLATE NOCASE` in SQLite. "Patrick", "patrick", and "PATRICK" all match the same user.
+8. **Auto-employee creation for first user in group** - When a non-superuser accesses the employees API and there are no employees in their group, the system automatically creates an employee record for them using their user info (full_name split into first/last name, email).
 
-9. **Users have automatic CRUD access to their own group** - Users don't need explicit `user_group_permissions` entries to CRUD employees in their own group. The permission functions (`canUserCreateInGroup`, `canUserReadGroup`, `canUserUpdateInGroup`, `canUserDeleteInGroup`) automatically return true if `groupId === user.group_id`.
+9. **Users vs Employees** - These are separate entities. A User (in auth.db) is a login account. An Employee (in attendance.db) is someone whose hours are tracked. They may or may not be linked.
 
-10. **Auto-employee creation for first user in group** - When a non-superuser accesses the employees API and there are no employees in their group, the system automatically creates an employee record for them using their user info (full_name split into first/last name, email).
+10. **Reports are permission-filtered** - The `/api/reports` endpoint filters data based on the user's readable groups. Non-superusers only see report data for employees in their own group or groups they have explicit read permission for.
 
-11. **Time codes JSON is source of truth** - Brand-specific `time-codes.json` files sync to the database on server start. Set `is_active: 0` in JSON to hide time codes from dropdowns and balance cards.
+11. **API caching** - Report APIs use `export const dynamic = 'force-dynamic'` to prevent Next.js caching and ensure fresh data on each request.
 
-12. **Users vs Employees** - These are separate entities. A User (in auth.db) is a login account. An Employee (in attendance.db) is someone whose time is tracked. They may or may not be linked.
+12. **Color customization is status-only now** - The Color Configuration section in Settings (`components/color-config-management.tsx`) only customizes overtime warning/critical colors — the old per-time-code color customization was removed along with time codes. Admin overrides are stored in `auth.db` (`color_config` table).
 
-13. **Dashboard Upcoming Staffing shows ALL employees** - The `/api/dashboard/upcoming-staffing` endpoint is intentionally accessible to all authenticated users and returns ALL employees' upcoming entries. This allows everyone to see office staffing for the next 5 days. Detailed data (balances, allocations) remains protected.
+13. **Semantic color names** - Colors use semantic names (blue, amber, red, teal, purple, green, gray) that map to Tailwind classes via `DEFAULT_COLOR_PALETTE` in `lib/color-config.ts`. Don't use hex codes or Tailwind classes directly in config.
 
-14. **Reports are permission-filtered** - The `/api/reports` endpoint filters data based on user's readable groups. Non-superusers only see report data for employees in their own group or groups they have explicit read permission for.
+14. **Attendance view switching** - The attendance page supports Year, Month, and Week views via a segmented toggle, plus a table/calendar layout toggle for the year view (`attendance_year_layout` in localStorage). View preference is stored in localStorage (key: `attendance_view`). The current view and period are synced to URL params (`?view=month&month=2026-02` or `?view=week&week=2026-02-02`) for bookmarkability. All views share the same `useAttendanceCell` hook for cell display/overtime logic and the same `MultiEntryDialog` for editing.
 
-15. **Dashboard entry display format** - Single entries show as `(CODE+HOURS)` like `(V8)`. Multiple entries for same person/day show as `(*TOTAL)` like `(*5)` to indicate combined hours.
+15. **Responsive auto-switch** - On screens below 768px, the attendance page auto-switches from year to week view (one-way — doesn't switch back when enlarged, since the user may have manually chosen week). The `useMediaQuery` hook in `hooks/use-media-query.ts` is SSR-safe (returns false before mount).
 
-16. **Company Holidays vs Floating Holidays** - Company Holidays are specific dates when the office is closed (greyed out on calendar, defined in `companyHolidays`). Floating Holidays (FH) are hours employees can use anytime (tracked like vacation). Don't confuse the two.
+16. **Attendance page uses Suspense** - Because it uses `useSearchParams`, the attendance page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `AttendanceContent`, the default export is the Suspense wrapper.
 
-17. **Leave Balance Summary report** - A pivot-table style report showing all employees' leave balances. Uses `attendance_entries.time_code` directly (TEXT field), not a JOIN on `time_code_id`. API endpoint: `/api/reports/leave-balance-summary`.
+17. **Dates must use local time, not UTC** - Never use `new Date().toISOString().split('T')[0]` for "today" calculations. `.toISOString()` returns UTC which shifts the date at the wrong local time (e.g., 4 PM PST). Use `getLocalToday()` from `lib/date-helpers.ts` for today's date, or `formatDateStr(date)` for any Date object.
 
-18. **Report definitions are brand-specific** - Each brand can have different reports in `public/{brand}/reports/report-definitions.json`. Falls back to Default brand if no brand-specific file exists.
-
-19. **API caching** - Report APIs use `export const dynamic = 'force-dynamic'` to prevent Next.js caching and ensure fresh data on each request.
-
-20. **Color customization requires feature flag** - The Color Configuration section in Settings only appears if `colorCustomization.enabled: true` in brand-features.json. Admin overrides are stored in `auth.db` (color_config table), JSON files provide defaults.
-
-21. **Semantic color names** - Colors use semantic names (blue, amber, red, teal, purple, green, gray) that map to Tailwind classes on the client side via `COLOR_CLASS_MAP` objects. Don't use hex codes or Tailwind classes directly in config.
-
-22. **Attendance view switching** - The attendance page supports Year, Month, and Week views via a segmented toggle. View preference is stored in localStorage (key: `attendance_view`). The current view and period are synced to URL params (`?view=month&month=2026-02` or `?view=week&week=2026-02-02`) for bookmarkability. All three views share the same `useAttendanceCell` hook for cell display logic and the same `MultiEntryDialog` for editing. Data is always fetched as a full year — views filter client-side.
-
-23. **Responsive auto-switch** - On screens below 768px, the attendance page auto-switches from year to week view (one-way — doesn't switch back when enlarged, since the user may have manually chosen week). The `useMediaQuery` hook in `hooks/use-media-query.ts` is SSR-safe (returns false before mount).
-
-24. **Attendance page uses Suspense** - Because it uses `useSearchParams`, the attendance page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `AttendanceContent`, the default export is the Suspense wrapper.
-
-25. **Dates must use local time, not UTC** - Never use `new Date().toISOString().split('T')[0]` for "today" calculations. `.toISOString()` returns UTC which shifts the date at the wrong local time (e.g., 4 PM PST). Use `getLocalToday()` from `lib/date-helpers.ts` for today's date, or `formatDateStr(date)` for any Date object. For office presence, use `getEffectiveDateForPresence(resetTime)` which applies the configurable reset time.
-
-26. **Office presence reset time** - The office presence buttons reset at a configurable time (default 17:00) instead of midnight. Configure via `officePresenceTracking.resetTime` in `brand-features.json` (HH:MM 24h format). The `getOfficePresenceConfig()` getter in `lib/brand-features.ts` applies the default. The `getEffectiveDateForPresence()` helper in `lib/date-helpers.ts` returns today's date before the reset time and tomorrow's date after it, which naturally resets all presence buttons.
+18. **Login is persistent, not session-based** - All logins get a 90-day cookie; there's no per-brand "logout on browser close" behavior anymore (that was removed with the brand-features system).
 
 ---
 
 ## Related Documentation
 
-- [ROADMAP.md](ROADMAP.md) - Phase planning and status
-- [PHASE-6-PLAN.md](PHASE-6-PLAN.md) - Current phase details
-- [SPECS/](SPECS/) - Technical specifications
-- [COMPLETE/](COMPLETE/) - Completed phase plans
+- [ROADMAP.md](ROADMAP.md) - Current roadmap status (no active phased plan)
+- [SPECS/](SPECS/) - Technical specifications (note: some predate the hours-worked pivot and may reference removed leave/time-code features)

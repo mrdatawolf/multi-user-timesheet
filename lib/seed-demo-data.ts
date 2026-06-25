@@ -6,12 +6,10 @@
  * source of truth used by scripts/seed-demo.ts.
  *
  * Seeds the database with demo data for presentations:
- * - Employees with varied hire dates, employment types, and roles
- * - A year's worth of attendance entries that exercise every leave
- *   balance state (normal / warning / critical) plus usage-only codes
- * - A manual leave allocation override (HR granting extra sick time)
- * - Office presence so the "who's out" widget has data on first launch
- * - Break entries (compliant + override) for the break compliance report
+ * - Employees with varied hire dates and roles
+ * - A few months of daily hours-worked entries (mix of on-site/remote)
+ * - One employee with an overtime week, to exercise the overtime flag
+ * - One employee with a per-employee overtime threshold override
  * - Demo logins for the manager, HR, and employee roles in addition to admin
  */
 
@@ -41,7 +39,7 @@ function yearsAgo(years: number, monthOffset = 0): string {
 
 /**
  * Walk backwards from `startDaysAgo` days ago, collecting `count` weekday
- * (Mon-Fri) dates. Used to build realistic multi-day leave blocks.
+ * (Mon-Fri) dates. Used to build realistic multi-day blocks of entries.
  */
 function weekdayDatesAgo(startDaysAgo: number, count: number): string[] {
   const dates: string[] = [];
@@ -61,17 +59,20 @@ function weekdayDatesAgo(startDaysAgo: number, count: number): string[] {
 interface AttendanceSeedEntry {
   empNum: string;
   date: string;
-  code: string;
   hours: number;
-  notes: string;
+  workLocation: 'onsite' | 'remote' | null;
+  notes: string | null;
 }
 
-function range(empNum: string, code: string, startDaysAgo: number, count: number, hoursPerDay: number, notes: string): AttendanceSeedEntry[] {
-  return weekdayDatesAgo(startDaysAgo, count).map(date => ({ empNum, date, code, hours: hoursPerDay, notes }));
-}
-
-function single(empNum: string, code: string, daysBack: number, hours: number, notes: string): AttendanceSeedEntry {
-  return { empNum, date: daysAgo(daysBack), code, hours, notes };
+function range(
+  empNum: string,
+  startDaysAgo: number,
+  count: number,
+  hoursPerDay: number,
+  workLocation: 'onsite' | 'remote' | null,
+  notes: string | null = null
+): AttendanceSeedEntry[] {
+  return weekdayDatesAgo(startDaysAgo, count).map(date => ({ empNum, date, hours: hoursPerDay, workLocation, notes }));
 }
 
 export async function seedDemoData() {
@@ -82,12 +83,11 @@ export async function seedDemoData() {
   console.log('');
 
   try {
-    // Make sure the schema (and default time codes) exist before we seed.
+    // Make sure the schema exists before we seed.
     await initializeDatabase();
 
     // Demo employees with varied profiles
     const employees = [
-      // Long-tenured employees (for seniority demo)
       {
         number: 'DEMO001',
         first: 'Robert',
@@ -95,10 +95,9 @@ export async function seedDemoData() {
         email: 'robert.anderson@demo.com',
         role: 'employee',
         group_id: 4, // Employees
-        date_of_hire: yearsAgo(8, 3), // 8+ years - most senior
-        rehire_date: null,
+        date_of_hire: yearsAgo(8, 3),
         employment_type: 'full_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null as number | null,
       },
       {
         number: 'DEMO002',
@@ -107,12 +106,10 @@ export async function seedDemoData() {
         email: 'patricia.williams@demo.com',
         role: 'manager',
         group_id: 2, // Managers
-        date_of_hire: yearsAgo(6), // 6 years
-        rehire_date: null,
+        date_of_hire: yearsAgo(6),
         employment_type: 'full_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null,
       },
-      // Same hire date with seniority tiebreaker demo
       {
         number: 'DEMO003',
         first: 'James',
@@ -120,10 +117,9 @@ export async function seedDemoData() {
         email: 'james.miller@demo.com',
         role: 'employee',
         group_id: 4,
-        date_of_hire: yearsAgo(3), // Same as DEMO004
-        rehire_date: null,
+        date_of_hire: yearsAgo(3),
         employment_type: 'full_time',
-        seniority_rank: 5, // More senior due to rank
+        overtime_threshold_hours: null,
       },
       {
         number: 'DEMO004',
@@ -132,12 +128,10 @@ export async function seedDemoData() {
         email: 'jennifer.davis@demo.com',
         role: 'employee',
         group_id: 4,
-        date_of_hire: yearsAgo(3), // Same as DEMO003
-        rehire_date: null,
+        date_of_hire: yearsAgo(3),
         employment_type: 'full_time',
-        seniority_rank: 2, // Less senior due to rank
+        overtime_threshold_hours: null,
       },
-      // Rehired employee demo
       {
         number: 'DEMO005',
         first: 'Michael',
@@ -145,10 +139,9 @@ export async function seedDemoData() {
         email: 'michael.johnson@demo.com',
         role: 'employee',
         group_id: 4,
-        date_of_hire: yearsAgo(7), // Originally hired 7 years ago
-        rehire_date: yearsAgo(1), // But rehired 1 year ago
+        date_of_hire: yearsAgo(7),
         employment_type: 'full_time',
-        seniority_rank: 3,
+        overtime_threshold_hours: null,
       },
       // Part-time employees
       {
@@ -159,9 +152,8 @@ export async function seedDemoData() {
         role: 'employee',
         group_id: 4,
         date_of_hire: yearsAgo(2),
-        rehire_date: null,
         employment_type: 'part_time',
-        seniority_rank: null,
+        overtime_threshold_hours: 20, // per-employee override demo
       },
       {
         number: 'DEMO007',
@@ -171,9 +163,8 @@ export async function seedDemoData() {
         role: 'employee',
         group_id: 4,
         date_of_hire: monthsAgo(8),
-        rehire_date: null,
         employment_type: 'part_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null,
       },
       // HR specialist
       {
@@ -184,9 +175,8 @@ export async function seedDemoData() {
         role: 'hr_specialist',
         group_id: 3, // HR
         date_of_hire: yearsAgo(4),
-        rehire_date: null,
         employment_type: 'full_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null,
       },
       // Recent hires
       {
@@ -197,9 +187,8 @@ export async function seedDemoData() {
         role: 'employee',
         group_id: 4,
         date_of_hire: monthsAgo(3),
-        rehire_date: null,
         employment_type: 'full_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null,
       },
       {
         number: 'DEMO010',
@@ -209,9 +198,8 @@ export async function seedDemoData() {
         role: 'employee',
         group_id: 4,
         date_of_hire: monthsAgo(1),
-        rehire_date: null,
         employment_type: 'full_time',
-        seniority_rank: null,
+        overtime_threshold_hours: null,
       },
     ];
 
@@ -223,9 +211,9 @@ export async function seedDemoData() {
         const result = await db.execute({
           sql: `INSERT INTO employees (
             employee_number, first_name, last_name, email, role, group_id,
-            date_of_hire, rehire_date, employment_type, seniority_rank,
+            date_of_hire, employment_type, overtime_threshold_hours,
             created_by, is_active
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             emp.number,
             emp.first,
@@ -234,9 +222,8 @@ export async function seedDemoData() {
             emp.role,
             emp.group_id,
             emp.date_of_hire,
-            emp.rehire_date,
             emp.employment_type,
-            emp.seniority_rank,
+            emp.overtime_threshold_hours,
             1, // Created by admin
             1, // Active
           ],
@@ -247,7 +234,6 @@ export async function seedDemoData() {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         if (errorMessage.includes('UNIQUE constraint failed')) {
           console.log(`  ⊘ ${emp.first} ${emp.last} already exists`);
-          // Get existing employee ID
           const existing = await db.execute({
             sql: 'SELECT id FROM employees WHERE employee_number = ?',
             args: [emp.number],
@@ -261,68 +247,41 @@ export async function seedDemoData() {
       }
     }
 
-    // Get time code IDs
-    const timeCodesResult = await db.execute('SELECT id, code FROM time_codes');
-    const timeCodes: { [key: string]: number } = {};
-    for (const row of timeCodesResult.rows as unknown as { id: number; code: string }[]) {
-      timeCodes[row.code] = row.id;
-    }
-
-    // Attendance entries spanning the last several months. Hours are tuned so
-    // the Leave Balance Summary report shows a mix of normal, warning (>=90%)
-    // and critical (>=100%) states against the brand's default allocations
-    // (V: 80h, FH: 24h, PS: 40h, B: 24h).
+    // Daily hours-worked entries spanning the last few months. DEMO003 gets a
+    // run of 50h weeks to demonstrate the overtime flag; DEMO006 has a custom
+    // 20h/week overtime threshold (see overtime_threshold_hours above) and a
+    // light part-time schedule that stays under it.
     console.log('');
     console.log('Creating demo attendance entries...');
 
     const attendanceEntries: AttendanceSeedEntry[] = [
-      // Robert Anderson (most senior, full-time) - Vacation near limit (90% of 80h -> warning)
-      ...range('DEMO001', 'V', 70, 5, 8, 'Summer vacation'),
-      ...range('DEMO001', 'V', 21, 4, 8, 'Long weekend getaway'),
-      single('DEMO001', 'H', 14, 8, 'Memorial Day'),
+      ...range('DEMO001', 70, 10, 8, 'onsite', 'Regular work week'),
+      ...range('DEMO001', 21, 5, 8, 'remote'),
 
-      // Patricia Williams (manager) - moderate usage across several leave types
-      ...range('DEMO002', 'V', 42, 4, 8, 'Family trip'),
-      single('DEMO002', 'H', 35, 8, 'Worked Memorial Day - covered for team'),
-      single('DEMO002', 'FH', 10, 8, 'Floating holiday - personal day'),
-      single('DEMO002', 'P', 5, 8, "Doctor's appointment"),
+      ...range('DEMO002', 60, 10, 8, 'onsite'),
+      ...range('DEMO002', 14, 5, 8, 'remote', 'Working from home this week'),
 
-      // James Miller - Personal Sick Day fully used (100% of 40h -> critical)
-      ...range('DEMO003', 'PS', 60, 3, 8, 'Out sick with the flu'),
-      ...range('DEMO003', 'PS', 15, 2, 8, 'Follow-up sick day'),
-      ...range('DEMO003', 'V', 90, 3, 8, 'Spring break'),
+      // James Miller - overtime weeks (10h/day, 5 days = 50h)
+      ...range('DEMO003', 28, 5, 10, 'onsite', 'Crunch week before launch'),
+      ...range('DEMO003', 21, 5, 10, 'onsite', 'Crunch week before launch'),
+      ...range('DEMO003', 70, 10, 8, 'onsite'),
 
-      // Jennifer Davis - Floating holidays fully used (100% of 24h -> critical)
-      ...range('DEMO004', 'FH', 7, 3, 8, 'Used remaining floating holidays'),
-      ...range('DEMO004', 'V', 45, 2, 8, 'Long weekend'),
-      single('DEMO004', 'PS', 21, 8, 'Sick day'),
+      ...range('DEMO004', 45, 10, 8, 'remote'),
+      ...range('DEMO004', 7, 5, 8, 'onsite'),
 
-      // Michael Johnson (rehired) - Bereavement (67% of 24h), vacation, FMLA
-      single('DEMO005', 'B', 30, 8, 'Family bereavement'),
-      single('DEMO005', 'B', 29, 8, 'Family bereavement'),
-      ...range('DEMO005', 'V', 75, 5, 8, 'Vacation - visiting family'),
-      ...range('DEMO005', 'FM', 100, 2, 8, 'FMLA - medical leave'),
+      ...range('DEMO005', 75, 10, 8, 'onsite'),
+      ...range('DEMO005', 20, 5, 8, 'remote'),
 
-      // Sarah Martinez (part-time) - shorter days reflect reduced schedule
-      ...range('DEMO006', 'P', 20, 4, 4, 'Personal appointments - reduced schedule'),
-      ...range('DEMO006', 'V', 60, 2, 4, 'Long weekend'),
-      single('DEMO006', 'T', 3, 1, 'Traffic delay'),
+      // Sarah Martinez (part-time, 20h/week threshold) - stays under it
+      ...range('DEMO006', 60, 8, 4, 'onsite', 'Reduced schedule'),
+      ...range('DEMO006', 20, 4, 4, 'remote'),
 
-      // David Garcia (part-time) - light usage
-      ...range('DEMO007', 'V', 40, 2, 4, 'Time off'),
-      single('DEMO007', 'LOW', 25, 4, 'Reduced hours - slow week'),
-      single('DEMO007', 'T', 2, 1, 'Traffic delay'),
+      ...range('DEMO007', 40, 8, 4, 'onsite'),
 
-      // Lisa Thompson (HR) - Personal Sick Day usage against an HR-approved override (see allocation below)
-      ...range('DEMO008', 'PS', 35, 3, 8, 'Recovering from a minor procedure'),
-      single('DEMO008', 'JD', 45, 8, 'Jury selection'),
-      single('DEMO008', 'JD', 44, 8, 'Jury duty day 2'),
-      ...range('DEMO008', 'V', 80, 4, 8, 'Vacation'),
+      ...range('DEMO008', 80, 10, 8, 'onsite'),
+      ...range('DEMO008', 14, 5, 8, 'remote'),
 
-      // Christopher Brown (recent hire) - light usage across a few codes
-      single('DEMO009', 'FM', 60, 8, 'FMLA - new child bonding'),
-      single('DEMO009', 'V', 15, 8, 'First vacation day'),
-      single('DEMO009', 'PS', 8, 8, 'Sick day'),
+      ...range('DEMO009', 30, 8, 8, 'onsite', 'First weeks on the job'),
 
       // Amanda Wilson (newest hire) - no entries yet, just started
     ];
@@ -330,33 +289,28 @@ export async function seedDemoData() {
     let entriesCreated = 0;
     for (const entry of attendanceEntries) {
       const empId = employeeIds[entry.empNum];
-      const timeCodeId = timeCodes[entry.code];
-
-      if (!empId || !timeCodeId) {
-        console.log(`  ⚠ Skipping entry - missing employee or time code: ${entry.empNum}, ${entry.code}`);
+      if (!empId) {
+        console.log(`  ⚠ Skipping entry - missing employee: ${entry.empNum}`);
         continue;
       }
 
       try {
-        // Check if entry exists
         const existing = await db.execute({
           sql: 'SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
           args: [empId, entry.date],
         });
 
         if (existing.rows.length > 0) {
-          // Update existing
           await db.execute({
-            sql: `UPDATE attendance_entries SET time_code = ?, time_code_id = ?, hours = ?, notes = ?
+            sql: `UPDATE attendance_entries SET hours = ?, work_location = ?, notes = ?
                   WHERE employee_id = ? AND entry_date = ?`,
-            args: [entry.code, timeCodeId, entry.hours, entry.notes, empId, entry.date],
+            args: [entry.hours, entry.workLocation, entry.notes, empId, entry.date],
           });
         } else {
-          // Insert new
           await db.execute({
-            sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, time_code_id, hours, notes)
-                  VALUES (?, ?, ?, ?, ?, ?)`,
-            args: [empId, entry.date, entry.code, timeCodeId, entry.hours, entry.notes],
+            sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
+                  VALUES (?, ?, ?, ?, ?)`,
+            args: [empId, entry.date, entry.hours, entry.workLocation, entry.notes],
           });
         }
         entriesCreated++;
@@ -367,77 +321,6 @@ export async function seedDemoData() {
     }
 
     console.log(`  ✓ Created ${entriesCreated} attendance entries`);
-
-    // Leave allocation override - demonstrates HR granting extra hours
-    // beyond the brand's default allocation for a specific employee.
-    console.log('');
-    console.log('Creating demo leave allocation override...');
-    const lisaId = employeeIds['DEMO008'];
-    if (lisaId && timeCodes['PS']) {
-      const currentYear = new Date().getFullYear();
-      await db.execute({
-        sql: `INSERT INTO employee_time_allocations (employee_id, time_code, time_code_id, allocated_hours, year, notes)
-              VALUES (?, ?, ?, ?, ?, ?)
-              ON CONFLICT(employee_id, time_code, year) DO UPDATE SET
-                time_code_id = excluded.time_code_id,
-                allocated_hours = excluded.allocated_hours,
-                notes = excluded.notes,
-                updated_at = CURRENT_TIMESTAMP`,
-        args: [lisaId, 'PS', timeCodes['PS'], 48, currentYear, 'Extra sick time approved by HR director - medical accommodation'],
-      });
-      console.log('  ✓ Lisa Thompson: Personal Sick Day allocation increased to 48h (HR override)');
-    }
-
-    // Office presence - mark a couple of employees "out" so the office
-    // presence widget has data to show on first launch.
-    console.log('');
-    console.log('Setting demo office presence...');
-    const today = daysAgo(0);
-    const outToday = ['DEMO006', 'DEMO009'];
-    let presenceSet = 0;
-    for (const empNum of outToday) {
-      const empId = employeeIds[empNum];
-      if (!empId) continue;
-      await db.execute({
-        sql: `INSERT INTO office_presence (employee_id, date, is_out, toggled_by, updated_at)
-              VALUES (?, ?, 1, 1, CURRENT_TIMESTAMP)
-              ON CONFLICT(employee_id, date) DO UPDATE SET
-                is_out = 1, toggled_by = 1, updated_at = CURRENT_TIMESTAMP`,
-        args: [empId, today],
-      });
-      presenceSet++;
-    }
-    console.log(`  ✓ Marked ${presenceSet} employees as out of the office today`);
-
-    // Break entries - one compliant pair and one override example for the
-    // break compliance report (only visible if the brand enables breakTracking).
-    console.log('');
-    console.log('Creating demo break entries...');
-    const yesterday = daysAgo(1);
-    const breakEntries: Array<{ empNum: string; breakType: string; start: string; end: string; duration: number; override: number; notes: string | null }> = [
-      { empNum: 'DEMO001', breakType: 'break_1', start: '09:05', end: '09:20', duration: 15, override: 0, notes: null },
-      { empNum: 'DEMO001', breakType: 'lunch', start: '12:00', end: '12:30', duration: 30, override: 0, notes: null },
-      { empNum: 'DEMO002', breakType: 'lunch', start: '11:45', end: '12:35', duration: 50, override: 1, notes: 'Extended lunch approved - client meeting ran long' },
-    ];
-    let breaksCreated = 0;
-    for (const b of breakEntries) {
-      const empId = employeeIds[b.empNum];
-      if (!empId) continue;
-      await db.execute({
-        sql: `INSERT INTO break_entries (employee_id, entry_date, break_type, start_time, end_time, duration_minutes, notes, compliance_override, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-              ON CONFLICT(employee_id, entry_date, break_type) DO UPDATE SET
-                start_time = excluded.start_time,
-                end_time = excluded.end_time,
-                duration_minutes = excluded.duration_minutes,
-                notes = excluded.notes,
-                compliance_override = excluded.compliance_override,
-                updated_at = CURRENT_TIMESTAMP`,
-        args: [empId, yesterday, b.breakType, b.start, b.end, b.duration, b.notes, b.override],
-      });
-      breaksCreated++;
-    }
-    console.log(`  ✓ Created ${breaksCreated} break entries`);
 
     // Demo logins - one per role, linked to a demo employee so the
     // attendance grid and "self-service" views default correctly.
@@ -482,13 +365,10 @@ export async function seedDemoData() {
     console.log('║                  DEMO DATA SEEDING COMPLETE                ║');
     console.log('╠════════════════════════════════════════════════════════════╣');
     console.log('║  Employees: 10 (8 full-time, 2 part-time)                  ║');
-    console.log('║  - Various hire dates for seniority demo                   ║');
-    console.log('║  - 1 rehired employee, same-day hires with seniority ranks ║');
     console.log('║                                                            ║');
     console.log(`║  Attendance entries: ${entriesCreated} across the last several months${' '.repeat(Math.max(0, 9 - String(entriesCreated).length))}║`);
-    console.log('║  - Leave Balance Summary shows normal/warning/critical     ║');
-    console.log('║  - One HR-approved allocation override                     ║');
-    console.log('║  - Office presence and break compliance sample data        ║');
+    console.log('║  - James Miller (DEMO003) has overtime weeks to flag       ║');
+    console.log('║  - Sarah Martinez (DEMO006) has a 20h/week OT override     ║');
     console.log('║                                                            ║');
     console.log('║  Logins:                                                   ║');
     console.log('║    admin    / admin123  (Administrator)                    ║');

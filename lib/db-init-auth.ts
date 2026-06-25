@@ -88,10 +88,25 @@ export async function initializeAuthTables() {
     )
   `);
 
+  // Add overtime_threshold_hours column to groups if it doesn't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE groups ADD COLUMN overtime_threshold_hours REAL`);
+    console.log('  ✓ Added overtime_threshold_hours column to groups table');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Insert default theme setting
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings (key, value, description)
           VALUES ('theme', 'standard', 'Application theme (controls layout, typography, spacing)')`,
+    args: [],
+  });
+
+  // Insert default overtime threshold setting (hours/week)
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO app_settings (key, value, description)
+          VALUES ('overtime_threshold_hours', '40', 'Default weekly overtime threshold (hours)')`,
     args: [],
   });
 

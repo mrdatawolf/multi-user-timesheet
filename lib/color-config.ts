@@ -1,16 +1,13 @@
 /**
  * Color Configuration System
  *
- * Provides color management for time codes and status indicators.
+ * Provides color management for status indicators (e.g. overtime warnings).
  * Color resolution priority:
  * 1. Database (admin customizations)
- * 2. Brand JSON defaults
- * 3. System defaults
+ * 2. System defaults
  */
 
 import { authDb } from './db-auth';
-import { getBrandTimeCodes, BrandTimeCode } from './brand-time-codes';
-import { getBrandFeatures as getBrandFeaturesFromLib } from './brand-features';
 
 // Available semantic colors in the palette
 export type SemanticColor = 'blue' | 'amber' | 'red' | 'teal' | 'purple' | 'green' | 'gray';
@@ -31,7 +28,7 @@ export interface ColorDefinition {
 // Color configuration entry (from database)
 export interface ColorConfig {
   id: number;
-  config_type: 'time_code' | 'status';
+  config_type: 'status';
   config_key: string;
   color_name: SemanticColor;
   created_at: string;
@@ -68,17 +65,6 @@ export const DEFAULT_COLOR_PALETTE: Record<SemanticColor, ColorDefinition> = {
     light: { bg: '#f3f4f6', text: '#374151', border: '#d1d5db' },
     dark: { bg: '#1f2937', text: '#d1d5db', border: '#4b5563' },
   },
-};
-
-// Default time code colors (used when no JSON or DB config)
-export const DEFAULT_TIME_CODE_COLORS: Record<string, SemanticColor> = {
-  V: 'blue',      // Vacation
-  PS: 'purple',   // Personal Sick
-  FH: 'teal',     // Floating Holiday
-  H: 'green',     // Holiday
-  B: 'gray',      // Bereavement
-  JD: 'gray',     // Jury Duty
-  FM: 'gray',     // FMLA
 };
 
 // Default status colors
@@ -126,7 +112,7 @@ export async function getColorConfig(configType: string, configKey: string): Pro
  * Save or update a color configuration
  */
 export async function saveColorConfig(
-  configType: 'time_code' | 'status',
+  configType: 'status',
   configKey: string,
   colorName: SemanticColor
 ): Promise<void> {
@@ -167,78 +153,14 @@ export function clearColorConfigCache(): void {
 }
 
 /**
- * Get the color for a time code
- * Resolution: DB override -> JSON default -> System default
- */
-export async function getTimeCodeColor(timeCode: string): Promise<SemanticColor> {
-  // 1. Check database for admin override
-  const dbConfig = await getColorConfig('time_code', timeCode);
-  if (dbConfig) {
-    return dbConfig.color_name;
-  }
-
-  // 2. Check brand JSON defaults
-  const brandTimeCodes = getBrandTimeCodes();
-  if (brandTimeCodes) {
-    const tc = brandTimeCodes.find((t: BrandTimeCode) => t.code === timeCode);
-    if (tc && 'color' in tc && typeof (tc as BrandTimeCode & { color?: string }).color === 'string') {
-      return (tc as BrandTimeCode & { color?: string }).color as SemanticColor;
-    }
-  }
-
-  // 3. Return system default
-  return DEFAULT_TIME_CODE_COLORS[timeCode] || 'gray';
-}
-
-/**
- * Get all time code colors as a map (for batch operations)
- */
-export async function getTimeCodeColorMap(timeCodes: string[]): Promise<Record<string, SemanticColor>> {
-  const result: Record<string, SemanticColor> = {};
-
-  // Get all DB configs at once
-  const dbConfigs = await getColorConfigs();
-  const dbTimeCodeConfigs = dbConfigs.filter(c => c.config_type === 'time_code');
-  const dbMap = new Map(dbTimeCodeConfigs.map(c => [c.config_key, c.color_name]));
-
-  // Get brand JSON defaults
-  const brandTimeCodes = getBrandTimeCodes();
-  const brandMap = new Map<string, SemanticColor>();
-  if (brandTimeCodes) {
-    brandTimeCodes.forEach((tc: BrandTimeCode) => {
-      if ('color' in tc && typeof (tc as BrandTimeCode & { color?: string }).color === 'string') {
-        brandMap.set(tc.code, (tc as BrandTimeCode & { color?: string }).color as SemanticColor);
-      }
-    });
-  }
-
-  // Resolve each time code
-  for (const code of timeCodes) {
-    result[code] = dbMap.get(code) || brandMap.get(code) || DEFAULT_TIME_CODE_COLORS[code] || 'gray';
-  }
-
-  return result;
-}
-
-/**
  * Get the color for a status (warning, critical, normal)
- * Resolution: DB override -> JSON default -> System default
+ * Resolution: DB override -> System default
  */
 export async function getStatusColor(status: 'warning' | 'critical' | 'normal'): Promise<SemanticColor> {
-  // 1. Check database for admin override
   const dbConfig = await getColorConfig('status', status);
   if (dbConfig) {
     return dbConfig.color_name;
   }
-
-  // 2. Check brand JSON defaults (from brand-features.json)
-  const brandFeatures = await getBrandFeaturesFromLib();
-  const statusColors = (brandFeatures?.features as Record<string, unknown> & { statusColors?: Record<string, SemanticColor> })?.statusColors;
-  if (statusColors && statusColors[status]) {
-    return statusColors[status];
-  }
-
-  // 3. Return system default
   return DEFAULT_STATUS_COLORS[status];
 }
 
@@ -248,14 +170,6 @@ export async function getStatusColor(status: 'warning' | 'critical' | 'normal'):
 export async function getStatusColors(): Promise<Record<string, SemanticColor>> {
   const result: Record<string, SemanticColor> = { ...DEFAULT_STATUS_COLORS };
 
-  // Get brand JSON defaults
-  const brandFeatures = await getBrandFeaturesFromLib();
-  const statusColors = (brandFeatures?.features as Record<string, unknown> & { statusColors?: Record<string, SemanticColor> })?.statusColors;
-  if (statusColors) {
-    Object.assign(result, statusColors);
-  }
-
-  // Get DB overrides
   const dbConfigs = await getColorConfigs();
   const dbStatusConfigs = dbConfigs.filter(c => c.config_type === 'status');
   for (const config of dbStatusConfigs) {
@@ -300,30 +214,6 @@ export function colorToInlineStyles(
   }
 
   return styles;
-}
-
-/**
- * Check if color customization feature is enabled
- */
-export async function isColorCustomizationEnabled(): Promise<{
-  enabled: boolean;
-  allowTimeCodeColors: boolean;
-  allowStatusColors: boolean;
-}> {
-  const brandFeatures = await getBrandFeaturesFromLib();
-  const colorCustomization = (brandFeatures?.features as Record<string, unknown> & {
-    colorCustomization?: {
-      enabled?: boolean;
-      allowTimeCodeColors?: boolean;
-      allowStatusColors?: boolean;
-    };
-  })?.colorCustomization;
-
-  return {
-    enabled: colorCustomization?.enabled ?? false,
-    allowTimeCodeColors: colorCustomization?.allowTimeCodeColors ?? false,
-    allowStatusColors: colorCustomization?.allowStatusColors ?? false,
-  };
 }
 
 /**

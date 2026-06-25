@@ -1,94 +1,29 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '@/lib/auth-context';
-import type { AttendanceEntry, DailySummary } from '@/lib/attendance-types';
+import { useMemo } from 'react';
+import type { AttendanceEntry } from '@/lib/attendance-types';
 
-// Mapping of semantic colors to Tailwind background classes for cells
-export const CELL_BG_COLOR_MAP: Record<string, string> = {
-  blue: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100',
-  amber: 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900 dark:hover:bg-amber-800 dark:text-amber-100',
-  red: 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-100',
-  teal: 'bg-teal-100 hover:bg-teal-200 dark:bg-teal-900 dark:hover:bg-teal-800 dark:text-teal-100',
-  purple: 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-100',
-  green: 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-100',
-  gray: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100',
+// Background classes for grid cells, keyed by work location
+export const LOCATION_BG_COLOR_MAP: Record<string, string> = {
+  onsite: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100',
+  remote: 'bg-teal-100 hover:bg-teal-200 dark:bg-teal-900 dark:hover:bg-teal-800 dark:text-teal-100',
 };
 
-interface TimeCodeColorInfo {
-  code: string;
-  defaultColor: string;
-}
-
-interface ColorConfig {
-  config_type: string;
-  config_key: string;
-  color_name: string;
-}
-
-export interface FullnessInfo {
-  outCount: number;
-  inOfficePercent: number;
-  barColor: string;
-  isOverLimit: boolean;
-}
+const OVERTIME_BG_CLASS = 'bg-amber-200 hover:bg-amber-300 dark:bg-amber-800 dark:hover:bg-amber-700';
 
 interface UseAttendanceCellOptions {
   entries: AttendanceEntry[];
-  dailySummary?: DailySummary | null;
-  totalActiveEmployees?: number;
-  maxOutOfOffice?: number;
-  capacityWarningCount?: number;
-  capacityCriticalCount?: number;
+  overtimeThresholdHours?: number;
 }
 
-export function useAttendanceCell({
-  entries,
-  dailySummary,
-  totalActiveEmployees = 0,
-  maxOutOfOffice = 0,
-  capacityWarningCount = 3,
-  capacityCriticalCount = 5,
-}: UseAttendanceCellOptions) {
-  const { authFetch } = useAuth();
+// Returns the Monday (YYYY-MM-DD) of the ISO week containing the given date
+function weekStartOf(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
 
-  // Time code colors state
-  const [timeCodeColors, setTimeCodeColors] = useState<Map<string, string>>(new Map());
-
-  // Fetch time code colors from the API
-  useEffect(() => {
-    const loadColorConfig = async () => {
-      try {
-        const response = await authFetch('/api/color-config');
-        if (response.ok) {
-          const data = await response.json();
-          const colorMap = new Map<string, string>();
-
-          // First, set defaults from the JSON time codes
-          if (data.timeCodes) {
-            data.timeCodes.forEach((tc: TimeCodeColorInfo) => {
-              if (tc.defaultColor) {
-                colorMap.set(tc.code, tc.defaultColor);
-              }
-            });
-          }
-
-          // Then, override with any custom configs from the database
-          if (data.colorConfigs) {
-            data.colorConfigs.forEach((config: ColorConfig) => {
-              if (config.config_type === 'time_code') {
-                colorMap.set(config.config_key, config.color_name);
-              }
-            });
-          }
-
-          setTimeCodeColors(colorMap);
-        }
-      } catch (error) {
-        console.error('Failed to load color config:', error);
-      }
-    };
-    loadColorConfig();
-  }, [authFetch]);
-
+export function useAttendanceCell({ entries, overtimeThresholdHours = 40 }: UseAttendanceCellOptions) {
   // Group entries by date
   const entriesByDate = useMemo(() => {
     const map = new Map<string, AttendanceEntry[]>();
@@ -96,6 +31,16 @@ export function useAttendanceCell({
       const existing = map.get(entry.entry_date) || [];
       existing.push(entry);
       map.set(entry.entry_date, existing);
+    });
+    return map;
+  }, [entries]);
+
+  // Total hours per ISO week (Monday-start), used to flag overtime
+  const weekTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    entries.forEach(entry => {
+      const wk = weekStartOf(entry.entry_date);
+      map.set(wk, (map.get(wk) || 0) + (entry.hours || 0));
     });
     return map;
   }, [entries]);
@@ -108,66 +53,38 @@ export function useAttendanceCell({
     if (entriesForDate.length === 0) {
       return '-';
     }
-
-    if (entriesForDate.length === 1) {
-      const entry = entriesForDate[0];
-      return `${entry.time_code} (${entry.hours})`;
-    }
-
-    // Multiple entries: show *totalHours
     const totalHours = entriesForDate.reduce((sum, e) => sum + e.hours, 0);
-    return `*${totalHours.toFixed(1)}`;
+    return `${totalHours}h`;
   };
 
   const hasNotes = (entriesForDate: AttendanceEntry[]): boolean => {
     return entriesForDate.some(e => e.notes && e.notes.trim().length > 0);
   };
 
-  const getCellColorClass = (entriesForDate: AttendanceEntry[]): string => {
+  const isOvertimeWeek = (dateStr: string): boolean => {
+    const wk = weekStartOf(dateStr);
+    return (weekTotals.get(wk) || 0) > overtimeThresholdHours;
+  };
+
+  const getCellColorClass = (entriesForDate: AttendanceEntry[], dateStr: string): string => {
     if (entriesForDate.length === 0) {
       return '';
     }
-
-    if (entriesForDate.length === 1) {
-      const colorName = timeCodeColors.get(entriesForDate[0].time_code);
-      if (colorName) {
-        return CELL_BG_COLOR_MAP[colorName] || '';
-      }
+    if (isOvertimeWeek(dateStr)) {
+      return OVERTIME_BG_CLASS;
     }
-
-    // Multiple entries: use gray
-    return CELL_BG_COLOR_MAP.gray || '';
-  };
-
-  const getFullnessInfo = (dateStr: string): FullnessInfo | null => {
-    if (!dailySummary || !totalActiveEmployees || totalActiveEmployees === 0) {
-      return null;
+    if (entriesForDate.length === 1 && entriesForDate[0].work_location) {
+      return LOCATION_BG_COLOR_MAP[entriesForDate[0].work_location] || '';
     }
-
-    const daySummary = dailySummary[dateStr];
-    const outCount = daySummary?.outCount ?? 0;
-    const inOfficePercent = ((totalActiveEmployees - outCount) / totalActiveEmployees) * 100;
-    const isOverLimit = maxOutOfOffice > 0 && outCount > maxOutOfOffice;
-
-    let barColor: string;
-    if (isOverLimit || (capacityCriticalCount > 0 && outCount >= capacityCriticalCount)) {
-      barColor = 'bg-red-400';
-    } else if (capacityWarningCount > 0 && outCount >= capacityWarningCount) {
-      barColor = 'bg-amber-400';
-    } else {
-      barColor = 'bg-gray-300';
-    }
-
-    return { outCount, inOfficePercent, barColor, isOverLimit };
+    return '';
   };
 
   return {
     entriesByDate,
-    timeCodeColors,
     getEntriesForDate,
     getCellDisplay,
     getCellColorClass,
-    getFullnessInfo,
     hasNotes,
+    isOvertimeWeek,
   };
 }

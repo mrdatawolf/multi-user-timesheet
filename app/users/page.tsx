@@ -63,6 +63,11 @@ interface Group {
   is_master: number;
 }
 
+// Shown in the password field when editing a user that already has a
+// password set, so the field isn't confusingly blank. Treated the same as
+// an untouched/blank field on submit - i.e. "don't change the password".
+const PASSWORD_PLACEHOLDER = '*****';
+
 export default function UsersPage() {
   const { user: currentUser, isAuthenticated, isLoading: authLoading, authFetch, isMaster, isAdministrator, isManager } = useAuth();
   const router = useRouter();
@@ -175,7 +180,7 @@ export default function UsersPage() {
       setEditingUser(user);
       setFormData({
         username: user.username,
-        password: '',
+        password: PASSWORD_PLACEHOLDER,
         full_name: user.full_name,
         email: user.email || '',
         group_id: user.group_id.toString(),
@@ -220,8 +225,9 @@ export default function UsersPage() {
           role_id: formData.role_id ? parseInt(formData.role_id) : undefined,
         };
 
-        // Only include password if it's been changed
-        if (formData.password) {
+        // Only include password if it's been changed - blank or the
+        // unchanged "*****" placeholder both mean "keep current password"
+        if (formData.password && formData.password !== PASSWORD_PLACEHOLDER) {
           updatePayload.password = formData.password;
         }
 
@@ -510,7 +516,7 @@ export default function UsersPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">
-                  Password {editingUser && <span className="text-xs text-muted-foreground">(leave blank to keep current)</span>}
+                  Password {editingUser && <span className="text-xs text-muted-foreground">(leave as ***** to keep current)</span>}
                   {!editingUser && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
@@ -520,6 +526,19 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
+                  onFocus={(e) => {
+                    if (editingUser && formData.password === PASSWORD_PLACEHOLDER) {
+                      e.target.select();
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    // A click's mouseup re-collapses the selection made in
+                    // onFocus above, so the placeholder must also be
+                    // protected here for the select-all to actually stick.
+                    if (editingUser && formData.password === PASSWORD_PLACEHOLDER) {
+                      e.preventDefault();
+                    }
+                  }}
                   required={!editingUser}
                   autoComplete="new-password"
                 />

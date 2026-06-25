@@ -14,7 +14,6 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
-import { getBrandFeatures, isAutoGenerateAbbreviation } from '@/lib/brand-features';
 import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export async function GET(request: NextRequest) {
@@ -174,20 +173,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-generate abbreviation from name if brand feature is enabled and none was supplied
+    // Auto-generate abbreviation from name if none was supplied
     if (!body.abbreviation && body.first_name && body.last_name) {
-      const brandFeatures = await getBrandFeatures();
-      if (isAutoGenerateAbbreviation(brandFeatures)) {
-        const existingResult = await db.execute({
-          sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1',
-          args: [],
-        });
-        const existingSet = new Set<string>(
-          (existingResult.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
-        );
-        const abbr = generateUniqueAbbreviation(body.first_name, body.last_name, existingSet);
-        if (abbr) body.abbreviation = abbr;
-      }
+      const existingResult = await db.execute({
+        sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1',
+        args: [],
+      });
+      const existingSet = new Set<string>(
+        (existingResult.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+      );
+      const abbr = generateUniqueAbbreviation(body.first_name, body.last_name, existingSet);
+      if (abbr) body.abbreviation = abbr;
     }
 
     // Validate abbreviation if provided
@@ -267,7 +263,7 @@ export async function POST(request: NextRequest) {
       employment_type: body.employment_type || 'full_time',
       seniority_rank: body.seniority_rank,
       abbreviation: body.abbreviation,
-      show_in_office_presence: body.show_in_office_presence,
+      overtime_threshold_hours: body.overtime_threshold_hours,
       created_by: authUser.id,
       is_active: 1
     });
@@ -290,7 +286,7 @@ export async function POST(request: NextRequest) {
         employment_type: newEmployee.employment_type,
         seniority_rank: newEmployee.seniority_rank,
         abbreviation: newEmployee.abbreviation,
-        show_in_office_presence: newEmployee.show_in_office_presence,
+        overtime_threshold_hours: newEmployee.overtime_threshold_hours,
       }),
       ip_address: getClientIP(request),
       user_agent: getUserAgent(request),
@@ -465,9 +461,9 @@ export async function PUT(request: NextRequest) {
       args.push(abbr);
     }
 
-    if (body.show_in_office_presence !== undefined) {
-      updates.push('show_in_office_presence = ?');
-      args.push(body.show_in_office_presence);
+    if (body.overtime_threshold_hours !== undefined) {
+      updates.push('overtime_threshold_hours = ?');
+      args.push(body.overtime_threshold_hours);
     }
 
     if (body.is_active !== undefined) {
@@ -511,7 +507,7 @@ export async function PUT(request: NextRequest) {
         employment_type: oldEmployee.employment_type,
         seniority_rank: oldEmployee.seniority_rank,
         abbreviation: oldEmployee.abbreviation,
-        show_in_office_presence: oldEmployee.show_in_office_presence,
+        overtime_threshold_hours: oldEmployee.overtime_threshold_hours,
         is_active: oldEmployee.is_active,
       }),
       new_values: JSON.stringify({
@@ -526,7 +522,7 @@ export async function PUT(request: NextRequest) {
         employment_type: updatedEmployee?.employment_type,
         seniority_rank: updatedEmployee?.seniority_rank,
         abbreviation: updatedEmployee?.abbreviation,
-        show_in_office_presence: updatedEmployee?.show_in_office_presence,
+        overtime_threshold_hours: updatedEmployee?.overtime_threshold_hours,
         is_active: updatedEmployee?.is_active,
       }),
       ip_address: getClientIP(request),

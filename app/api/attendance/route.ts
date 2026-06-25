@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById, syncTimeCodesFromJson } from '@/lib/queries-sqlite';
+import { getAllEntries, getEntriesForDateRange, upsertEntry, deleteEntry, getEmployeeById } from '@/lib/queries-sqlite';
 import { getAuthUser, getClientIP, getUserAgent } from '@/lib/middleware/auth';
 import {
   logAudit,
@@ -11,9 +11,7 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
-import { getBrandTimeCodes, getAccrualRuleForTimeCode } from '@/lib/brand-time-codes';
-import { getBrandFeatures, getBulkEntryConfig } from '@/lib/brand-features';
-import { calculateAccrual, AccrualRule } from '@/lib/accrual-calculations';
+import { MAX_BULK_DAYS } from '@/lib/attendance-types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -128,12 +126,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure time codes from brand JSON are synced to database (include inactive for proper sync)
-    const brandTimeCodes = getBrandTimeCodes(undefined, true);
-    if (brandTimeCodes) {
-      await syncTimeCodesFromJson(brandTimeCodes);
-    }
-
     const body = await request.json();
 
     // Check if user can edit this employee's data
@@ -170,11 +162,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === 'bulk_update_range') {
-      // Bulk entry: apply a single time code across a date range
-      const { start_date, end_date, time_code, hours, notes, skip_weekends, overwrite_existing, over_limit_acknowledged } = body;
+      // Bulk entry: apply the same hours/work_location across a date range
+      const { start_date, end_date, work_location, hours, notes, skip_weekends, overwrite_existing } = body;
 
-      if (!start_date || !end_date || !time_code) {
-        return NextResponse.json({ error: 'start_date, end_date, and time_code are required' }, { status: 400 });
+      if (!start_date || !end_date) {
+        return NextResponse.json({ error: 'start_date and end_date are required' }, { status: 400 });
       }
 
       if (new Date(end_date) < new Date(start_date)) {
@@ -201,89 +193,13 @@ export async function POST(request: NextRequest) {
         current.setDate(current.getDate() + 1);
       }
 
-      // Validate against maxDays
-      const features = await getBrandFeatures();
-      const bulkConfig = getBulkEntryConfig(features);
-      if (dates.length > bulkConfig.maxDays) {
+      if (dates.length > MAX_BULK_DAYS) {
         return NextResponse.json({
           error: 'range_too_large',
-          message: `Date range covers ${dates.length} days, which exceeds the maximum of ${bulkConfig.maxDays} days`,
+          message: `Date range covers ${dates.length} days, which exceeds the maximum of ${MAX_BULK_DAYS} days`,
           dayCount: dates.length,
-          maxDays: bulkConfig.maxDays,
+          maxDays: MAX_BULK_DAYS,
         }, { status: 400 });
-      }
-
-      // Resolve the effective hour cap for this time code
-      // Priority: hours_limit > accrual allocation > employee override > default_allocation
-      const allTimeCodes = getBrandTimeCodes(undefined, true);
-      const tcDef = allTimeCodes?.find(tc => tc.code === time_code);
-      let effectiveLimit: number | null = tcDef?.hours_limit ?? null;
-
-      if (effectiveLimit === null && tcDef) {
-        // No hard hours_limit — check accrual rules and allocations
-        const accrualRule = getAccrualRuleForTimeCode(time_code);
-        const entryYear = new Date(start_date + 'T00:00:00').getFullYear();
-
-        if (accrualRule) {
-          // Get employee hire date, rehire date, and employment type for accrual calculation
-          const empResult = await db.execute({
-            sql: 'SELECT date_of_hire, rehire_date, employment_type FROM employees WHERE id = ?',
-            args: [body.employee_id],
-          });
-          const hireDate = empResult.rows.length > 0 ? (empResult.rows[0] as any).date_of_hire : null;
-          const rehireDate = empResult.rows.length > 0 ? (empResult.rows[0] as any).rehire_date : null;
-          const employmentType = empResult.rows.length > 0 ? (empResult.rows[0] as any).employment_type : null;
-
-          if (hireDate) {
-            // Rules that reset on rehire (e.g. floating holiday) anchor to the
-            // rehire date instead of the original hire date.
-            const anchorDate = (accrualRule as AccrualRule).resetOnRehire && rehireDate ? rehireDate : hireDate;
-            const accrualResult = calculateAccrual(anchorDate, entryYear, new Date(), accrualRule as AccrualRule, employmentType);
-            effectiveLimit = accrualResult.accruedHours;
-          }
-        }
-
-        // Check for employee-specific override
-        if (effectiveLimit === null) {
-          const overrideResult = await db.execute({
-            sql: `SELECT allocated_hours FROM employee_time_allocations
-                  WHERE employee_id = ? AND time_code = ? AND year = ?`,
-            args: [body.employee_id, time_code, entryYear],
-          });
-          if (overrideResult.rows.length > 0) {
-            effectiveLimit = Number((overrideResult.rows[0] as any).allocated_hours);
-          }
-        }
-
-        // Fall back to default_allocation
-        if (effectiveLimit === null && tcDef.default_allocation) {
-          effectiveLimit = tcDef.default_allocation;
-        }
-      }
-
-      if (effectiveLimit !== null && !over_limit_acknowledged) {
-        // Sum existing usage for this time code in the same year
-        const entryYear = new Date(start_date + 'T00:00:00').getFullYear();
-        const usageResult = await db.execute({
-          sql: `SELECT COALESCE(SUM(hours), 0) as total_used FROM attendance_entries
-                WHERE employee_id = ? AND time_code = ?
-                AND entry_date >= ? AND entry_date <= ?`,
-          args: [body.employee_id, time_code, `${entryYear}-01-01`, `${entryYear}-12-31`],
-        });
-        const totalUsed = Number((usageResult.rows[0] as any).total_used) || 0;
-        const requested = hoursPerDay * dates.length;
-        const remaining = effectiveLimit - totalUsed;
-
-        if (requested > remaining) {
-          return NextResponse.json({
-            error: 'over_limit',
-            message: `This would use ${requested}h but only ${remaining.toFixed(1)}h of ${effectiveLimit}h remain for ${time_code}`,
-            remaining: Math.max(0, remaining),
-            requested,
-            hours_limit: effectiveLimit,
-            total_used: totalUsed,
-          }, { status: 400 });
-        }
       }
 
       // Process each date
@@ -314,9 +230,9 @@ export async function POST(request: NextRequest) {
 
         // Insert new entry
         const result = await db.execute({
-          sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
+          sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
                 VALUES (?, ?, ?, ?, ?)`,
-          args: [body.employee_id, dateStr, time_code, hoursPerDay, notes || null],
+          args: [body.employee_id, dateStr, hoursPerDay, work_location || null, notes || null],
         });
 
         createdCount++;
@@ -329,7 +245,7 @@ export async function POST(request: NextRequest) {
             table_name: 'attendance_entries',
             record_id: Number(result.lastInsertRowid),
             old_values: existing.rows.length > 0 ? JSON.stringify(existing.rows) : undefined,
-            new_values: JSON.stringify({ employee_id: body.employee_id, entry_date: dateStr, time_code, hours: hoursPerDay, notes: notes || null }),
+            new_values: JSON.stringify({ employee_id: body.employee_id, entry_date: dateStr, hours: hoursPerDay, work_location: work_location || null, notes: notes || null }),
             ip_address: getClientIP(request),
             user_agent: getUserAgent(request),
           });
@@ -392,13 +308,13 @@ export async function POST(request: NextRequest) {
       const newEntries = [];
       for (const entry of entries) {
         const result = await db.execute({
-          sql: `INSERT INTO attendance_entries (employee_id, entry_date, time_code, hours, notes)
+          sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
                 VALUES (?, ?, ?, ?, ?)`,
           args: [
             body.employee_id,
             targetEntryDate,
-            entry.time_code,
             entry.hours || 0,
+            entry.work_location || null,
             entry.notes || null,
           ],
         });
@@ -460,10 +376,9 @@ export async function POST(request: NextRequest) {
       await upsertEntry({
         employee_id: body.employee_id,
         entry_date: body.entry_date,
-        time_code: body.time_code,
         hours: body.hours || 0,
+        work_location: body.work_location || null,
         notes: body.notes,
-        time_code_id: 0
       });
 
       // Get the new entry

@@ -7,23 +7,19 @@ import { AttendanceGridMonth } from '@/components/attendance-grid-month';
 import { AttendanceGridWeek } from '@/components/attendance-grid-week';
 import { AttendanceGridYearCalendar } from '@/components/attendance-grid-year-calendar';
 import { ViewToggle } from '@/components/view-toggle';
-import type { AttendanceEntry, DailySummary, ViewType, EntryChangeResult } from '@/lib/attendance-types';
-import { formatDateStr, parseDateStr, getWeekBounds, getWeekDates, navigatePeriod, getPeriodLabel } from '@/lib/date-helpers';
+import type { AttendanceEntry, ViewType, EntryChangeResult } from '@/lib/attendance-types';
+import { formatDateStr, parseDateStr, getWeekBounds, getWeekDates, navigatePeriod } from '@/lib/date-helpers';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { BalanceCards } from '@/components/balance-cards';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/spinner';
 import { Label } from '@/components/ui/label';
-import { UserPlus, CalendarRange } from 'lucide-react';
-import { useTheme } from '@/lib/theme-context';
-import { getTheme } from '@/lib/themes';
+import { UserPlus, CalendarRange, LayoutGrid, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getBrandFeatures, getCompanyHolidayDates, isGlobalReadAccessEnabled, getAttendanceYearLayout, getBulkEntryConfig } from '@/lib/brand-features';
 import { BulkEntryDialog } from '@/components/bulk-entry-dialog';
 import { PageLoading } from '@/components/page-loading';
 import { clearCachedDataByPrefix, getCachedData, setCachedData } from '@/lib/client-cache';
@@ -36,6 +32,7 @@ interface Employee {
   email?: string;
   role: string;
   group_id?: number;
+  overtime_threshold_hours?: number | null;
 }
 
 interface Group {
@@ -47,21 +44,6 @@ interface Group {
 interface JobTitle {
   id: number;
   name: string;
-}
-
-interface TimeCode {
-  id: number;
-  code: string;
-  description: string;
-  hours_limit?: number;
-}
-
-interface TimeAllocation {
-  time_code: string;
-  description: string;
-  default_allocation: number | null;
-  allocated_hours: number | null;
-  is_override: boolean;
 }
 
 const MONTH_NAMES = [
@@ -127,15 +109,21 @@ function getInitialDate(searchParams: URLSearchParams): Date {
   return new Date();
 }
 
+function getInitialYearLayout(): 'table' | 'calendar' {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('attendance_year_layout');
+    if (stored === 'table' || stored === 'calendar') return stored;
+  }
+  return 'table';
+}
+
 function AttendanceContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [timeCodes, setTimeCodes] = useState<TimeCode[]>([]);
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
-  const [allocations, setAllocations] = useState<TimeAllocation[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(() => {
     const initialDate = getInitialDate(searchParams);
@@ -143,26 +131,15 @@ function AttendanceContent() {
   });
   const [loading, setLoading] = useState(true);
   const [entriesReady, setEntriesReady] = useState(false);
-  const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
-  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
-  const [totalActiveEmployees, setTotalActiveEmployees] = useState<number>(0);
-  const [maxOutOfOffice, setMaxOutOfOffice] = useState<number>(0);
-  const [capacityWarningCount, setCapacityWarningCount] = useState<number>(3);
-  const [capacityCriticalCount, setCapacityCriticalCount] = useState<number>(5);
-  const [globalReadEnabled, setGlobalReadEnabled] = useState(false);
-  const [yearLayout, setYearLayout] = useState<'table' | 'calendar'>('table');
+  const [yearLayout, setYearLayout] = useState<'table' | 'calendar'>(() => getInitialYearLayout());
   const [bulkEntryOpen, setBulkEntryOpen] = useState(false);
-  const [bulkEntryEnabled, setBulkEntryEnabled] = useState(false);
   const [viewAll, setViewAll] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [hideRoleFilter, setHideRoleFilter] = useState(false);
   const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
   const { toast } = useToast();
-  const { theme: themeId } = useTheme();
-  const themeConfig = getTheme(themeId);
   const { setCurrentScreen } = useHelp();
 
   // View state
@@ -193,6 +170,10 @@ function AttendanceContent() {
     }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [view, currentDate, pathname, router]);
+
+  useEffect(() => {
+    localStorage.setItem('attendance_year_layout', yearLayout);
+  }, [yearLayout]);
 
   // Set the current screen for help context
   useEffect(() => {
@@ -226,16 +207,6 @@ function AttendanceContent() {
     }
   }, [viewAll, year, isAuthenticated]);
 
-  // Reload company holidays when year changes
-  useEffect(() => {
-    const loadHolidays = async () => {
-      const brandFeatures = await getBrandFeatures();
-      const holidays = getCompanyHolidayDates(brandFeatures, year);
-      setCompanyHolidays(holidays);
-    };
-    loadHolidays();
-  }, [year]);
-
   // Reload data when navigating to attendance page
   useEffect(() => {
     if (pathname === '/attendance' && isAuthenticated) {
@@ -247,18 +218,6 @@ function AttendanceContent() {
     }
   }, [pathname]);
 
-  // Re-fetch daily summary when office presence is toggled (via navbar buttons)
-  useEffect(() => {
-    const handlePresenceChange = () => {
-      if (selectedEmployeeId && isAuthenticated && globalReadEnabled) {
-        clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
-        loadAttendanceData();
-      }
-    };
-    window.addEventListener('office-presence-changed', handlePresenceChange);
-    return () => window.removeEventListener('office-presence-changed', handlePresenceChange);
-  }, [selectedEmployeeId, isAuthenticated, globalReadEnabled]);
-
   const loadInitialData = async () => {
     if (!isAuthenticated) {
       console.warn('Cannot load initial data: not authenticated');
@@ -266,24 +225,13 @@ function AttendanceContent() {
     }
 
     try {
-      // Load brand features for company holidays and global read access
-      const brandFeatures = await getBrandFeatures();
-      const holidays = getCompanyHolidayDates(brandFeatures, year);
-      setCompanyHolidays(holidays);
-      setGlobalReadEnabled(isGlobalReadAccessEnabled(brandFeatures));
-      setYearLayout(getAttendanceYearLayout(brandFeatures));
-      setBulkEntryEnabled(getBulkEntryConfig(brandFeatures).enabled);
-      setHideRoleFilter(brandFeatures.features.attendanceManagement?.hideRoleFilter ?? false);
-
       const cachedInitial = getCachedData<{
         employees: Employee[];
-        timeCodes: TimeCode[];
         groups: Group[];
         jobTitles: JobTitle[];
       }>('attendance:initial');
       if (cachedInitial) {
         setEmployees(cachedInitial.employees);
-        setTimeCodes(cachedInitial.timeCodes);
         if (cachedInitial.groups) setGroups(cachedInitial.groups);
         if (cachedInitial.jobTitles) setJobTitles(cachedInitial.jobTitles);
         if (cachedInitial.employees.length > 0 && !selectedEmployeeId) {
@@ -301,20 +249,18 @@ function AttendanceContent() {
         setLoading(false);
       }
 
-      const [employeesRes, timeCodesRes, groupsRes, jobTitlesRes] = await Promise.all([
+      const [employeesRes, groupsRes, jobTitlesRes] = await Promise.all([
         authFetch('/api/employees'),
-        authFetch('/api/time-codes'),
         authFetch('/api/groups'),
         authFetch('/api/job-titles?active=true'),
       ]);
 
       // If redirected to login due to expired session, stop processing
-      if (employeesRes.status === 401 || timeCodesRes.status === 401) {
+      if (employeesRes.status === 401) {
         return;
       }
 
       const employeesData = await employeesRes.json();
-      const timeCodesData = await timeCodesRes.json();
       const groupsData = groupsRes.ok ? await groupsRes.json() : [];
       const jobTitlesData = jobTitlesRes.ok ? await jobTitlesRes.json() : [];
 
@@ -351,23 +297,14 @@ function AttendanceContent() {
         setEntriesReady(true);
       }
 
-      if (Array.isArray(timeCodesData)) {
-        setTimeCodes(timeCodesData);
-      } else {
-        console.error('Invalid time codes data:', timeCodesData);
-        setTimeCodes([]);
-      }
-
       setCachedData('attendance:initial', {
         employees: Array.isArray(employeesData) ? employeesData : [],
-        timeCodes: Array.isArray(timeCodesData) ? timeCodesData : [],
         groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
         jobTitles: Array.isArray(jobTitlesData) ? jobTitlesData : [],
       });
     } catch (error) {
       console.error('Failed to load initial data:', error);
       setEmployees([]);
-      setTimeCodes([]);
     } finally {
       setLoading(false);
     }
@@ -376,89 +313,30 @@ function AttendanceContent() {
   const loadAttendanceData = async () => {
     if (!selectedEmployeeId || !isAuthenticated) return;
 
-    const cacheKey = `attendance:data:${selectedEmployeeId}:${year}:${globalReadEnabled}`;
-    const cachedAttendance = getCachedData<{
-      entries: AttendanceEntry[];
-      allocations: TimeAllocation[];
-      dailySummary: DailySummary | null;
-      totalActiveEmployees: number;
-      maxOutOfOffice: number;
-      capacityWarningCount: number;
-      capacityCriticalCount: number;
-    }>(cacheKey);
+    const cacheKey = `attendance:data:${selectedEmployeeId}:${year}`;
+    const cachedAttendance = getCachedData<AttendanceEntry[]>(cacheKey);
     if (cachedAttendance) {
-      setEntries(cachedAttendance.entries);
-      setAllocations(cachedAttendance.allocations);
-      setDailySummary(cachedAttendance.dailySummary);
-      setTotalActiveEmployees(cachedAttendance.totalActiveEmployees);
-      setMaxOutOfOffice(cachedAttendance.maxOutOfOffice);
-      setCapacityWarningCount(cachedAttendance.capacityWarningCount);
-      setCapacityCriticalCount(cachedAttendance.capacityCriticalCount);
+      setEntries(cachedAttendance);
       setEntriesReady(true);
     }
 
     try {
-      // Build parallel fetch list
-      const fetches: Promise<Response>[] = [
-        authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`),
-        authFetch(`/api/employee-allocations?employeeId=${selectedEmployeeId}&year=${new Date().getFullYear()}`),
-      ];
-
-      // Also fetch daily summary if global read access is enabled
-      if (globalReadEnabled) {
-        fetches.push(authFetch(`/api/attendance/daily-summary?year=${year}`));
-      }
-
-      const results = await Promise.all(fetches);
-      const [attendanceRes, allocationsRes] = results;
-      const summaryRes = globalReadEnabled ? results[2] : null;
+      const response = await authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`);
 
       // If redirected to login due to expired session, stop processing
-      if (attendanceRes.status === 401 || allocationsRes.status === 401) {
+      if (response.status === 401) {
         return;
       }
 
-      const attendanceData = attendanceRes.ok ? await attendanceRes.json() : [];
-      const allocationsData = allocationsRes.ok ? await allocationsRes.json() : {};
+      const attendanceData = response.ok ? await response.json() : [];
+      const nextEntries = Array.isArray(attendanceData) ? attendanceData : [];
 
-      setEntries(Array.isArray(attendanceData) ? attendanceData : []);
-      setAllocations(allocationsData && Array.isArray(allocationsData.allocations) ? allocationsData.allocations : []);
-
-      // Process daily summary if available
-      let nextDailySummary: DailySummary | null = null;
-      let nextTotalActiveEmployees = 0;
-      let nextMaxOutOfOffice = 0;
-      let nextCapacityWarningCount = 3;
-      let nextCapacityCriticalCount = 5;
-
-      if (summaryRes && summaryRes.ok) {
-        const summaryData = await summaryRes.json();
-        nextDailySummary = summaryData.dailySummary || null;
-        nextTotalActiveEmployees = summaryData.totalActiveEmployees || 0;
-        nextMaxOutOfOffice = summaryData.maxOutOfOffice || 0;
-        nextCapacityWarningCount = summaryData.capacityWarningCount ?? 3;
-        nextCapacityCriticalCount = summaryData.capacityCriticalCount ?? 5;
-        setDailySummary(nextDailySummary);
-        setTotalActiveEmployees(nextTotalActiveEmployees);
-        setMaxOutOfOffice(nextMaxOutOfOffice);
-        setCapacityWarningCount(nextCapacityWarningCount);
-        setCapacityCriticalCount(nextCapacityCriticalCount);
-      }
-
-      setCachedData(cacheKey, {
-        entries: Array.isArray(attendanceData) ? attendanceData : [],
-        allocations: Array.isArray(allocationsData?.allocations) ? allocationsData.allocations : [],
-        dailySummary: nextDailySummary,
-        totalActiveEmployees: nextTotalActiveEmployees,
-        maxOutOfOffice: nextMaxOutOfOffice,
-        capacityWarningCount: nextCapacityWarningCount,
-        capacityCriticalCount: nextCapacityCriticalCount,
-      });
+      setEntries(nextEntries);
+      setCachedData(cacheKey, nextEntries);
       setEntriesReady(true);
     } catch (error) {
       console.error('Failed to load attendance:', error);
       setEntries([]);
-      setAllocations([]);
       setEntriesReady(true);
     }
   };
@@ -483,18 +361,6 @@ function AttendanceContent() {
         setCachedData(cacheKey, entries);
       } else {
         setAllEmployeesEntries([]);
-      }
-      // Also refresh daily summary when viewing all
-      if (globalReadEnabled) {
-        const summaryRes = await authFetch(`/api/attendance/daily-summary?year=${year}`);
-        if (summaryRes.ok) {
-          const summaryData = await summaryRes.json();
-          setDailySummary(summaryData.dailySummary || null);
-          setTotalActiveEmployees(summaryData.totalActiveEmployees || 0);
-          setMaxOutOfOffice(summaryData.maxOutOfOffice || 0);
-          setCapacityWarningCount(summaryData.capacityWarningCount ?? 3);
-          setCapacityCriticalCount(summaryData.capacityCriticalCount ?? 5);
-        }
       }
       setEntriesReady(true);
     } catch (error) {
@@ -634,7 +500,7 @@ function AttendanceContent() {
     .filter(e => !selectedGroupId || e.group_id === selectedGroupId)
     .filter(e => !selectedRole || e.role === selectedRole);
 
-  const uniqueRoles = hideRoleFilter ? [] : jobTitles.map(jt => jt.name);
+  const uniqueRoles = jobTitles.map(jt => jt.name);
 
   // When viewAll, use all employees' entries (filtered by group if needed)
   const activeEntries = viewAll
@@ -647,18 +513,15 @@ function AttendanceContent() {
     ? Object.fromEntries(filteredEmployees.map(e => [e.id, `${e.first_name} ${e.last_name}`]))
     : undefined;
 
+  const selectedEmployee = selectedEmployeeId ? employees.find(e => e.id === selectedEmployeeId) : undefined;
+  const overtimeThresholdHours = selectedEmployee?.overtime_threshold_hours ?? 40;
+
   // Shared grid props
   const gridProps = {
     employeeId: selectedEmployeeId ?? 0,
     entries: activeEntries,
-    timeCodes,
     onEntryChange: handleEntryChange,
-    companyHolidays,
-    dailySummary,
-    totalActiveEmployees,
-    maxOutOfOffice,
-    capacityWarningCount,
-    capacityCriticalCount,
+    overtimeThresholdHours,
     employeeNameMap,
     readOnly: viewAll,
   };
@@ -790,6 +653,23 @@ function AttendanceContent() {
                 </Select>
               </div>
 
+              {/* Year layout toggle — year view only */}
+              {view === 'year' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-sm invisible">&nbsp;</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5"
+                    onClick={() => setYearLayout(l => l === 'table' ? 'calendar' : 'table')}
+                    title="Toggle year layout"
+                  >
+                    {yearLayout === 'table' ? <CalendarDays className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+                    {yearLayout === 'table' ? 'Calendar View' : 'Table View'}
+                  </Button>
+                </div>
+              )}
+
               {/* Month column — month and week views */}
               {view !== 'year' && (
                 <div className="flex flex-col gap-1.5">
@@ -848,7 +728,7 @@ function AttendanceContent() {
                 </div>
               )}
 
-              {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
+              {selectedEmployeeId && !viewAll && (
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-sm invisible">&nbsp;</Label>
                   <Button
@@ -864,74 +744,49 @@ function AttendanceContent() {
               )}
             </div>
           </div>
-
-          {/* Balance Cards — only in single-employee view */}
-          {selectedEmployeeId && !viewAll && (
-            <div className="flex-1 min-w-0">
-              <BalanceCards entries={entries} allocations={allocations} employeeId={selectedEmployeeId} />
-            </div>
-          )}
         </div>
 
         {(viewAll || selectedEmployeeId) && (
-          <>
-            <HelpArea helpId="attendance-grid" bubblePosition="top">
-              <div className="space-y-3">
-                {view === 'year' && yearLayout === 'calendar' && (
-                  <AttendanceGridYearCalendar
-                    year={year}
-                    {...gridProps}
-                  />
-                )}
+          <HelpArea helpId="attendance-grid" bubblePosition="top">
+            <div className="space-y-3">
+              {view === 'year' && yearLayout === 'calendar' && (
+                <AttendanceGridYearCalendar
+                  year={year}
+                  {...gridProps}
+                />
+              )}
 
-                {view === 'year' && yearLayout !== 'calendar' && (
-                  <AttendanceGridYear
-                    year={year}
-                    {...gridProps}
-                  />
-                )}
+              {view === 'year' && yearLayout !== 'calendar' && (
+                <AttendanceGridYear
+                  year={year}
+                  {...gridProps}
+                />
+              )}
 
-                {view === 'month' && (
-                  <AttendanceGridMonth
-                    year={currentDate.getFullYear()}
-                    month={currentDate.getMonth() + 1}
-                    {...gridProps}
-                  />
-                )}
+              {view === 'month' && (
+                <AttendanceGridMonth
+                  year={currentDate.getFullYear()}
+                  month={currentDate.getMonth() + 1}
+                  {...gridProps}
+                />
+              )}
 
-                {view === 'week' && (
-                  <AttendanceGridWeek
-                    weekStart={parseDateStr(getWeekBounds(currentDate).start)}
-                    {...gridProps}
-                  />
-                )}
-              </div>
-            </HelpArea>
-
-            <div className="mt-3 p-2 border rounded-lg bg-muted/50">
-              <h3 className="font-semibold mb-2 text-sm">Time Code Legend</h3>
-              <div className="columns-2 md:columns-3 lg:columns-4 gap-x-6 text-xs">
-                {timeCodes.map(tc => (
-                  <div key={tc.code} className="flex items-start gap-1 break-inside-avoid mb-1">
-                    <span className="mt-px text-muted-foreground select-none">•</span>
-                    <span>
-                      {tc.description}{' '}
-                      <span className="font-mono text-muted-foreground">({tc.code})</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {view === 'week' && (
+                <AttendanceGridWeek
+                  weekStart={parseDateStr(getWeekBounds(currentDate).start)}
+                  {...gridProps}
+                />
+              )}
             </div>
-          </>
+          </HelpArea>
         )}
 
         {/* Bulk Entry Dialog */}
-        {bulkEntryEnabled && selectedEmployeeId && !viewAll && (
+        {selectedEmployeeId && !viewAll && (
           <BulkEntryDialog
             open={bulkEntryOpen}
             onOpenChange={setBulkEntryOpen}
             employeeId={selectedEmployeeId}
-            timeCodes={timeCodes}
             authFetch={authFetch}
             onSave={async () => {
               clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);

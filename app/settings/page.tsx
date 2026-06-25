@@ -1,25 +1,22 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTheme } from '@/lib/theme-context';
 import { THEMES, ThemeId } from '@/lib/themes';
 import { ColorMode } from '@/lib/color-modes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Moon, Monitor, Upload } from 'lucide-react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BackupCard } from '@/components/backup-card';
 import { GroupManagement } from '@/components/group-management';
 import { JobTitleManagement } from '@/components/job-title-management';
 import { ColorConfigManagement } from '@/components/color-config-management';
-import { OfficeCapacitySettings } from '@/components/office-capacity-settings';
 import { SeedDemoDataCard } from '@/components/seed-demo-data-card';
 import { EmployeeLinkSettings } from '@/components/employee-link-settings';
-import { ImportAttendanceDialog } from '@/components/import-attendance';
 import { useHelp } from '@/lib/help-context';
 import { HelpArea } from '@/components/help-area';
-import { Button } from '@/components/ui/button';
 
 export default function SettingsPage() {
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
@@ -30,8 +27,6 @@ export default function SettingsPage() {
   useEffect(() => {
     setCurrentScreen('settings');
   }, [setCurrentScreen]);
-
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Check if user is admin (member of Master group or similar)
   // For now, we'll show theme controls to all users, but you can add group_id check here
@@ -154,28 +149,6 @@ export default function SettingsPage() {
 
         {/* Color Configuration - Super Admin Only */}
         {isSuperAdmin && <ColorConfigManagement />}
-
-        {/* Office Capacity Settings - Super Admin Only */}
-        {isSuperAdmin && <OfficeCapacitySettings />}
-
-        {/* Import Attendance Data - Super Admin Only */}
-        {isSuperAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Import Attendance Data</CardTitle>
-              <CardDescription>
-                Import attendance records from an Excel file (.xlsx / .xlsm)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => setImportDialogOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Excel File
-              </Button>
-              <ImportAttendanceDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
-            </CardContent>
-          </Card>
-        )}
 
         {/* Database Backups - Admin Only */}
         {isAdmin && <BackupCard />}

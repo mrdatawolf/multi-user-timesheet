@@ -23,17 +23,11 @@ import { Minus, Plus, Trash2, PlusCircle, Clock } from 'lucide-react';
 import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
 import { HelpArea } from '@/components/help-area';
 
-interface TimeCode {
-  code: string;
-  description: string;
-}
-
 interface MultiEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   date: string;
   entries: AttendanceEntry[];
-  timeCodes: TimeCode[];
   // `originalDate` is passed when the user changed the date field, so the
   // caller knows which date to move entries away from.
   onSave: (date: string, entries: AttendanceEntry[], originalDate?: string) => Promise<EntryChangeResult> | void;
@@ -45,7 +39,7 @@ interface EditableEntry {
   id?: number;
   employee_id?: number;
   tempId: string;
-  time_code: string;
+  work_location: string;
   hours: number;
   minutes: number;
   notes: string;
@@ -56,7 +50,6 @@ export function MultiEntryDialog({
   onOpenChange,
   date,
   entries,
-  timeCodes,
   onSave,
   employeeNameMap,
   readOnly = false,
@@ -75,7 +68,7 @@ export function MultiEntryDialog({
         // Start with one empty entry
         setEditableEntries([{
           tempId: `new-${Date.now()}`,
-          time_code: '__NONE__',
+          work_location: '__NONE__',
           hours: 0,
           minutes: 0,
           notes: '',
@@ -85,7 +78,7 @@ export function MultiEntryDialog({
           id: entry.id,
           employee_id: entry.employee_id,
           tempId: entry.id ? `id-${entry.id}` : `new-${Date.now()}-${index}`,
-          time_code: entry.time_code,
+          work_location: entry.work_location || '__NONE__',
           hours: Math.floor(entry.hours),
           minutes: Math.round((entry.hours % 1) * 60),
           notes: entry.notes || '',
@@ -97,7 +90,7 @@ export function MultiEntryDialog({
   const handleAddEntry = () => {
     setEditableEntries([...editableEntries, {
       tempId: `new-${Date.now()}`,
-      time_code: '__NONE__',
+      work_location: '__NONE__',
       hours: 0,
       minutes: 0,
       notes: '',
@@ -157,9 +150,7 @@ export function MultiEntryDialog({
   };
 
   const getTotalHours = () => {
-    return editableEntries
-      .filter(e => e.time_code !== '__NONE__')
-      .reduce((sum, e) => sum + e.hours + e.minutes / 60, 0);
+    return editableEntries.reduce((sum, e) => sum + e.hours + e.minutes / 60, 0);
   };
 
   const handleSave = async () => {
@@ -177,11 +168,11 @@ export function MultiEntryDialog({
 
     // Convert back to AttendanceEntry format, filtering out empty entries
     const savedEntries: AttendanceEntry[] = editableEntries
-      .filter(e => e.time_code !== '__NONE__')
+      .filter(e => e.hours + e.minutes / 60 > 0)
       .map(e => ({
         id: e.id,
         entry_date: localDate,
-        time_code: e.time_code,
+        work_location: e.work_location === '__NONE__' ? null : (e.work_location as 'onsite' | 'remote'),
         hours: e.hours + e.minutes / 60,
         notes: e.notes.trim() || undefined,
       }));
@@ -252,26 +243,23 @@ export function MultiEntryDialog({
               </div>
 
               <div className="space-y-2">
-                <HelpArea helpId="entry-time-code" bubblePosition="right" showHighlight={false}>
-                  <Label htmlFor={`time-code-${entry.tempId}`} className="text-xs cursor-help">
-                    Time Code
+                <HelpArea helpId="entry-location" bubblePosition="right" showHighlight={false}>
+                  <Label htmlFor={`work-location-${entry.tempId}`} className="text-xs cursor-help">
+                    Location
                   </Label>
                 </HelpArea>
                 <Select
-                  value={entry.time_code}
-                  onValueChange={(value) => updateEntry(entry.tempId, 'time_code', value)}
+                  value={entry.work_location}
+                  onValueChange={(value) => updateEntry(entry.tempId, 'work_location', value)}
                   disabled={readOnly}
                 >
-                  <SelectTrigger id={`time-code-${entry.tempId}`} className="h-9">
-                    <SelectValue placeholder="Select a time code" />
+                  <SelectTrigger id={`work-location-${entry.tempId}`} className="h-9">
+                    <SelectValue placeholder="Select a location" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__NONE__">-</SelectItem>
-                    {timeCodes.map(tc => (
-                      <SelectItem key={tc.code} value={tc.code}>
-                        {tc.code} - {tc.description}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="onsite">On-site</SelectItem>
+                    <SelectItem value="remote">Remote</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

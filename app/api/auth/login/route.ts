@@ -4,7 +4,6 @@ import { updateUserLastLogin, getGroupById, getUserRole } from '@/lib/queries-au
 import { logAudit } from '@/lib/queries-auth';
 import { authDb } from '@/lib/db-auth';
 import { db } from '@/lib/db-sqlite';
-import { getBrandFeatures, isAutoGenerateAbbreviation, isLogoutOnClose } from '@/lib/brand-features';
 import { generateUniqueAbbreviation } from '@/lib/abbreviation';
 
 export async function POST(request: NextRequest) {
@@ -90,27 +89,24 @@ export async function POST(request: NextRequest) {
 
         // Auto-generate for existing employees who have no abbreviation yet
         if (!employee_abbreviation && empRow) {
-          const brandFeatures = await getBrandFeatures();
-          if (isAutoGenerateAbbreviation(brandFeatures)) {
-            const existingAbbrs = await db.execute({
-              sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1 AND id != ?',
-              args: [user.employee_id],
+          const existingAbbrs = await db.execute({
+            sql: 'SELECT abbreviation FROM employees WHERE abbreviation IS NOT NULL AND is_active = 1 AND id != ?',
+            args: [user.employee_id],
+          });
+          const existingSet = new Set<string>(
+            (existingAbbrs.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
+          );
+          const abbr = generateUniqueAbbreviation(
+            empRow.first_name || '',
+            empRow.last_name || '',
+            existingSet
+          );
+          if (abbr) {
+            await db.execute({
+              sql: 'UPDATE employees SET abbreviation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+              args: [abbr, user.employee_id],
             });
-            const existingSet = new Set<string>(
-              (existingAbbrs.rows as any[]).map(r => String(r.abbreviation).toUpperCase())
-            );
-            const abbr = generateUniqueAbbreviation(
-              empRow.first_name || '',
-              empRow.last_name || '',
-              existingSet
-            );
-            if (abbr) {
-              await db.execute({
-                sql: 'UPDATE employees SET abbreviation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                args: [abbr, user.employee_id],
-              });
-              employee_abbreviation = abbr;
-            }
+            employee_abbreviation = abbr;
           }
         }
       } catch {
@@ -147,18 +143,14 @@ export async function POST(request: NextRequest) {
       token,
     });
 
-    // Set token as HTTP-only cookie.
-    // logoutOnClose: omit maxAge so the cookie becomes a session cookie
-    // (cleared automatically when the browser closes).
-    const loginBrandFeatures = await getBrandFeatures();
-    const cookieOpts: Parameters<typeof response.cookies.set>[2] = {
+    // Set token as HTTP-only, persistent cookie (90 days).
+    response.cookies.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      ...(!isLogoutOnClose(loginBrandFeatures) && { maxAge: 60 * 60 * 24 * 90 }),
-    };
-    response.cookies.set('auth_token', token, cookieOpts);
+      maxAge: 60 * 60 * 24 * 90,
+    });
 
     return response;
   } catch (error) {

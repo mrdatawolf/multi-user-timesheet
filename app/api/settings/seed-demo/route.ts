@@ -7,9 +7,9 @@ import { seedDemoData } from '@/lib/seed-demo-data';
 /**
  * POST /api/settings/seed-demo
  *
- * Wipes employee, attendance, allocation, presence, and break data, then
- * repopulates the database with the standard demo dataset (sample
- * employees, attendance history, and manager/HR/employee demo logins).
+ * Wipes employee and attendance data, then repopulates the database with
+ * the standard demo dataset (sample employees, hours-worked history, and
+ * manager/HR/employee demo logins).
  *
  * Super admin (master group) only. This is a one-way operation intended
  * for turning a freshly installed server into a demo/presentation server.

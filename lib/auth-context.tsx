@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getBrandFeatures, isLogoutOnClose } from './brand-features';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface User {
@@ -34,6 +33,12 @@ interface User {
     can_view_all: number;
     can_edit_all: number;
   };
+}
+
+// Namespaced per-username so a shared/kiosk browser doesn't hand one
+// user's last page to the next person who logs in.
+export function lastVisitedPageKey(username: string) {
+  return `last_visited_page:${username}`;
 }
 
 interface AuthContextType {
@@ -124,27 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout);
   }, []);
 
-  // logoutOnClose: when the brand requires it, clear auth from localStorage
-  // whenever the page/app is closed so the next open forces a fresh login.
-  useEffect(() => {
-    let removeListener: (() => void) | null = null;
-
-    getBrandFeatures().then(features => {
-      if (isLogoutOnClose(features)) {
-        const handlePageHide = (e: PageTransitionEvent) => {
-          if (!e.persisted) {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-          }
-        };
-        window.addEventListener('pagehide', handlePageHide);
-        removeListener = () => window.removeEventListener('pagehide', handlePageHide);
-      }
-    }).catch(() => {});
-
-    return () => { removeListener?.(); };
-  }, []);
-
   const verifyToken = async (authToken: string) => {
     console.log('[Auth] Starting token verification...');
     try {
@@ -211,7 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
-    localStorage.removeItem('last_visited_page');
+    // Per-user last-visited-page entries are intentionally left in place so
+    // the same user returns to where they were after logging back in.
+    localStorage.removeItem('last_visited_page'); // legacy unkeyed entry, no longer written
     setToken(null);
     setUser(null);
     router.push('/login');

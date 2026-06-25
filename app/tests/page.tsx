@@ -83,9 +83,9 @@ export default function TestsPage() {
     setIsRunning(true);
     const tests: TestResult[] = [
       { name: 'Setup: Get Test Employee', status: 'pending' },
-      { name: 'CREATE: Create single attendance entry', status: 'pending' },
-      { name: 'READ: Fetch created attendance entry', status: 'pending' },
-      { name: 'UPDATE: Update attendance entry', status: 'pending' },
+      { name: 'CREATE: Create single hours entry', status: 'pending' },
+      { name: 'READ: Fetch created hours entry', status: 'pending' },
+      { name: 'UPDATE: Update hours entry', status: 'pending' },
       { name: 'READ: Verify updated entry', status: 'pending' },
       { name: 'CREATE: Create multiple entries for same day', status: 'pending' },
       { name: 'READ: Verify multiple entries', status: 'pending' },
@@ -160,9 +160,9 @@ export default function TestsPage() {
         const createPayload = {
           employee_id: employeeForTests.id,
           entry_date: testDate,
-          time_code: 'V',
           hours: 8,
-          notes: 'Test vacation entry',
+          work_location: 'onsite',
+          notes: 'Test onsite entry',
         };
 
         const createRes = await fetch('/api/attendance', {
@@ -231,8 +231,8 @@ export default function TestsPage() {
             createdEntryId = entry.id;
             updateTestResult(testIndex, {
               status: 'passed',
-              expected: 'Entry with time_code=V, hours=8',
-              actual: `Found entry: time_code=${entry.time_code}, hours=${entry.hours}, notes=${entry.notes}`,
+              expected: 'Entry with work_location=onsite, hours=8',
+              actual: `Found entry: work_location=${entry.work_location}, hours=${entry.hours}, notes=${entry.notes}`,
               duration: Date.now() - startTime2,
             });
           } else {
@@ -264,9 +264,9 @@ export default function TestsPage() {
         const updatePayload = {
           employee_id: employeeForTests.id,
           entry_date: testDate,
-          time_code: 'P',
           hours: 4,
-          notes: 'Updated to personal time',
+          work_location: 'remote',
+          notes: 'Updated to remote half day',
         };
 
         const updateRes = await fetch('/api/attendance', {
@@ -286,7 +286,7 @@ export default function TestsPage() {
 
         updateTestResult(testIndex, {
           status: 'passed',
-          expected: 'Entry updated to time_code=P, hours=4',
+          expected: 'Entry updated to work_location=remote, hours=4',
           actual: JSON.stringify(updateData, null, 2),
           duration: Date.now() - startTime3,
         });
@@ -321,18 +321,18 @@ export default function TestsPage() {
         }
 
         const entry = verifyData.find((e: any) => e.entry_date === testDate);
-        if (entry && entry.time_code === 'P' && entry.hours === 4) {
+        if (entry && entry.work_location === 'remote' && entry.hours === 4) {
           updateTestResult(testIndex, {
             status: 'passed',
-            expected: 'time_code=P, hours=4',
-            actual: `time_code=${entry.time_code}, hours=${entry.hours}`,
+            expected: 'work_location=remote, hours=4',
+            actual: `work_location=${entry.work_location}, hours=${entry.hours}`,
             duration: Date.now() - startTime4,
           });
         } else {
           updateTestResult(testIndex, {
             status: 'failed',
-            expected: 'time_code=P, hours=4',
-            actual: entry ? `time_code=${entry.time_code}, hours=${entry.hours}` : 'No entry found',
+            expected: 'work_location=remote, hours=4',
+            actual: entry ? `work_location=${entry.work_location}, hours=${entry.hours}` : 'No entry found',
             error: 'Entry was not updated correctly',
             duration: Date.now() - startTime4,
           });
@@ -359,8 +359,8 @@ export default function TestsPage() {
           employee_id: employeeForTests.id,
           entry_date: testDate,
           entries: [
-            { time_code: 'V', hours: 4, notes: 'Morning vacation' },
-            { time_code: 'P', hours: 4, notes: 'Afternoon personal' },
+            { hours: 4, work_location: 'onsite', notes: 'Morning onsite' },
+            { hours: 4, work_location: 'remote', notes: 'Afternoon remote' },
           ],
         };
 
@@ -460,7 +460,7 @@ export default function TestsPage() {
           employee_id: employeeForTests.id,
           entry_date: testDate,
           entries: [
-            { time_code: 'H', hours: 8, notes: 'Holiday' },
+            { hours: 8, work_location: 'onsite', notes: 'Full day onsite' },
           ],
         };
 
@@ -519,17 +519,17 @@ export default function TestsPage() {
 
         const entriesForDate = verifyBatchData.filter((e: any) => e.entry_date === testDate);
 
-        if (entriesForDate.length === 1 && entriesForDate[0].time_code === 'H' && entriesForDate[0].hours === 8) {
+        if (entriesForDate.length === 1 && entriesForDate[0].work_location === 'onsite' && entriesForDate[0].hours === 8) {
           updateTestResult(testIndex, {
             status: 'passed',
-            expected: '1 entry: time_code=H, hours=8',
-            actual: `Found ${entriesForDate.length} entry: time_code=${entriesForDate[0].time_code}, hours=${entriesForDate[0].hours}`,
+            expected: '1 entry: work_location=onsite, hours=8',
+            actual: `Found ${entriesForDate.length} entry: work_location=${entriesForDate[0].work_location}, hours=${entriesForDate[0].hours}`,
             duration: Date.now() - startTime8,
           });
         } else {
           updateTestResult(testIndex, {
             status: 'failed',
-            expected: '1 entry with time_code=H',
+            expected: '1 entry with work_location=onsite',
             actual: `Found ${entriesForDate.length} entries`,
             details: JSON.stringify(entriesForDate, null, 2),
             duration: Date.now() - startTime8,
@@ -720,9 +720,9 @@ export default function TestsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Attendance API Test Suite</h1>
+            <h1 className="text-3xl font-bold">Hours Worked API Test Suite</h1>
             <p className="text-muted-foreground mt-2">
-              Comprehensive CRUD tests for attendance data. This helps diagnose production vs development issues.
+              Comprehensive CRUD tests for hours-worked data. This helps diagnose production vs development issues.
             </p>
             {testEmployee && (
               <p className="text-sm text-muted-foreground mt-1">

@@ -5,29 +5,18 @@ import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
-import type { AttendanceEntry, DailySummary, DailySummaryDay, EntryChangeResult } from '@/lib/attendance-types';
+import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
 import { useAttendanceCell } from '@/hooks/use-attendance-cell';
 
 // Re-export types for backward compatibility
-export type { AttendanceEntry, DailySummary, DailySummaryDay };
-
-interface TimeCode {
-  code: string;
-  description: string;
-}
+export type { AttendanceEntry };
 
 interface AttendanceGridProps {
   year: number;
   employeeId: number;
   entries: AttendanceEntry[];
-  timeCodes: TimeCode[];
   onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
-  companyHolidays?: Set<string>;
-  dailySummary?: DailySummary | null;
-  totalActiveEmployees?: number;
-  maxOutOfOffice?: number;
-  capacityWarningCount?: number;
-  capacityCriticalCount?: number;
+  overtimeThresholdHours?: number;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
 }
@@ -51,14 +40,8 @@ export function AttendanceGridYear({
   year,
   employeeId,
   entries,
-  timeCodes,
   onEntryChange,
-  companyHolidays = new Set(),
-  dailySummary,
-  totalActiveEmployees,
-  maxOutOfOffice = 0,
-  capacityWarningCount = 3,
-  capacityCriticalCount = 5,
+  overtimeThresholdHours,
   employeeNameMap,
   readOnly,
 }: AttendanceGridProps) {
@@ -70,20 +53,11 @@ export function AttendanceGridYear({
   const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
 
   const {
-    entriesByDate,
     getEntriesForDate,
     getCellDisplay,
     getCellColorClass,
-    getFullnessInfo,
     hasNotes,
-  } = useAttendanceCell({
-    entries,
-    dailySummary,
-    totalActiveEmployees,
-    maxOutOfOffice,
-    capacityWarningCount,
-    capacityCriticalCount,
-  });
+  } = useAttendanceCell({ entries, overtimeThresholdHours });
 
   const getEntriesForDay = (month: number, day: number): AttendanceEntry[] => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -109,10 +83,7 @@ export function AttendanceGridYear({
   const getCellTooltip = (entries: AttendanceEntry[]): string => {
     if (entries.length === 0) return '';
     return entries
-      .map(e => {
-        const tc = timeCodes.find(t => t.code === e.time_code);
-        return `${tc ? tc.description : e.time_code}: ${e.hours}h`;
-      })
+      .map(e => `${e.hours}h${e.work_location ? ` (${e.work_location})` : ''}${e.notes ? ` - ${e.notes}` : ''}`)
       .join('\n');
   };
 
@@ -142,54 +113,27 @@ export function AttendanceGridYear({
                   const daysInMonth = getDaysInMonth(month.num);
                   const isValidDay = day <= daysInMonth;
                   const dateStr = `${year}-${String(month.num).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const isCompanyHoliday = companyHolidays.has(dateStr);
-                  const isClickable = isValidDay && !isCompanyHoliday;
                   const entriesForDate = getEntriesForDay(month.num, day);
-                  const fullness = isValidDay ? getFullnessInfo(dateStr) : null;
 
                   return (
                     <td
                       key={day}
                       className={`border px-0.5 py-px ${
-                        !isClickable ? 'bg-muted/30' : ''
+                        !isValidDay ? 'bg-muted/30' : ''
                       }`}
                     >
-                      {isClickable && (
-                        <div className="relative">
-                          <Button
-                            variant="ghost"
-                            className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate)}`}
-                            onClick={() => handleCellClick(month.num, day)}
-                            title={getCellTooltip(entriesForDate)}
-                          >
-                            {getCellDisplay(entriesForDate)}
-                            {hasNotes(entriesForDate) && (
-                              <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>
-                            )}
-                          </Button>
-                          {/* Out-of-office count badge */}
-                          {fullness && fullness.outCount > 0 && (
-                            <span
-                              className={`absolute top-0 left-0 text-[8px] leading-none font-bold rounded-br px-0.5 py-px z-10 ${
-                                fullness.isOverLimit
-                                  ? 'bg-red-200 text-red-700'
-                                  : 'bg-sky-200 text-sky-700'
-                              }`}
-                              title={`${fullness.outCount}${maxOutOfOffice > 0 ? `/${maxOutOfOffice}` : ''} out of office`}
-                            >
-                              {fullness.outCount}
-                            </span>
+                      {isValidDay && (
+                        <Button
+                          variant="ghost"
+                          className={`h-5 text-xs w-full px-1 relative ${getCellColorClass(entriesForDate, dateStr)}`}
+                          onClick={() => handleCellClick(month.num, day)}
+                          title={getCellTooltip(entriesForDate)}
+                        >
+                          {getCellDisplay(entriesForDate)}
+                          {hasNotes(entriesForDate) && (
+                            <div className="absolute top-0 right-0 w-1 h-1 bg-blue-500 rounded-full"></div>
                           )}
-                          {/* Fullness bar */}
-                          {fullness && (
-                            <div className="h-[2px] w-full bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${fullness.barColor} transition-all`}
-                                style={{ width: `${Math.max(fullness.inOfficePercent, 2)}%` }}
-                              />
-                            </div>
-                          )}
-                        </div>
+                        </Button>
                       )}
                     </td>
                   );
@@ -210,7 +154,6 @@ export function AttendanceGridYear({
         onOpenChange={setDialogOpen}
         date={selectedDate}
         entries={selectedEntries}
-        timeCodes={timeCodes}
         onSave={handleSave}
         employeeNameMap={employeeNameMap}
         readOnly={readOnly}

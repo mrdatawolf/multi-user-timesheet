@@ -71,3 +71,24 @@
     transition: background-color 9999s ease-in-out 0s;
   }
 }
+
+@media print {
+  @page {
+    margin: 1.27cm;
+  }
+
+  /* Keep row backgrounds (group headers, grand total) and overtime text
+     color in the printed/PDF output instead of being stripped to plain text. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: white;
+  }
+
+  table tr {
+    break-inside: avoid;
+  }
+}
