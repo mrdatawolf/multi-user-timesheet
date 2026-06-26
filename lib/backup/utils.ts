@@ -175,7 +175,7 @@ export function generateBackupId(type: BackupType, date: Date): string {
 /**
  * Generate backup filename for a database
  */
-export function generateBackupFilename(backupId: string, database: 'attendance' | 'auth'): string {
+export function generateBackupFilename(backupId: string, database: 'hours' | 'auth'): string {
   return `${backupId}-${database}.db`;
 }
 
@@ -229,10 +229,10 @@ export function formatBytes(bytes: number): string {
 /**
  * Get source database paths
  */
-export function getSourceDatabasePaths(): { attendance: string; auth: string } {
+export function getSourceDatabasePaths(): { hours: string; auth: string } {
   const dbDir = getDatabasesDir();
   return {
-    attendance: path.join(dbDir, 'attendance.db'),
+    hours: path.join(dbDir, 'hours.db'),
     auth: path.join(dbDir, 'auth.db'),
   };
 }

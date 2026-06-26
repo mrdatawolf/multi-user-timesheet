@@ -3,9 +3,9 @@ import { Migration, columnExists } from '../index';
 /**
  * Migration: Add employee_id column to users table
  *
- * Links users (auth.db) to employees (attendance.db) by storing the
+ * Links users (auth.db) to employees (hours.db) by storing the
  * employee ID directly on the user record. This enables:
- * - Defaulting to the logged-in user's employee in the attendance grid
+ * - Defaulting to the logged-in user's employee in the hours grid
  * - Forcing non-admin users to link to an employee at login
  */
 export const migration: Migration = {

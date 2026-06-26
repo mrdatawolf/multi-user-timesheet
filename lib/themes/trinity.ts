@@ -61,7 +61,7 @@ export const standardTheme: ThemeConfig = {
   },
 
   layout: {
-    attendance: {
+    hours: {
       sectionOrder: 'balanceFirst',
       showMonthSeparators: false,
     },
@@ -70,7 +70,7 @@ export const standardTheme: ThemeConfig = {
   branding: {
     logo: '/TRLC_logo_smaller.png',
     logoAlt: 'TRLC Logo',
-    appTitle: 'Multi-User Attendance',
+    appTitle: 'Hours Worked Tracker',
   },
 
   cssClass: 'theme-standard',

@@ -30,8 +30,8 @@ async function main() {
     console.log(`  ✓ ${emp.first} ${emp.last}`);
   }
 
-  // Create sample attendance entries (weekday hours for employee 1)
-  console.log('\nCreating sample attendance entries...');
+  // Create sample hours entries (weekday hours for employee 1)
+  console.log('\nCreating sample hours entries...');
   const year = new Date().getFullYear();
   const entries: { month: number; day: number; hours: number; workLocation: 'onsite' | 'remote' }[] = [];
   for (let day = 1; day <= 28; day++) {
@@ -44,12 +44,12 @@ async function main() {
   for (const entry of entries) {
     const date = `${year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
     await db.execute({
-      sql: 'INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location) VALUES (?, ?, ?, ?)',
+      sql: 'INSERT INTO hours_entries (employee_id, entry_date, hours, work_location) VALUES (?, ?, ?, ?)',
       args: [1, date, entry.hours, entry.workLocation],
     });
   }
 
-  console.log(`✓ Created ${entries.length} attendance entries`);
+  console.log(`✓ Created ${entries.length} hours entries`);
   console.log('\n✓ Database initialization complete!\n');
 }
 

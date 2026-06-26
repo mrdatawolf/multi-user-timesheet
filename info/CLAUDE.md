@@ -17,6 +17,15 @@ entirely in favor of this simpler hours-worked model. If you see references
 to "time codes," "leave balances," or "accrual" anywhere, they're leftover —
 flag them, don't extend them.
 
+Branded as **"Hours Worked Tracker"** (short form: **"Hours"** where space is
+tight, e.g. nav labels). The app was originally named "Multi-User Attendance"
+and used `attendance`/`Attendance` throughout routes, file names, the
+database, and UI text — it was fully renamed to `hours`/`Hours` to make a
+clean break from the sibling `AttendanceTracker` repo, since the two could
+run at the same company and don't share data. If you see a stray
+"Attendance" anywhere outside this historical note, it's a missed rename —
+fix it, don't extend it.
+
 ---
 
 ## Tech Stack
@@ -29,7 +38,7 @@ flag them, don't extend them.
 | Auth | JWT tokens + bcrypt |
 | Icons | Lucide React |
 
-**Port:** 6029 (default)
+**Port:** 6030 (default)
 
 ---
 
@@ -39,12 +48,12 @@ flag them, don't extend them.
 app/                    # Next.js pages and API routes
   api/                  # REST endpoints
     employees/          # Employee CRUD
-    attendance/         # Hours-worked entries CRUD
+    hours/              # Hours-worked entries CRUD
     color-config/       # Status color configuration (admin)
     groups/             # Group management
     job-titles/         # Job title management
     reports/            # Hours Worked report (permission-filtered)
-  attendance/           # Main attendance page
+  hours/                # Main hours page
   dashboard/            # Dashboard page (hours/location summary)
   employees/            # Employee management page
   reports/              # Hours Worked report page
@@ -62,24 +71,24 @@ components/
   color-config-management.tsx  # Overtime status color customization UI
   multi-entry-dialog.tsx     # Entry editing modal (hours + location + notes)
   bulk-entry-dialog.tsx      # Bulk date-range entry dialog
-  attendance-grid.tsx   # Year view (table) calendar grid
-  attendance-grid-year-calendar.tsx  # Year view (calendar cards) — user toggle
-  attendance-grid-month.tsx  # Month view (7-column calendar grid)
-  attendance-grid-week.tsx   # Week view (7 day-cards, responsive)
+  hours-grid.tsx        # Year view (table) calendar grid
+  hours-grid-year-calendar.tsx  # Year view (calendar cards) — user toggle
+  hours-grid-month.tsx  # Month view (7-column calendar grid)
+  hours-grid-week.tsx   # Week view (7 day-cards, responsive)
   view-toggle.tsx       # Year/Month/Week segmented toggle
   help-area.tsx         # Contextual help wrapper
 
 hooks/
-  use-attendance-cell.ts  # Shared attendance cell logic (display, color, overtime-week detection)
+  use-hours-cell.ts     # Shared hours cell logic (display, color, overtime-week detection)
   use-media-query.ts      # SSR-safe responsive breakpoint hook
 
 lib/
-  attendance-types.ts   # Shared attendance types (AttendanceEntry, ViewType)
+  hours-types.ts        # Shared hours types (HoursEntry, ViewType)
   date-helpers.ts        # Date utilities (calendar grids, week bounds, period navigation)
   db-auth.ts             # Auth database init + migrations
   db-sqlite.ts           # Main database connection + schema
   queries-auth.ts        # Auth-related queries
-  queries-sqlite.ts      # Employee + attendance entry queries
+  queries-sqlite.ts      # Employee + hours entry queries
   app-settings.ts        # App settings helpers (overtime threshold resolution)
   auth-context.tsx       # Auth state provider
   help-context.tsx       # Help system provider
@@ -111,10 +120,10 @@ databases/              # SQLite database files (gitignored)
 ### Database Architecture
 Two separate SQLite databases:
 1. **auth.db** - Users, groups, roles, permissions, job_titles, audit_log, app_settings, color_config
-2. **attendance.db** - Employees, attendance_entries
+2. **hours.db** - Employees, hours_entries
 
 ### Hours Worked Model
-`attendance_entries` has one row per employee per day worked: `employee_id`,
+`hours_entries` has one row per employee per day worked: `employee_id`,
 `entry_date`, `hours`, `work_location` (`'onsite' | 'remote' | null`), `notes`.
 There's no time-code/category column — an employee can still log more than
 one entry for the same day (e.g. half day on-site + half day remote), but
@@ -128,7 +137,7 @@ Weekly overtime threshold defaults to 40 hours and resolves in this order:
 4. Hardcoded fallback of 40
 
 Weeks where an employee's logged hours exceed their resolved threshold are
-highlighted amber on every attendance grid view (`useAttendanceCell` hook)
+highlighted amber on every hours grid view (`useHoursCell` hook)
 and totaled separately in the Hours Worked report.
 
 ### Brand System (mostly vestigial)
@@ -186,7 +195,7 @@ headers: { Authorization: `Bearer ${token}` }
 - `PUT /api/{resource}` - Update (id in body)
 - `DELETE /api/{resource}?id=X` - Delete
 
-**Attendance entries** don't follow strict REST verbs — `POST /api/attendance`
+**Hours entries** don't follow strict REST verbs — `POST /api/hours`
 takes an `action` field (`bulk_update_range`, `update_day`, `delete`, or
 omitted for a plain upsert) since a single day can hold multiple entries.
 
@@ -202,9 +211,9 @@ omitted for a plain upsert) since a single day can hold multiple entries.
 | Main schema | `lib/db-sqlite.ts` |
 | Overtime threshold resolution | `lib/app-settings.ts` |
 | Color config API | `lib/color-config.ts` |
-| Attendance types | `lib/attendance-types.ts` |
+| Hours types | `lib/hours-types.ts` |
 | Date helpers | `lib/date-helpers.ts` |
-| Attendance cell hook | `hooks/use-attendance-cell.ts` |
+| Hours cell hook | `hooks/use-hours-cell.ts` |
 | Media query hook | `hooks/use-media-query.ts` |
 | Hours Worked report API | `app/api/reports/route.ts` |
 | Brand config (logo/title) | `lib/brand-config.ts` |
@@ -229,7 +238,7 @@ omitted for a plain upsert) since a single day can hold multiple entries.
 
 8. **Auto-employee creation for first user in group** - When a non-superuser accesses the employees API and there are no employees in their group, the system automatically creates an employee record for them using their user info (full_name split into first/last name, email).
 
-9. **Users vs Employees** - These are separate entities. A User (in auth.db) is a login account. An Employee (in attendance.db) is someone whose hours are tracked. They may or may not be linked.
+9. **Users vs Employees** - These are separate entities. A User (in auth.db) is a login account. An Employee (in hours.db) is someone whose hours are tracked. They may or may not be linked.
 
 10. **Reports are permission-filtered** - The `/api/reports` endpoint filters data based on the user's readable groups. Non-superusers only see report data for employees in their own group or groups they have explicit read permission for.
 
@@ -239,11 +248,11 @@ omitted for a plain upsert) since a single day can hold multiple entries.
 
 13. **Semantic color names** - Colors use semantic names (blue, amber, red, teal, purple, green, gray) that map to Tailwind classes via `DEFAULT_COLOR_PALETTE` in `lib/color-config.ts`. Don't use hex codes or Tailwind classes directly in config.
 
-14. **Attendance view switching** - The attendance page supports Year, Month, and Week views via a segmented toggle, plus a table/calendar layout toggle for the year view (`attendance_year_layout` in localStorage). View preference is stored in localStorage (key: `attendance_view`). The current view and period are synced to URL params (`?view=month&month=2026-02` or `?view=week&week=2026-02-02`) for bookmarkability. All views share the same `useAttendanceCell` hook for cell display/overtime logic and the same `MultiEntryDialog` for editing.
+14. **Hours view switching** - The hours page supports Year, Month, and Week views via a segmented toggle, plus a table/calendar layout toggle for the year view (`hours_year_layout` in localStorage). View preference is stored in localStorage (key: `hours_view`). The current view and period are synced to URL params (`?view=month&month=2026-02` or `?view=week&week=2026-02-02`) for bookmarkability. All views share the same `useHoursCell` hook for cell display/overtime logic and the same `MultiEntryDialog` for editing.
 
-15. **Responsive auto-switch** - On screens below 768px, the attendance page auto-switches from year to week view (one-way — doesn't switch back when enlarged, since the user may have manually chosen week). The `useMediaQuery` hook in `hooks/use-media-query.ts` is SSR-safe (returns false before mount).
+15. **Responsive auto-switch** - On screens below 768px, the hours page auto-switches from year to week view (one-way — doesn't switch back when enlarged, since the user may have manually chosen week). The `useMediaQuery` hook in `hooks/use-media-query.ts` is SSR-safe (returns false before mount).
 
-16. **Attendance page uses Suspense** - Because it uses `useSearchParams`, the attendance page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `AttendanceContent`, the default export is the Suspense wrapper.
+16. **Hours page uses Suspense** - Because it uses `useSearchParams`, the hours page wraps its content in a `<Suspense>` boundary (same pattern as the login page). The actual component is `HoursContent`, the default export is the Suspense wrapper.
 
 17. **Dates must use local time, not UTC** - Never use `new Date().toISOString().split('T')[0]` for "today" calculations. `.toISOString()` returns UTC which shifts the date at the wrong local time (e.g., 4 PM PST). Use `getLocalToday()` from `lib/date-helpers.ts` for today's date, or `formatDateStr(date)` for any Date object.
 

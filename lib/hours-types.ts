@@ -1,4 +1,4 @@
-export interface AttendanceEntry {
+export interface HoursEntry {
   id?: number;
   employee_id?: number;
   entry_date: string;

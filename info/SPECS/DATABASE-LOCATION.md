@@ -8,7 +8,7 @@
 
 The application is configured to **always** create and access databases in:
 ```
-<project-root>/databases/attendance.db
+<project-root>/databases/hours.db
 ```
 
 This path is **absolute** and **independent** of where the process is started from.
@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 // Database path is always relative to project root
-const dbPath = path.join(projectRoot, 'databases', 'attendance.db');
+const dbPath = path.join(projectRoot, 'databases', 'hours.db');
 ```
 
 **Why this approach?**
@@ -49,14 +49,14 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 // Database path is always in the project's databases/ folder
-const dbPath = path.join(projectRoot, 'databases', 'attendance.db');
+const dbPath = path.join(projectRoot, 'databases', 'hours.db');
 ```
 
 ## ⚠️ IMPORTANT: Do NOT Use `process.cwd()`
 
 **❌ WRONG:**
 ```typescript
-const dbPath = path.join(process.cwd(), 'databases', 'attendance.db');
+const dbPath = path.join(process.cwd(), 'databases', 'hours.db');
 ```
 
 **Why it's wrong:**
@@ -71,16 +71,16 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..'); // Adjust based on file location
-const dbPath = path.join(projectRoot, 'databases', 'attendance.db');
+const dbPath = path.join(projectRoot, 'databases', 'hours.db');
 ```
 
 ## Database Files
 
 The application creates the following files in `databases/`:
 
-1. **`attendance.db`** - Main SQLite database file
-2. **`attendance.db-shm`** - Shared memory file (SQLite WAL mode)
-3. **`attendance.db-wal`** - Write-Ahead Log file (SQLite WAL mode)
+1. **`hours.db`** - Main SQLite database file
+2. **`hours.db-shm`** - Shared memory file (SQLite WAL mode)
+3. **`hours.db-wal`** - Write-Ahead Log file (SQLite WAL mode)
 
 All three files should remain in the `databases/` folder.
 
@@ -102,11 +102,11 @@ To verify the database location is correct, you can:
 ## Deployment Notes
 
 ### Development
-- Database location: `<project-root>/databases/attendance.db`
+- Database location: `<project-root>/databases/hours.db`
 - Run from any directory: `npm run dev` (from project root recommended)
 
 ### Production (Standalone Build)
-- Database location: `<build-directory>/databases/attendance.db`
+- Database location: `<build-directory>/databases/hours.db`
 - The `.next/standalone` build includes its own copy
 - Always run the server from the standalone directory:
   ```bash
@@ -129,13 +129,13 @@ To verify the database location is correct, you can:
 - Multiple database files in different locations
 
 **Solution:**
-1. Search for all `attendance.db` files:
+1. Search for all `hours.db` files:
    ```bash
    # Windows
-   dir attendance.db /s
+   dir hours.db /s
 
    # Unix/Mac
-   find . -name "attendance.db"
+   find . -name "hours.db"
    ```
 
 2. Delete all database files except the one in `<project-root>/databases/`

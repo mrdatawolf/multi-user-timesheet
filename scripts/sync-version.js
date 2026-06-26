@@ -42,8 +42,8 @@ const electronBuilder = JSON.parse(fs.readFileSync(electronBuilderSource, 'utf8'
 
 // Create product name with brand prefix
 const productName = brandId === 'Default'
-  ? 'Attendance Management'
-  : `${brandId} Attendance`;
+  ? 'Hours Worked Tracker'
+  : `${brandId} Hours`;
 
 if (electronBuilder.productName !== productName) {
   console.log(`Updating productName from "${electronBuilder.productName}" to "${productName}"`);

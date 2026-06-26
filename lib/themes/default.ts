@@ -6,7 +6,7 @@ import { ThemeConfig } from './types';
  * Space-efficient layout with tighter spacing and smaller components.
  * Features:
  * - Compact density for displaying more information
- * - Attendance Record prioritized (shown first)
+ * - Hours Record prioritized (shown first)
  * - Visual month separators for improved readability
  * - Reduced padding and margins for efficient space usage
  */
@@ -61,7 +61,7 @@ export const compactTheme: ThemeConfig = {
   },
 
   layout: {
-    attendance: {
+    hours: {
       sectionOrder: 'recordFirst',
       showMonthSeparators: true,
     },
@@ -70,7 +70,7 @@ export const compactTheme: ThemeConfig = {
   branding: {
     logo: '/biztech.png',
     logoAlt: 'TRLC Logo',
-    appTitle: 'Multi-User Attendance',
+    appTitle: 'Hours Worked Tracker',
   },
 
   cssClass: 'theme-compact',

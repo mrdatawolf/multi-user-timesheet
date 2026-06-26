@@ -1,4 +1,4 @@
-const CACHE_PREFIX = 'multi-user-attendance-cache:';
+const CACHE_PREFIX = 'multi-user-timesheet-cache:';
 const DEFAULT_MAX_AGE_MS = 5 * 60 * 1000;
 
 interface CacheEntry<T> {

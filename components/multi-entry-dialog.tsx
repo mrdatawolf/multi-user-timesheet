@@ -20,17 +20,17 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Minus, Plus, Trash2, PlusCircle, Clock } from 'lucide-react';
-import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
+import type { HoursEntry, EntryChangeResult } from '@/lib/hours-types';
 import { HelpArea } from '@/components/help-area';
 
 interface MultiEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   date: string;
-  entries: AttendanceEntry[];
+  entries: HoursEntry[];
   // `originalDate` is passed when the user changed the date field, so the
   // caller knows which date to move entries away from.
-  onSave: (date: string, entries: AttendanceEntry[], originalDate?: string) => Promise<EntryChangeResult> | void;
+  onSave: (date: string, entries: HoursEntry[], originalDate?: string) => Promise<EntryChangeResult> | void;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
 }
@@ -166,8 +166,8 @@ export function MultiEntryDialog({
       return;
     }
 
-    // Convert back to AttendanceEntry format, filtering out empty entries
-    const savedEntries: AttendanceEntry[] = editableEntries
+    // Convert back to HoursEntry format, filtering out empty entries
+    const savedEntries: HoursEntry[] = editableEntries
       .filter(e => e.hours + e.minutes / 60 > 0)
       .map(e => ({
         id: e.id,

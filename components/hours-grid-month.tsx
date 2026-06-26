@@ -3,22 +3,22 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
-import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
-import { useAttendanceCell } from '@/hooks/use-attendance-cell';
+import type { HoursEntry, EntryChangeResult } from '@/lib/hours-types';
+import { useHoursCell } from '@/hooks/use-hours-cell';
 import { getMonthCalendarGrid, formatDateStr, isToday, isWeekend, DAY_NAMES_SHORT } from '@/lib/date-helpers';
 
-interface AttendanceGridMonthProps {
+interface HoursGridMonthProps {
   year: number;
   month: number; // 1-12
   employeeId: number;
-  entries: AttendanceEntry[];
-  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
+  entries: HoursEntry[];
+  onEntryChange: (date: string, entries: HoursEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   overtimeThresholdHours?: number;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
 }
 
-export function AttendanceGridMonth({
+export function HoursGridMonth({
   year,
   month,
   employeeId,
@@ -27,17 +27,17 @@ export function AttendanceGridMonth({
   overtimeThresholdHours,
   employeeNameMap,
   readOnly,
-}: AttendanceGridMonthProps) {
+}: HoursGridMonthProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<HoursEntry[]>([]);
 
   const {
     getEntriesForDate,
     getCellDisplay,
     getCellColorClass,
     hasNotes,
-  } = useAttendanceCell({ entries, overtimeThresholdHours });
+  } = useHoursCell({ entries, overtimeThresholdHours });
 
   const weeks = getMonthCalendarGrid(year, month);
 
@@ -49,11 +49,11 @@ export function AttendanceGridMonth({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+  const handleSave = (date: string, updatedEntries: HoursEntry[], originalDate?: string) => {
     return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 
-  const getCellTooltip = (entries: AttendanceEntry[]): string => {
+  const getCellTooltip = (entries: HoursEntry[]): string => {
     if (entries.length === 0) return '';
     return entries
       .map(e => `${e.hours}h${e.work_location ? ` (${e.work_location})` : ''}${e.notes ? ` - ${e.notes}` : ''}`)

@@ -124,7 +124,7 @@ export default function TestsPage() {
           updateTestResult(testIndex, {
             status: 'failed',
             error: 'No employees found in database',
-            details: 'You need at least one employee to run attendance tests',
+            details: 'You need at least one employee to run hours tests',
             duration: Date.now() - startTime0,
           });
           setIsRunning(false);
@@ -165,7 +165,7 @@ export default function TestsPage() {
           notes: 'Test onsite entry',
         };
 
-        const createRes = await fetch('/api/attendance', {
+        const createRes = await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ export default function TestsPage() {
 
       try {
         const readRes = await fetch(
-          `/api/attendance?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
+          `/api/hours?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -269,7 +269,7 @@ export default function TestsPage() {
           notes: 'Updated to remote half day',
         };
 
-        const updateRes = await fetch('/api/attendance', {
+        const updateRes = await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -308,7 +308,7 @@ export default function TestsPage() {
 
       try {
         const verifyRes = await fetch(
-          `/api/attendance?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
+          `/api/hours?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -364,7 +364,7 @@ export default function TestsPage() {
           ],
         };
 
-        const multiRes = await fetch('/api/attendance', {
+        const multiRes = await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -405,7 +405,7 @@ export default function TestsPage() {
 
       try {
         const verifyMultiRes = await fetch(
-          `/api/attendance?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
+          `/api/hours?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -464,7 +464,7 @@ export default function TestsPage() {
           ],
         };
 
-        const batchRes = await fetch('/api/attendance', {
+        const batchRes = await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -505,7 +505,7 @@ export default function TestsPage() {
 
       try {
         const verifyBatchRes = await fetch(
-          `/api/attendance?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
+          `/api/hours?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -558,7 +558,7 @@ export default function TestsPage() {
           entry_date: testDate,
         };
 
-        const deleteRes = await fetch('/api/attendance', {
+        const deleteRes = await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -597,7 +597,7 @@ export default function TestsPage() {
 
       try {
         const verifyDeleteRes = await fetch(
-          `/api/attendance?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
+          `/api/hours?employeeId=${employeeForTests.id}&startDate=${testDate}&endDate=${testDate}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -645,7 +645,7 @@ export default function TestsPage() {
 
       try {
         // Final cleanup - ensure no test data remains
-        await fetch('/api/attendance', {
+        await fetch('/api/hours', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -841,7 +841,7 @@ export default function TestsPage() {
                 Click the "Run All Tests" button above to start the comprehensive CRUD test suite.
               </p>
               <p className="text-sm text-muted-foreground text-center max-w-2xl">
-                These tests will create, read, update, and delete attendance entries to verify
+                These tests will create, read, update, and delete hours entries to verify
                 the API is working correctly. All test data will be cleaned up automatically.
               </p>
             </CardContent>

@@ -76,8 +76,8 @@ const themeInitScript = `
 `;
 
 export const metadata: Metadata = {
-  title: "Multi-User Attendance",
-  description: "Employee attendance management system",
+  title: "Hours Worked Tracker",
+  description: "Employee hours-worked tracking system",
 };
 
 export default function RootLayout({

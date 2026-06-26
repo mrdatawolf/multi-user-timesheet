@@ -95,7 +95,7 @@ export function BulkEntryDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await authFetch('/api/attendance', {
+      const response = await authFetch('/api/hours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,7 +153,7 @@ export function BulkEntryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarRange className="h-5 w-5" />
-            Bulk Add Attendance
+            Bulk Add Hours
           </DialogTitle>
         </DialogHeader>
 

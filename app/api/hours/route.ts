@@ -11,7 +11,7 @@ import {
 } from '@/lib/queries-auth';
 import { db } from '@/lib/db-sqlite';
 import { serializeBigInt } from '@/lib/utils';
-import { MAX_BULK_DAYS } from '@/lib/attendance-types';
+import { MAX_BULK_DAYS } from '@/lib/hours-types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       }
 
       const result = await db.execute({
-        sql: `SELECT ae.* FROM attendance_entries ae
+        sql: `SELECT ae.* FROM hours_entries ae
               LEFT JOIN employees e ON ae.employee_id = e.id
               WHERE ae.entry_date >= ? AND ae.entry_date <= ?
               AND (${groupConditions.join(' OR ')})
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         const canView = await canUserExplicitlyReadGroup(authUser.id, employee.group_id);
         if (!canView) {
           return NextResponse.json(
-            { error: 'Forbidden: You do not have permission to view this employee\'s attendance' },
+            { error: 'Forbidden: You do not have permission to view this employee\'s hours' },
             { status: 403 }
           );
         }
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(serializeBigInt(entries));
   } catch (error) {
-    console.error('Error fetching attendance:', error);
-    return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
+    console.error('Error fetching hours:', error);
+    return NextResponse.json({ error: 'Failed to fetch hours' }, { status: 500 });
   }
 }
 
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         const canDelete = await canUserExplicitlyDeleteGroup(authUser.id, employee.group_id);
         if (!canDelete) {
           return NextResponse.json(
-            { error: 'Forbidden: You do not have permission to delete this employee\'s attendance' },
+            { error: 'Forbidden: You do not have permission to delete this employee\'s hours' },
             { status: 403 }
           );
         }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         const canUpdate = await canUserExplicitlyUpdateGroup(authUser.id, employee.group_id);
         if (!canUpdate) {
           return NextResponse.json(
-            { error: 'Forbidden: You do not have permission to edit this employee\'s attendance' },
+            { error: 'Forbidden: You do not have permission to edit this employee\'s hours' },
             { status: 403 }
           );
         }
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
       for (const dateStr of dates) {
         // Check for existing entries on this date
         const existing = await db.execute({
-          sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+          sql: 'SELECT * FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
           args: [body.employee_id, dateStr],
         });
 
@@ -223,14 +223,14 @@ export async function POST(request: NextRequest) {
         // Delete existing entries if overwriting
         if (existing.rows.length > 0) {
           await db.execute({
-            sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+            sql: 'DELETE FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
             args: [body.employee_id, dateStr],
           });
         }
 
         // Insert new entry
         const result = await db.execute({
-          sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
+          sql: `INSERT INTO hours_entries (employee_id, entry_date, hours, work_location, notes)
                 VALUES (?, ?, ?, ?, ?)`,
           args: [body.employee_id, dateStr, hoursPerDay, work_location || null, notes || null],
         });
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
           await logAudit({
             user_id: authUser.id,
             action: existing.rows.length > 0 ? 'UPDATE' : 'CREATE',
-            table_name: 'attendance_entries',
+            table_name: 'hours_entries',
             record_id: Number(result.lastInsertRowid),
             old_values: existing.rows.length > 0 ? JSON.stringify(existing.rows) : undefined,
             new_values: JSON.stringify({ employee_id: body.employee_id, entry_date: dateStr, hours: hoursPerDay, work_location: work_location || null, notes: notes || null }),
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
         // merge with whatever might already be there — block instead of
         // risking an overwrite of unrelated entries.
         const targetExisting = await db.execute({
-          sql: 'SELECT COUNT(*) as count FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+          sql: 'SELECT COUNT(*) as count FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
           args: [body.employee_id, targetEntryDate],
         });
         if (Number((targetExisting.rows[0] as any).count) > 0) {
@@ -294,13 +294,13 @@ export async function POST(request: NextRequest) {
 
       // Get old entries for audit log
       const oldEntries = await db.execute({
-        sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        sql: 'SELECT * FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
       // Delete all existing entries for the source date
       await db.execute({
-        sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        sql: 'DELETE FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
       const newEntries = [];
       for (const entry of entries) {
         const result = await db.execute({
-          sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
+          sql: `INSERT INTO hours_entries (employee_id, entry_date, hours, work_location, notes)
                 VALUES (?, ?, ?, ?, ?)`,
           args: [
             body.employee_id,
@@ -327,7 +327,7 @@ export async function POST(request: NextRequest) {
         await logAudit({
           user_id: authUser.id,
           action: 'UPDATE',
-          table_name: 'attendance_entries',
+          table_name: 'hours_entries',
           record_id: undefined,
           old_values: oldEntries.rows.length > 0 ? JSON.stringify(oldEntries.rows) : undefined,
           new_values: newEntries.length > 0 ? JSON.stringify(newEntries) : undefined,
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
     } else if (body.action === 'delete') {
       // Get old entry for audit log
       const oldEntry = await db.execute({
-        sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        sql: 'SELECT * FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
@@ -354,7 +354,7 @@ export async function POST(request: NextRequest) {
           await logAudit({
             user_id: authUser.id,
             action: 'DELETE',
-            table_name: 'attendance_entries',
+            table_name: 'hours_entries',
             record_id: (oldEntry.rows[0] as any).id,
             old_values: JSON.stringify(oldEntry.rows[0]),
             ip_address: getClientIP(request),
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Check if entry exists for audit log
       const existing = await db.execute({
-        sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        sql: 'SELECT * FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
@@ -383,7 +383,7 @@ export async function POST(request: NextRequest) {
 
       // Get the new entry
       const newEntry = await db.execute({
-        sql: 'SELECT * FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+        sql: 'SELECT * FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
         args: [body.employee_id, body.entry_date],
       });
 
@@ -392,7 +392,7 @@ export async function POST(request: NextRequest) {
         await logAudit({
           user_id: authUser.id,
           action: isUpdate ? 'UPDATE' : 'CREATE',
-          table_name: 'attendance_entries',
+          table_name: 'hours_entries',
           record_id: (newEntry.rows[0] as any)?.id,
           old_values: isUpdate ? JSON.stringify(existing.rows[0]) : undefined,
           new_values: JSON.stringify(newEntry.rows[0]),
@@ -406,12 +406,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating attendance:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update attendance';
+    console.error('Error updating hours:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update hours';
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('Full error details:', { errorMessage, errorStack });
     return NextResponse.json({
-      error: 'Failed to update attendance',
+      error: 'Failed to update hours',
       details: errorMessage,
       stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
     }, { status: 500 });

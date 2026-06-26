@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { MultiEntryDialog } from './multi-entry-dialog';
-import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
-import { useAttendanceCell } from '@/hooks/use-attendance-cell';
+import type { HoursEntry, EntryChangeResult } from '@/lib/hours-types';
+import { useHoursCell } from '@/hooks/use-hours-cell';
 import { getWeekDates, formatDateStr, isToday, isWeekend, DAY_NAMES_SHORT } from '@/lib/date-helpers';
 
 const SHORT_MONTH_NAMES = [
@@ -11,17 +11,17 @@ const SHORT_MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-interface AttendanceGridWeekProps {
+interface HoursGridWeekProps {
   weekStart: Date;
   employeeId: number;
-  entries: AttendanceEntry[];
-  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
+  entries: HoursEntry[];
+  onEntryChange: (date: string, entries: HoursEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   overtimeThresholdHours?: number;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
 }
 
-export function AttendanceGridWeek({
+export function HoursGridWeek({
   weekStart,
   employeeId,
   entries,
@@ -29,15 +29,15 @@ export function AttendanceGridWeek({
   overtimeThresholdHours,
   employeeNameMap,
   readOnly,
-}: AttendanceGridWeekProps) {
+}: HoursGridWeekProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<HoursEntry[]>([]);
 
   const {
     getEntriesForDate,
     getCellColorClass,
-  } = useAttendanceCell({ entries, overtimeThresholdHours });
+  } = useHoursCell({ entries, overtimeThresholdHours });
 
   const dates = getWeekDates(weekStart);
 
@@ -49,7 +49,7 @@ export function AttendanceGridWeek({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+  const handleSave = (date: string, updatedEntries: HoursEntry[], originalDate?: string) => {
     return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 

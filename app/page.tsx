@@ -19,7 +19,7 @@ export default function Home() {
         const needsAdmin = adminOnlyPages.some(p => lastPage.startsWith(p));
         if (needsAdmin && !isAdminOrMaster) {
           localStorage.removeItem(lastVisitedPageKey(user.username));
-          router.replace('/attendance');
+          router.replace('/hours');
           return;
         }
         router.replace(lastPage);

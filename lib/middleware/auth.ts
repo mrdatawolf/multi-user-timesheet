@@ -84,7 +84,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const group = await getGroupById(user.group_id);
   const role = await getUserRole(user.id);
 
-  // Look up employee abbreviation from attendance.db if user is linked
+  // Look up employee abbreviation from hours.db if user is linked
   let employee_abbreviation: string | undefined;
   if (user.employee_id) {
     try {
@@ -94,7 +94,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
       });
       employee_abbreviation = (empResult.rows[0] as any)?.abbreviation || undefined;
     } catch {
-      // Non-fatal: attendance DB may not be available
+      // Non-fatal: hours DB may not be available
     }
   }
 

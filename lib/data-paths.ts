@@ -10,15 +10,15 @@ import { getRuntimeDataPath } from './demo-mode';
  * 2. Custom path from data-path.json config file (set by super admin)
  * 3. DATA_PATH environment variable
  * 4. Development: ./databases/ relative to project root
- * 5. Production (Windows): %APPDATA%/AttendanceServer/
- * 6. Production (macOS): ~/Library/Application Support/AttendanceServer/
- * 7. Production (Linux): ~/.local/share/AttendanceServer/
+ * 5. Production (Windows): %APPDATA%/HoursWorkedTracker/
+ * 6. Production (macOS): ~/Library/Application Support/HoursWorkedTracker/
+ * 7. Production (Linux): ~/.local/share/HoursWorkedTracker/
  *
  * This ensures the database is always in a writable location,
  * even when the server is installed in a protected directory.
  */
 
-const APP_NAME = 'AttendanceServer';
+const APP_NAME = 'HoursWorkedTracker';
 const CONFIG_FILENAME = 'data-path.json';
 
 interface DataPathConfig {
@@ -168,6 +168,6 @@ export function logDataPaths(): void {
   const dataDir = getDataDirectory();
   console.log(`📁 Data directory: ${dataDir}`);
   console.log(`   - Auth database: ${getDatabasePath('auth.db')}`);
-  console.log(`   - Attendance database: ${getDatabasePath('attendance.db')}`);
+  console.log(`   - Hours database: ${getDatabasePath('hours.db')}`);
   console.log(`   - Backups: ${getBackupsDirectory()}`);
 }

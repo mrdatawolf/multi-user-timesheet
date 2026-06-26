@@ -2,7 +2,7 @@
  * Initialize Authentication Database
  *
  * This script creates the auth.db database with user authentication tables.
- * It does NOT touch the attendance.db database, preserving all production data.
+ * It does NOT touch the hours.db database, preserving all production data.
  */
 
 import { initializeAuthDatabase } from '../lib/db-auth';
@@ -29,8 +29,8 @@ initializeAuthDatabase()
     console.log('');
     console.log('⚠️  IMPORTANT: Change this password in production!');
     console.log('');
-    console.log('Your attendance.db database was NOT modified.');
-    console.log('All existing employee and attendance data is preserved.');
+    console.log('Your hours.db database was NOT modified.');
+    console.log('All existing employee and hours data is preserved.');
     console.log('');
     process.exit(0);
   })

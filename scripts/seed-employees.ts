@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
-const dbPath = path.join(projectRoot, 'databases', 'attendance.db');
+const dbPath = path.join(projectRoot, 'databases', 'hours.db');
 
 const db = createClient({
   url: `file:${dbPath}`,

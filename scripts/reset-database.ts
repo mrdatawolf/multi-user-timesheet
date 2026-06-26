@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 // Database paths are always in the project's databases/ folder
-const dbPath = path.join(projectRoot, 'databases', 'attendance.db');
+const dbPath = path.join(projectRoot, 'databases', 'hours.db');
 const authDbPath = path.join(projectRoot, 'databases', 'auth.db');
 
 console.log('==========================================');
@@ -29,7 +29,7 @@ console.log('  Database Reset Tool');
 console.log('==========================================');
 console.log('');
 console.log('WARNING: This will DELETE ALL existing data!');
-console.log('Attendance DB location:', dbPath);
+console.log('Hours DB location:', dbPath);
 console.log('Auth DB location:', authDbPath);
 console.log('');
 
@@ -74,15 +74,15 @@ async function resetDatabase() {
     const { db } = await import('../lib/db-sqlite');
     const { authDb } = await import('../lib/db-auth');
 
-    // Drop all attendance database tables
-    const attendanceTablesToDrop = [
-      'attendance_entries',
+    // Drop all hours database tables
+    const hoursTablesToDrop = [
+      'hours_entries',
       'employees',
       'migrations'
     ];
 
-    console.log('Dropping attendance database tables...');
-    for (const table of attendanceTablesToDrop) {
+    console.log('Dropping hours database tables...');
+    for (const table of hoursTablesToDrop) {
       try {
         await db.execute(`DROP TABLE IF EXISTS ${table}`);
         console.log(`  ✓ Dropped table: ${table}`);
@@ -129,7 +129,7 @@ async function resetDatabase() {
   console.log('  - Default groups: Master, Managers, HR, Employees');
   console.log('  - Default admin user (username: admin, password: admin123)');
   console.log('  - Empty employees table');
-  console.log('  - Empty attendance entries');
+  console.log('  - Empty hours entries');
   console.log('');
   console.log('⚠️  IMPORTANT: Change the default admin password!');
   console.log('');

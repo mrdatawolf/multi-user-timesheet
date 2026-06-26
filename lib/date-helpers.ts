@@ -1,4 +1,4 @@
-import type { ViewType } from './attendance-types';
+import type { ViewType } from './hours-types';
 
 /** Format a Date to YYYY-MM-DD string. */
 export function formatDateStr(date: Date): string {

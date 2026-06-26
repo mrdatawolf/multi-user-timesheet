@@ -24,7 +24,7 @@ interface Employee {
   group_id?: number;
 }
 
-interface AttendanceEntry {
+interface HoursEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const { setCurrentScreen } = useHelp();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [entries, setEntries] = useState<AttendanceEntry[]>([]);
+  const [entries, setEntries] = useState<HoursEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [locPage, setLocPage] = useState(0);
   const [empPage, setEmpPage] = useState(0);
@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
     const cachedDashboard = getCachedData<{
       employees: Employee[];
-      entries: AttendanceEntry[];
+      entries: HoursEntry[];
     }>('dashboard:data');
     if (cachedDashboard) {
       setEmployees(cachedDashboard.employees);
@@ -99,7 +99,7 @@ export default function DashboardPage() {
 
       const [employeesRes, entriesRes] = await Promise.all([
         authFetch('/api/employees'),
-        authFetch(`/api/attendance?startDate=${startDateStr}&endDate=${todayStr}`),
+        authFetch(`/api/hours?startDate=${startDateStr}&endDate=${todayStr}`),
       ]);
 
       if (employeesRes.status === 401) {
@@ -178,8 +178,8 @@ export default function DashboardPage() {
             <code className="text-sm bg-muted px-2 py-1 rounded">features.enableDashboard</code> to{' '}
             <code className="text-sm bg-muted px-2 py-1 rounded">true</code>.
           </p>
-          <Link href="/attendance" className="inline-block text-blue-600 hover:underline">
-            ← Go back to Attendance
+          <Link href="/hours" className="inline-block text-blue-600 hover:underline">
+            ← Go back to Hours
           </Link>
         </div>
       </div>
@@ -204,8 +204,8 @@ export default function DashboardPage() {
       <div className="max-w-full mx-auto space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Dashboard</h1>
-          <Link href="/attendance" className="text-sm text-blue-600 hover:underline">
-            Go to Attendance →
+          <Link href="/hours" className="text-sm text-blue-600 hover:underline">
+            Go to Hours →
           </Link>
         </div>
 

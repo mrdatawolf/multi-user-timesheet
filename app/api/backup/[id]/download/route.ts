@@ -31,7 +31,7 @@ interface RouteParams {
  * GET /api/backup/[id]/download
  * Download backup files
  * Query params:
- *   - db: 'attendance' | 'auth' | 'both' (default: 'both')
+ *   - db: 'hours' | 'auth' | 'both' (default: 'both')
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const dbParam = searchParams.get('db') || 'attendance';
+    const dbParam = searchParams.get('db') || 'hours';
 
     // Determine which file to download
     let filePath: string;
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       filePath = paths.auth;
       filename = `${backupId}-auth.db`;
     } else {
-      filePath = paths.attendance;
-      filename = `${backupId}-attendance.db`;
+      filePath = paths.hours;
+      filename = `${backupId}-hours.db`;
     }
 
     // Read the file

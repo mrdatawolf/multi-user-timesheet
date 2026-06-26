@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AttendanceEntry } from '@/lib/attendance-types';
+import type { HoursEntry } from '@/lib/hours-types';
 
 // Background classes for grid cells, keyed by work location
 export const LOCATION_BG_COLOR_MAP: Record<string, string> = {
@@ -9,8 +9,8 @@ export const LOCATION_BG_COLOR_MAP: Record<string, string> = {
 
 const OVERTIME_BG_CLASS = 'bg-amber-200 hover:bg-amber-300 dark:bg-amber-800 dark:hover:bg-amber-700';
 
-interface UseAttendanceCellOptions {
-  entries: AttendanceEntry[];
+interface UseHoursCellOptions {
+  entries: HoursEntry[];
   overtimeThresholdHours?: number;
 }
 
@@ -23,10 +23,10 @@ function weekStartOf(dateStr: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function useAttendanceCell({ entries, overtimeThresholdHours = 40 }: UseAttendanceCellOptions) {
+export function useHoursCell({ entries, overtimeThresholdHours = 40 }: UseHoursCellOptions) {
   // Group entries by date
   const entriesByDate = useMemo(() => {
-    const map = new Map<string, AttendanceEntry[]>();
+    const map = new Map<string, HoursEntry[]>();
     entries.forEach(entry => {
       const existing = map.get(entry.entry_date) || [];
       existing.push(entry);
@@ -45,11 +45,11 @@ export function useAttendanceCell({ entries, overtimeThresholdHours = 40 }: UseA
     return map;
   }, [entries]);
 
-  const getEntriesForDate = (dateStr: string): AttendanceEntry[] => {
+  const getEntriesForDate = (dateStr: string): HoursEntry[] => {
     return entriesByDate.get(dateStr) || [];
   };
 
-  const getCellDisplay = (entriesForDate: AttendanceEntry[]): string => {
+  const getCellDisplay = (entriesForDate: HoursEntry[]): string => {
     if (entriesForDate.length === 0) {
       return '-';
     }
@@ -57,7 +57,7 @@ export function useAttendanceCell({ entries, overtimeThresholdHours = 40 }: UseA
     return `${totalHours}h`;
   };
 
-  const hasNotes = (entriesForDate: AttendanceEntry[]): boolean => {
+  const hasNotes = (entriesForDate: HoursEntry[]): boolean => {
     return entriesForDate.some(e => e.notes && e.notes.trim().length > 0);
   };
 
@@ -66,7 +66,7 @@ export function useAttendanceCell({ entries, overtimeThresholdHours = 40 }: UseA
     return (weekTotals.get(wk) || 0) > overtimeThresholdHours;
   };
 
-  const getCellColorClass = (entriesForDate: AttendanceEntry[], dateStr: string): string => {
+  const getCellColorClass = (entriesForDate: HoursEntry[], dateStr: string): string => {
     if (entriesForDate.length === 0) {
       return '';
     }

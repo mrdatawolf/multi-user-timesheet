@@ -113,18 +113,18 @@ export async function listAllBackups(): Promise<BackupListItem[]> {
     const typeDir = getBackupTypeDir(backup.type);
 
     try {
-      const attendancePath = path.join(typeDir, backup.databases.attendance.filename);
+      const hoursPath = path.join(typeDir, backup.databases.hours.filename);
       const authPath = path.join(typeDir, backup.databases.auth.filename);
 
-      if (await fileExists(attendancePath)) {
-        totalSize += await getFileSize(attendancePath);
+      if (await fileExists(hoursPath)) {
+        totalSize += await getFileSize(hoursPath);
       }
       if (await fileExists(authPath)) {
         totalSize += await getFileSize(authPath);
       }
     } catch {
       // If files don't exist, use stored sizes
-      totalSize = backup.databases.attendance.size + backup.databases.auth.size;
+      totalSize = backup.databases.hours.size + backup.databases.auth.size;
     }
 
     items.push({
@@ -232,13 +232,13 @@ export async function cleanupOrphanedMetadata(): Promise<string[]> {
 
   for (const backup of store.backups) {
     const typeDir = getBackupTypeDir(backup.type);
-    const attendancePath = path.join(typeDir, backup.databases.attendance.filename);
+    const hoursPath = path.join(typeDir, backup.databases.hours.filename);
     const authPath = path.join(typeDir, backup.databases.auth.filename);
 
-    const attendanceExists = await fileExists(attendancePath);
+    const hoursExists = await fileExists(hoursPath);
     const authExists = await fileExists(authPath);
 
-    if (attendanceExists && authExists) {
+    if (hoursExists && authExists) {
       validBackups.push(backup);
     } else {
       orphaned.push(backup.id);

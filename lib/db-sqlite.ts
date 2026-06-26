@@ -4,7 +4,7 @@ import { isDemoMode, logDemoModeBanner } from './demo-mode';
 import packageJson from '../package.json';
 
 // Uses centralized data paths for cross-platform compatibility
-const dbPath = getDatabasePath('attendance.db');
+const dbPath = getDatabasePath('hours.db');
 
 export const db = createClient({
   url: `file:${dbPath}`,
@@ -99,9 +99,9 @@ export async function initializeDatabase() {
     // Column already exists, ignore error
   }
 
-  // Create attendance_entries table: one row per employee per day worked
+  // Create hours_entries table: one row per employee per day worked
   await db.execute(`
-    CREATE TABLE IF NOT EXISTS attendance_entries (
+    CREATE TABLE IF NOT EXISTS hours_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       employee_id INTEGER NOT NULL,
       entry_date DATE NOT NULL,
@@ -117,9 +117,9 @@ export async function initializeDatabase() {
   // Validate schema after initialization
   await validateSchema();
 
-  console.log('✓ Attendance database initialized');
+  console.log('✓ Hours database initialized');
   console.log('  - Employees table created');
-  console.log('  - Attendance entries table created');
+  console.log('  - Hours entries table created');
 }
 
 async function validateSchema() {
@@ -190,7 +190,7 @@ export async function clearDatabaseForDemo() {
 
   // Delete in order to respect foreign key constraints
   const tablesToClear = [
-    'attendance_entries',
+    'hours_entries',
     'employees',
   ];
 
@@ -238,7 +238,7 @@ export function ensureInitialized() {
  */
 async function initializeDatabaseWithDemoMode() {
   console.log(`========================================`);
-  console.log(`  Multi-User Attendance v${packageJson.version}`);
+  console.log(`  Hours Worked Tracker v${packageJson.version}`);
   console.log(`  Data directory: ${getDataDirectory()}`);
   console.log(`========================================`);
 

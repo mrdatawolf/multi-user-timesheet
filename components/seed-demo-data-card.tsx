@@ -59,7 +59,7 @@ export function SeedDemoDataCard() {
           Demo Data
         </CardTitle>
         <CardDescription>
-          Load this server with sample employees, attendance history, and demo logins for presentations.
+          Load this server with sample employees, hours-worked history, and demo logins for presentations.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -78,7 +78,7 @@ export function SeedDemoDataCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>Seed demo data?</AlertDialogTitle>
               <AlertDialogDescription>
-                This deletes all employees and attendance entries, then replaces
+                This deletes all employees and hours entries, then replaces
                 them with the standard demo dataset: 10 sample employees, a few
                 months of hours-worked history, and demo logins for the manager,
                 HR, and employee roles (password <span className="font-mono">demo123</span>).

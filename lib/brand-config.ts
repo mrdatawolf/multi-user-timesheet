@@ -30,34 +30,34 @@ export const DEFAULT_BRAND: BrandConfig = {
   name: 'Default',
   logoPath: '/Default/logo.png',
   logoAlt: 'Logo',
-  appTitle: 'Multi-User Attendance',
+  appTitle: 'Hours Worked Tracker',
 };
 
 // Brand-specific configurations
 const BRAND_CONFIGS: Record<string, Partial<BrandConfig>> = {
   Default: {
     name: 'Default',
-    appTitle: 'Multi-User Attendance',
+    appTitle: 'Hours Worked Tracker',
     logoAlt: 'Logo',
   },
   TRL: {
     name: 'Trinity Rehab',
-    appTitle: 'TRL Attendance',
+    appTitle: 'TRL Hours',
     logoAlt: 'Trinity Rehab Logo',
   },
   BT: {
     name: 'BizTech',
-    appTitle: 'BizTech Attendance',
+    appTitle: 'BizTech Hours',
     logoAlt: 'BizTech Logo',
   },
   NFL: {
     name: 'NFL',
-    appTitle: 'NFL Attendance',
+    appTitle: 'NFL Hours',
     logoAlt: 'NFL Logo',
   },
   SBS: {
     name: 'SBS',
-    appTitle: 'SBS Attendance',
+    appTitle: 'SBS Hours',
     logoAlt: 'SBS Logo',
   },
 };
@@ -75,7 +75,7 @@ export function getBrandConfig(): BrandConfig {
     name: config.name || selectedBrand,
     logoPath: `/${selectedBrand}/logo.png`,
     logoAlt: config.logoAlt || `${selectedBrand} Logo`,
-    appTitle: config.appTitle || 'Multi-User Attendance',
+    appTitle: config.appTitle || 'Hours Worked Tracker',
   };
 }
 

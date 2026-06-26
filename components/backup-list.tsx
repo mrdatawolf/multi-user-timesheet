@@ -41,7 +41,7 @@ interface BackupMetadata {
   type: 'daily' | 'weekly' | 'monthly' | 'manual';
   timestamp: string;
   databases: {
-    attendance: { filename: string; size: number; checksum: string };
+    hours: { filename: string; size: number; checksum: string };
     auth: { filename: string; size: number; checksum: string };
   };
   totalSize?: number;
@@ -54,7 +54,7 @@ interface BackupListProps {
   onRestore: (backupId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
   onVerify: (backupId: string) => Promise<{ valid: boolean }>;
-  onDownload: (backupId: string, db: 'attendance' | 'auth') => void;
+  onDownload: (backupId: string, db: 'hours' | 'auth') => void;
   isLoading?: boolean;
 }
 
@@ -189,7 +189,7 @@ export function BackupList({
             {backups.map((backup) => {
               const totalSize =
                 backup.totalSize ||
-                backup.databases.attendance.size + backup.databases.auth.size;
+                backup.databases.hours.size + backup.databases.auth.size;
 
               return (
                 <TableRow key={backup.id}>
@@ -239,9 +239,9 @@ export function BackupList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onDownload(backup.id, 'attendance')}>
+                        <DropdownMenuItem onClick={() => onDownload(backup.id, 'hours')}>
                           <Download className="h-4 w-4 mr-2" />
-                          Download Attendance DB
+                          Download Hours DB
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onDownload(backup.id, 'auth')}>
                           <Download className="h-4 w-4 mr-2" />

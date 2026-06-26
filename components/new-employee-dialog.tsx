@@ -54,7 +54,7 @@ export function NewEmployeeDialog({
         <DialogHeader>
           <DialogTitle>Add New Employee</DialogTitle>
           <DialogDescription>
-            Create a new employee record for attendance tracking.
+            Create a new employee record for hours tracking.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

@@ -266,7 +266,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if group has employees assigned (in attendance db)
+    // Check if group has employees assigned (in hours db)
     const { db } = await import('@/lib/db-sqlite');
     const employeesResult = await db.execute({
       sql: 'SELECT COUNT(*) as count FROM employees WHERE group_id = ?',

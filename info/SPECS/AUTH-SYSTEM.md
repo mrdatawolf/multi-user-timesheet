@@ -1,6 +1,6 @@
 # Authentication & Authorization System
 
-This document describes the complete authentication and authorization system implemented in the Attendance Management application.
+This document describes the complete authentication and authorization system implemented in the Hours Worked Tracker application.
 
 ## Overview
 
@@ -174,7 +174,7 @@ Authenticate a user and receive a JWT token.
     "id": 1,
     "username": "admin",
     "full_name": "System Administrator",
-    "email": "admin@attendance.local",
+    "email": "admin@hours.local",
     "group_id": 1,
     "role_id": 1,
     "group": {
@@ -548,7 +548,7 @@ To reset the database and recreate all tables including auth tables:
 npm run db:reset
 
 # Or manually
-node scripts/reset-database.js
+tsx scripts/reset-database.ts
 ```
 
 This will:

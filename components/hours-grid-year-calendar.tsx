@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { MultiEntryDialog } from './multi-entry-dialog';
-import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
-import { useAttendanceCell } from '@/hooks/use-attendance-cell';
+import type { HoursEntry, EntryChangeResult } from '@/lib/hours-types';
+import { useHoursCell } from '@/hooks/use-hours-cell';
 import { getMonthCalendarGrid, formatDateStr, isToday, isWeekend } from '@/lib/date-helpers';
 
-interface AttendanceGridYearCalendarProps {
+interface HoursGridYearCalendarProps {
   year: number;
   employeeId: number;
-  entries: AttendanceEntry[];
-  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
+  entries: HoursEntry[];
+  onEntryChange: (date: string, entries: HoursEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   overtimeThresholdHours?: number;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
@@ -28,7 +28,7 @@ const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 interface MonthCardProps {
   year: number;
   month: number; // 1-12
-  cellHook: ReturnType<typeof useAttendanceCell>;
+  cellHook: ReturnType<typeof useHoursCell>;
   onCellClick: (date: Date) => void;
 }
 
@@ -116,7 +116,7 @@ function MonthCard({ year, month, cellHook, onCellClick }: MonthCardProps) {
 
 // --- Main component ---
 
-export function AttendanceGridYearCalendar({
+export function HoursGridYearCalendar({
   year,
   employeeId,
   entries,
@@ -124,12 +124,12 @@ export function AttendanceGridYearCalendar({
   overtimeThresholdHours,
   employeeNameMap,
   readOnly,
-}: AttendanceGridYearCalendarProps) {
+}: HoursGridYearCalendarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<HoursEntry[]>([]);
 
-  const cellHook = useAttendanceCell({ entries, overtimeThresholdHours });
+  const cellHook = useHoursCell({ entries, overtimeThresholdHours });
 
   const handleCellClick = (date: Date) => {
     const dateStr = formatDateStr(date);
@@ -139,7 +139,7 @@ export function AttendanceGridYearCalendar({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+  const handleSave = (date: string, updatedEntries: HoursEntry[], originalDate?: string) => {
     return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 

@@ -556,7 +556,7 @@ export async function getUserCreatableGroups(userId: number): Promise<number[]> 
 
 // ============================================================================
 // EXPLICIT-ONLY GROUP PERMISSIONS (no auto-own-group)
-// Used by attendance & employees APIs where group membership alone
+// Used by hours & employees APIs where group membership alone
 // should NOT grant access — explicit user_group_permissions entries required.
 // ============================================================================
 

@@ -100,10 +100,10 @@ fs.writeFileSync(path.join(distDir, '.env'), envContent);
 // Create start script
 console.log('Creating start script...');
 const startScript = `@echo off
-title Attendance Server
+title Hours Worked Tracker Server
 echo.
 echo ========================================
-echo   Attendance Management Server v${version}
+echo   Hours Worked Tracker Server v${version}
 echo ========================================
 echo.
 echo Starting server on port 6029...
@@ -129,7 +129,7 @@ fs.writeFileSync(path.join(distDir, 'start-server.bat'), startScript);
 
 // Create README
 console.log('Creating README...');
-const readmeContent = `# Attendance Server - Standalone Distribution
+const readmeContent = `# Hours Worked Tracker Server - Standalone Distribution
 
 ## Prerequisites
 
@@ -139,7 +139,7 @@ Download Node.js from: https://nodejs.org/
 
 ## Contents
 
-This directory contains a standalone version of the Attendance application.
+This directory contains a standalone version of the Hours Worked Tracker application.
 
 ### Files and Folders:
 - \`start-server.bat\` - Easy start script (recommended)

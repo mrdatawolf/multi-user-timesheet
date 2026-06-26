@@ -63,7 +63,7 @@ function main() {
     }
 
     const srcPath = path.join(DIST_ELECTRON_DIR, clientSetupExe);
-    const destFileName = `Attendance-Management-${brand}-${version}-Setup.exe`;
+    const destFileName = `Hours-Worked-Tracker-${brand}-${version}-Setup.exe`;
     const destPath = path.join(DISTRIBUTE_DIR, destFileName);
 
     fs.copyFileSync(srcPath, destPath);
@@ -83,7 +83,7 @@ function main() {
     }
 
     const srcPath = path.join(DIST_ELECTRON_DIR, serverSetupExe);
-    const destFileName = `Attendance-Server-${brand}-${version}-Setup.exe`;
+    const destFileName = `Hours-Worked-Tracker-Server-${brand}-${version}-Setup.exe`;
     const destPath = path.join(DISTRIBUTE_SERVER_DIR, destFileName);
 
     fs.copyFileSync(srcPath, destPath);

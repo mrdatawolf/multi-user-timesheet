@@ -109,14 +109,14 @@ function getDataDirectory() {
 
   if (platform === 'win32') {
     const appData = process.env.APPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming');
-    return path.join(appData, 'AttendanceServer');
+    return path.join(appData, 'HoursWorkedTracker');
   } else if (platform === 'darwin') {
     const home = process.env.HOME || '';
-    return path.join(home, 'Library', 'Application Support', 'AttendanceServer');
+    return path.join(home, 'Library', 'Application Support', 'HoursWorkedTracker');
   } else {
     const home = process.env.HOME || '';
     const xdgData = process.env.XDG_DATA_HOME || path.join(home, '.local', 'share');
-    return path.join(xdgData, 'AttendanceServer');
+    return path.join(xdgData, 'HoursWorkedTracker');
   }
 }
 
@@ -178,9 +178,9 @@ function clearDatabasesForDemo() {
 
   // Database files to delete (including WAL and SHM files)
   const dbFiles = [
-    'attendance.db',
-    'attendance.db-shm',
-    'attendance.db-wal',
+    'hours.db',
+    'hours.db-shm',
+    'hours.db-wal',
     'auth.db',
     'auth.db-shm',
     'auth.db-wal',
@@ -273,7 +273,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: 'Attendance Management',
+    title: 'Hours Worked Tracker',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true

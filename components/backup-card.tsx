@@ -13,7 +13,7 @@ interface BackupMetadata {
   type: 'daily' | 'weekly' | 'monthly' | 'manual';
   timestamp: string;
   databases: {
-    attendance: { filename: string; size: number; checksum: string };
+    hours: { filename: string; size: number; checksum: string };
     auth: { filename: string; size: number; checksum: string };
   };
   totalSize?: number;
@@ -187,7 +187,7 @@ export function BackupCard() {
     return { valid: false };
   };
 
-  const handleDownload = (backupId: string, db: 'attendance' | 'auth') => {
+  const handleDownload = (backupId: string, db: 'hours' | 'auth') => {
     if (!token) return;
 
     // Create a temporary link to trigger download

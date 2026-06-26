@@ -70,10 +70,10 @@ export class BackupManager {
       const sourcePaths = getSourceDatabasePaths();
 
       // Check if source databases exist
-      if (!(await fileExists(sourcePaths.attendance))) {
+      if (!(await fileExists(sourcePaths.hours))) {
         return {
           success: false,
-          error: 'Attendance database not found',
+          error: 'Hours database not found',
         };
       }
 
@@ -85,22 +85,22 @@ export class BackupManager {
       }
 
       // Generate filenames for backup
-      const attendanceFilename = generateBackupFilename(backupId, 'attendance');
+      const hoursFilename = generateBackupFilename(backupId, 'hours');
       const authFilename = generateBackupFilename(backupId, 'auth');
 
       // Get destination paths
-      const attendanceDest = getBackupFilePath(type, attendanceFilename);
+      const hoursDest = getBackupFilePath(type, hoursFilename);
       const authDest = getBackupFilePath(type, authFilename);
 
       // Copy databases
-      await copyFile(sourcePaths.attendance, attendanceDest);
+      await copyFile(sourcePaths.hours, hoursDest);
       await copyFile(sourcePaths.auth, authDest);
 
       // Calculate checksums and sizes
-      const [attendanceChecksum, authChecksum, attendanceSize, authSize] = await Promise.all([
-        calculateChecksum(attendanceDest),
+      const [hoursChecksum, authChecksum, hoursSize, authSize] = await Promise.all([
+        calculateChecksum(hoursDest),
         calculateChecksum(authDest),
-        getFileSize(attendanceDest),
+        getFileSize(hoursDest),
         getFileSize(authDest),
       ]);
 
@@ -110,10 +110,10 @@ export class BackupManager {
         type,
         timestamp: timestamp.toISOString(),
         databases: {
-          attendance: {
-            filename: attendanceFilename,
-            size: attendanceSize,
-            checksum: attendanceChecksum,
+          hours: {
+            filename: hoursFilename,
+            size: hoursSize,
+            checksum: hoursChecksum,
           },
           auth: {
             filename: authFilename,
@@ -238,19 +238,19 @@ export class BackupManager {
     const newId = generateBackupId(targetType, timestamp);
 
     // Generate new filenames
-    const newAttendanceFilename = generateBackupFilename(newId, 'attendance');
+    const newHoursFilename = generateBackupFilename(newId, 'hours');
     const newAuthFilename = generateBackupFilename(newId, 'auth');
 
     // Get paths
-    const oldAttendancePath = getBackupFilePath(backup.type, backup.databases.attendance.filename);
+    const oldHoursPath = getBackupFilePath(backup.type, backup.databases.hours.filename);
     const oldAuthPath = getBackupFilePath(backup.type, backup.databases.auth.filename);
-    const newAttendancePath = getBackupFilePath(targetType, newAttendanceFilename);
+    const newHoursPath = getBackupFilePath(targetType, newHoursFilename);
     const newAuthPath = getBackupFilePath(targetType, newAuthFilename);
 
     // Move files (copy then delete)
-    await copyFile(oldAttendancePath, newAttendancePath);
+    await copyFile(oldHoursPath, newHoursPath);
     await copyFile(oldAuthPath, newAuthPath);
-    await deleteFile(oldAttendancePath);
+    await deleteFile(oldHoursPath);
     await deleteFile(oldAuthPath);
 
     // Update metadata
@@ -261,10 +261,10 @@ export class BackupManager {
       type: targetType,
       timestamp: backup.timestamp,
       databases: {
-        attendance: {
-          filename: newAttendanceFilename,
-          size: backup.databases.attendance.size,
-          checksum: backup.databases.attendance.checksum,
+        hours: {
+          filename: newHoursFilename,
+          size: backup.databases.hours.size,
+          checksum: backup.databases.hours.checksum,
         },
         auth: {
           filename: newAuthFilename,
@@ -303,10 +303,10 @@ export class BackupManager {
     }
 
     // Delete files
-    const attendancePath = getBackupFilePath(backup.type, backup.databases.attendance.filename);
+    const hoursPath = getBackupFilePath(backup.type, backup.databases.hours.filename);
     const authPath = getBackupFilePath(backup.type, backup.databases.auth.filename);
 
-    await deleteFile(attendancePath);
+    await deleteFile(hoursPath);
     await deleteFile(authPath);
 
     // Remove metadata
@@ -322,25 +322,25 @@ export class BackupManager {
       throw new Error(`Backup not found: ${backupId}`);
     }
 
-    const attendancePath = getBackupFilePath(backup.type, backup.databases.attendance.filename);
+    const hoursPath = getBackupFilePath(backup.type, backup.databases.hours.filename);
     const authPath = getBackupFilePath(backup.type, backup.databases.auth.filename);
 
-    const [attendanceChecksum, authChecksum] = await Promise.all([
-      calculateChecksum(attendancePath).catch(() => 'FILE_NOT_FOUND'),
+    const [hoursChecksum, authChecksum] = await Promise.all([
+      calculateChecksum(hoursPath).catch(() => 'FILE_NOT_FOUND'),
       calculateChecksum(authPath).catch(() => 'FILE_NOT_FOUND'),
     ]);
 
-    const attendanceValid = attendanceChecksum === backup.databases.attendance.checksum;
+    const hoursValid = hoursChecksum === backup.databases.hours.checksum;
     const authValid = authChecksum === backup.databases.auth.checksum;
 
     return {
       id: backupId,
-      valid: attendanceValid && authValid,
+      valid: hoursValid && authValid,
       databases: {
-        attendance: {
-          valid: attendanceValid,
-          expectedChecksum: backup.databases.attendance.checksum,
-          actualChecksum: attendanceChecksum,
+        hours: {
+          valid: hoursValid,
+          expectedChecksum: backup.databases.hours.checksum,
+          actualChecksum: hoursChecksum,
         },
         auth: {
           valid: authValid,
@@ -374,7 +374,7 @@ export class BackupManager {
       }
 
       // Get paths
-      const backupAttendancePath = getBackupFilePath(backup.type, backup.databases.attendance.filename);
+      const backupHoursPath = getBackupFilePath(backup.type, backup.databases.hours.filename);
       const backupAuthPath = getBackupFilePath(backup.type, backup.databases.auth.filename);
       const sourcePaths = getSourceDatabasePaths();
 
@@ -385,7 +385,7 @@ export class BackupManager {
       }
 
       // Restore databases
-      await copyFile(backupAttendancePath, sourcePaths.attendance);
+      await copyFile(backupHoursPath, sourcePaths.hours);
       await copyFile(backupAuthPath, sourcePaths.auth);
 
       return {
@@ -423,7 +423,7 @@ export class BackupManager {
     };
 
     for (const backup of backups) {
-      const size = backup.databases.attendance.size + backup.databases.auth.size;
+      const size = backup.databases.hours.size + backup.databases.auth.size;
       usage.total += size;
       usage.byType[backup.type] += size;
       usage.backupCount[backup.type]++;
@@ -435,14 +435,14 @@ export class BackupManager {
   /**
    * Get backup paths for download
    */
-  async getBackupPaths(backupId: string): Promise<{ attendance: string; auth: string } | null> {
+  async getBackupPaths(backupId: string): Promise<{ hours: string; auth: string } | null> {
     const backup = await getBackupMetadata(backupId);
     if (!backup) {
       return null;
     }
 
     return {
-      attendance: getBackupFilePath(backup.type, backup.databases.attendance.filename),
+      hours: getBackupFilePath(backup.type, backup.databases.hours.filename),
       auth: getBackupFilePath(backup.type, backup.databases.auth.filename),
     };
   }

@@ -345,7 +345,7 @@ export default function UsersPage() {
 
   const handlePermanentDelete = async (employee: Employee) => {
     if (!confirm(
-      `PERMANENTLY delete ${employee.first_name} ${employee.last_name}?\n\nThis will remove all their attendance records and cannot be undone.`
+      `PERMANENTLY delete ${employee.first_name} ${employee.last_name}?\n\nThis will remove all their hours records and cannot be undone.`
     )) {
       return;
     }

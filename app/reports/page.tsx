@@ -145,8 +145,8 @@ export default function ReportsPage() {
             <code className="text-sm bg-muted px-2 py-1 rounded">features.enableReports</code> to{' '}
             <code className="text-sm bg-muted px-2 py-1 rounded">true</code>.
           </p>
-          <Link href="/attendance" className="inline-block text-blue-600 hover:underline">
-            &larr; Go back to Attendance
+          <Link href="/hours" className="inline-block text-blue-600 hover:underline">
+            &larr; Go back to Hours
           </Link>
         </div>
       </div>

@@ -1,7 +1,7 @@
 /**
  * Application Configuration
  *
- * Feature flags and settings for the attendance application
+ * Feature flags and settings for the hours-worked tracking application
  */
 
 export const config = {
@@ -20,7 +20,7 @@ export const config = {
    * Application Settings
    */
   app: {
-    name: 'Multi-User Attendance',
+    name: 'Hours Worked Tracker',
     version: '1.0.0',
   },
 

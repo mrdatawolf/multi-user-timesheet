@@ -84,7 +84,7 @@ export const migration = {
       {
         id: 6,
         name: 'Self-Service',
-        description: 'Can only view and edit own attendance records',
+        description: 'Can only view and edit own hours records',
         can_create: 1,
         can_read: 1,
         can_update: 1,

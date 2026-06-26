@@ -87,7 +87,7 @@ function copyExeToDistribute(brandName) {
 
   const version = getPackageVersion();
   const srcPath = path.join(distElectronDir, setupExe);
-  const destFileName = `Attendance-Management-${brandName}-${version}-Setup.exe`;
+  const destFileName = `Hours-Worked-Tracker-${brandName}-${version}-Setup.exe`;
   const destPath = path.join(DISTRIBUTE_DIR, destFileName);
 
   fs.copyFileSync(srcPath, destPath);

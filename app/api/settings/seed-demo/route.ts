@@ -7,7 +7,7 @@ import { seedDemoData } from '@/lib/seed-demo-data';
 /**
  * POST /api/settings/seed-demo
  *
- * Wipes employee and attendance data, then repopulates the database with
+ * Wipes employee and hours data, then repopulates the database with
  * the standard demo dataset (sample employees, hours-worked history, and
  * manager/HR/employee demo logins).
  *

@@ -117,7 +117,7 @@ export async function initializeAuthDatabase() {
   const defaultPasswordHash = await bcrypt.hash('admin123', 10);
   await authDb.execute({
     sql: `INSERT OR IGNORE INTO users (id, username, password_hash, full_name, email, group_id)
-          VALUES (1, 'admin', ?, 'System Administrator', 'admin@attendance.local', 1)`,
+          VALUES (1, 'admin', ?, 'System Administrator', 'admin@hours.local', 1)`,
     args: [defaultPasswordHash],
   });
 

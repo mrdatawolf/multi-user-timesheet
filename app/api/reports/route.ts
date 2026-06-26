@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     const employeeIds = employees.map(e => e.id);
     const entriesResult = await db.execute({
-      sql: `SELECT employee_id, entry_date, hours FROM attendance_entries
+      sql: `SELECT employee_id, entry_date, hours FROM hours_entries
             WHERE entry_date >= ? AND entry_date <= ?
             AND employee_id IN (${employeeIds.map(() => '?').join(',')})`,
       args: [startDate, endDate, ...employeeIds],

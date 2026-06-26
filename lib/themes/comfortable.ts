@@ -61,14 +61,14 @@ export const comfortableTheme: ThemeConfig = {
   },
 
   layout: {
-    attendance: {
+    hours: {
       sectionOrder: 'balanceFirst',
       showMonthSeparators: false,
     },
   },
 
   branding: {
-    appTitle: 'Multi-User Attendance',
+    appTitle: 'Hours Worked Tracker',
   },
 
   cssClass: 'theme-comfortable',

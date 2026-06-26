@@ -56,7 +56,7 @@ function weekdayDatesAgo(startDaysAgo: number, count: number): string[] {
   return dates;
 }
 
-interface AttendanceSeedEntry {
+interface HoursSeedEntry {
   empNum: string;
   date: string;
   hours: number;
@@ -71,7 +71,7 @@ function range(
   hoursPerDay: number,
   workLocation: 'onsite' | 'remote' | null,
   notes: string | null = null
-): AttendanceSeedEntry[] {
+): HoursSeedEntry[] {
   return weekdayDatesAgo(startDaysAgo, count).map(date => ({ empNum, date, hours: hoursPerDay, workLocation, notes }));
 }
 
@@ -252,9 +252,9 @@ export async function seedDemoData() {
     // 20h/week overtime threshold (see overtime_threshold_hours above) and a
     // light part-time schedule that stays under it.
     console.log('');
-    console.log('Creating demo attendance entries...');
+    console.log('Creating demo hours entries...');
 
-    const attendanceEntries: AttendanceSeedEntry[] = [
+    const hoursEntries: HoursSeedEntry[] = [
       ...range('DEMO001', 70, 10, 8, 'onsite', 'Regular work week'),
       ...range('DEMO001', 21, 5, 8, 'remote'),
 
@@ -287,7 +287,7 @@ export async function seedDemoData() {
     ];
 
     let entriesCreated = 0;
-    for (const entry of attendanceEntries) {
+    for (const entry of hoursEntries) {
       const empId = employeeIds[entry.empNum];
       if (!empId) {
         console.log(`  ⚠ Skipping entry - missing employee: ${entry.empNum}`);
@@ -296,19 +296,19 @@ export async function seedDemoData() {
 
       try {
         const existing = await db.execute({
-          sql: 'SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+          sql: 'SELECT id FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
           args: [empId, entry.date],
         });
 
         if (existing.rows.length > 0) {
           await db.execute({
-            sql: `UPDATE attendance_entries SET hours = ?, work_location = ?, notes = ?
+            sql: `UPDATE hours_entries SET hours = ?, work_location = ?, notes = ?
                   WHERE employee_id = ? AND entry_date = ?`,
             args: [entry.hours, entry.workLocation, entry.notes, empId, entry.date],
           });
         } else {
           await db.execute({
-            sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
+            sql: `INSERT INTO hours_entries (employee_id, entry_date, hours, work_location, notes)
                   VALUES (?, ?, ?, ?, ?)`,
             args: [empId, entry.date, entry.hours, entry.workLocation, entry.notes],
           });
@@ -320,10 +320,10 @@ export async function seedDemoData() {
       }
     }
 
-    console.log(`  ✓ Created ${entriesCreated} attendance entries`);
+    console.log(`  ✓ Created ${entriesCreated} hours entries`);
 
     // Demo logins - one per role, linked to a demo employee so the
-    // attendance grid and "self-service" views default correctly.
+    // hours grid and "self-service" views default correctly.
     console.log('');
     console.log('Creating demo user logins...');
     await ensureAuthInitialized();
@@ -366,7 +366,7 @@ export async function seedDemoData() {
     console.log('╠════════════════════════════════════════════════════════════╣');
     console.log('║  Employees: 10 (8 full-time, 2 part-time)                  ║');
     console.log('║                                                            ║');
-    console.log(`║  Attendance entries: ${entriesCreated} across the last several months${' '.repeat(Math.max(0, 9 - String(entriesCreated).length))}║`);
+    console.log(`║  Hours entries: ${entriesCreated} across the last several months${' '.repeat(Math.max(0, 9 - String(entriesCreated).length))}║`);
     console.log('║  - James Miller (DEMO003) has overtime weeks to flag       ║');
     console.log('║  - Sarah Martinez (DEMO006) has a 20h/week OT override     ║');
     console.log('║                                                            ║');

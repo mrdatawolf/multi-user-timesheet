@@ -22,6 +22,6 @@ module.exports = {
   window: {
     width: 1400,
     height: 1024,
-    title: 'Attendance Management'
+    title: 'Hours Worked Tracker'
   }
 };

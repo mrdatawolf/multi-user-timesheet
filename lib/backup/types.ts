@@ -18,7 +18,7 @@ export interface BackupMetadata {
   type: BackupType;
   timestamp: string;
   databases: {
-    attendance: DatabaseBackupInfo;
+    hours: DatabaseBackupInfo;
     auth: DatabaseBackupInfo;
   };
   promotedFrom?: string;  // ID of backup this was promoted from
@@ -77,7 +77,7 @@ export interface BackupVerificationResult {
   id: string;
   valid: boolean;
   databases: {
-    attendance: { valid: boolean; expectedChecksum: string; actualChecksum: string };
+    hours: { valid: boolean; expectedChecksum: string; actualChecksum: string };
     auth: { valid: boolean; expectedChecksum: string; actualChecksum: string };
   };
 }

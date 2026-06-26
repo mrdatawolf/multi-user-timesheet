@@ -2,12 +2,12 @@
 
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { AttendanceGridYear } from '@/components/attendance-grid';
-import { AttendanceGridMonth } from '@/components/attendance-grid-month';
-import { AttendanceGridWeek } from '@/components/attendance-grid-week';
-import { AttendanceGridYearCalendar } from '@/components/attendance-grid-year-calendar';
+import { HoursGridYear } from '@/components/hours-grid';
+import { HoursGridMonth } from '@/components/hours-grid-month';
+import { HoursGridWeek } from '@/components/hours-grid-week';
+import { HoursGridYearCalendar } from '@/components/hours-grid-year-calendar';
 import { ViewToggle } from '@/components/view-toggle';
-import type { AttendanceEntry, ViewType, EntryChangeResult } from '@/lib/attendance-types';
+import type { HoursEntry, ViewType, EntryChangeResult } from '@/lib/hours-types';
 import { formatDateStr, parseDateStr, getWeekBounds, getWeekDates, navigatePeriod } from '@/lib/date-helpers';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useToast } from '@/hooks/use-toast';
@@ -91,7 +91,7 @@ function getInitialView(searchParams: URLSearchParams): ViewType {
   const urlView = searchParams.get('view') as ViewType;
   if (urlView && ['year', 'month', 'week'].includes(urlView)) return urlView;
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('attendance_view') as ViewType;
+    const stored = localStorage.getItem('hours_view') as ViewType;
     if (stored && ['year', 'month', 'week'].includes(stored)) return stored;
   }
   return 'year';
@@ -111,19 +111,19 @@ function getInitialDate(searchParams: URLSearchParams): Date {
 
 function getInitialYearLayout(): 'table' | 'calendar' {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('attendance_year_layout');
+    const stored = localStorage.getItem('hours_year_layout');
     if (stored === 'table' || stored === 'calendar') return stored;
   }
   return 'table';
 }
 
-function AttendanceContent() {
+function HoursContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading, authFetch } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [entries, setEntries] = useState<AttendanceEntry[]>([]);
+  const [entries, setEntries] = useState<HoursEntry[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>();
   const [year, setYear] = useState(() => {
     const initialDate = getInitialDate(searchParams);
@@ -138,7 +138,7 @@ function AttendanceContent() {
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [allEmployeesEntries, setAllEmployeesEntries] = useState<AttendanceEntry[]>([]);
+  const [allEmployeesEntries, setAllEmployeesEntries] = useState<HoursEntry[]>([]);
   const { toast } = useToast();
   const { setCurrentScreen } = useHelp();
 
@@ -157,7 +157,7 @@ function AttendanceContent() {
 
   // Sync view + period to localStorage and URL
   useEffect(() => {
-    localStorage.setItem('attendance_view', view);
+    localStorage.setItem('hours_view', view);
 
     const params = new URLSearchParams();
     params.set('view', view);
@@ -172,12 +172,12 @@ function AttendanceContent() {
   }, [view, currentDate, pathname, router]);
 
   useEffect(() => {
-    localStorage.setItem('attendance_year_layout', yearLayout);
+    localStorage.setItem('hours_year_layout', yearLayout);
   }, [yearLayout]);
 
   // Set the current screen for help context
   useEffect(() => {
-    setCurrentScreen('attendance');
+    setCurrentScreen('hours');
   }, [setCurrentScreen]);
 
   // Redirect to login if not authenticated
@@ -196,7 +196,7 @@ function AttendanceContent() {
   useEffect(() => {
     if (selectedEmployeeId && !viewAll && isAuthenticated) {
       setEntriesReady(false);
-      loadAttendanceData();
+      loadHoursData();
     }
   }, [selectedEmployeeId, year, isAuthenticated, viewAll]);
 
@@ -207,13 +207,13 @@ function AttendanceContent() {
     }
   }, [viewAll, year, isAuthenticated]);
 
-  // Reload data when navigating to attendance page
+  // Reload data when navigating to hours page
   useEffect(() => {
-    if (pathname === '/attendance' && isAuthenticated) {
+    if (pathname === '/hours' && isAuthenticated) {
       if (viewAll) {
         loadAllEmployeesData();
       } else if (selectedEmployeeId) {
-        loadAttendanceData();
+        loadHoursData();
       }
     }
   }, [pathname]);
@@ -229,7 +229,7 @@ function AttendanceContent() {
         employees: Employee[];
         groups: Group[];
         jobTitles: JobTitle[];
-      }>('attendance:initial');
+      }>('hours:initial');
       if (cachedInitial) {
         setEmployees(cachedInitial.employees);
         if (cachedInitial.groups) setGroups(cachedInitial.groups);
@@ -297,7 +297,7 @@ function AttendanceContent() {
         setEntriesReady(true);
       }
 
-      setCachedData('attendance:initial', {
+      setCachedData('hours:initial', {
         employees: Array.isArray(employeesData) ? employeesData : [],
         groups: Array.isArray(groupsData) ? groupsData.filter((g: Group) => !g.is_master) : [],
         jobTitles: Array.isArray(jobTitlesData) ? jobTitlesData : [],
@@ -310,32 +310,32 @@ function AttendanceContent() {
     }
   };
 
-  const loadAttendanceData = async () => {
+  const loadHoursData = async () => {
     if (!selectedEmployeeId || !isAuthenticated) return;
 
-    const cacheKey = `attendance:data:${selectedEmployeeId}:${year}`;
-    const cachedAttendance = getCachedData<AttendanceEntry[]>(cacheKey);
-    if (cachedAttendance) {
-      setEntries(cachedAttendance);
+    const cacheKey = `hours:data:${selectedEmployeeId}:${year}`;
+    const cachedHours = getCachedData<HoursEntry[]>(cacheKey);
+    if (cachedHours) {
+      setEntries(cachedHours);
       setEntriesReady(true);
     }
 
     try {
-      const response = await authFetch(`/api/attendance?employeeId=${selectedEmployeeId}&year=${year}`);
+      const response = await authFetch(`/api/hours?employeeId=${selectedEmployeeId}&year=${year}`);
 
       // If redirected to login due to expired session, stop processing
       if (response.status === 401) {
         return;
       }
 
-      const attendanceData = response.ok ? await response.json() : [];
-      const nextEntries = Array.isArray(attendanceData) ? attendanceData : [];
+      const hoursData = response.ok ? await response.json() : [];
+      const nextEntries = Array.isArray(hoursData) ? hoursData : [];
 
       setEntries(nextEntries);
       setCachedData(cacheKey, nextEntries);
       setEntriesReady(true);
     } catch (error) {
-      console.error('Failed to load attendance:', error);
+      console.error('Failed to load hours:', error);
       setEntries([]);
       setEntriesReady(true);
     }
@@ -344,15 +344,15 @@ function AttendanceContent() {
   const loadAllEmployeesData = async () => {
     if (!isAuthenticated) return;
 
-    const cacheKey = `attendance:all:${year}`;
-    const cached = getCachedData<AttendanceEntry[]>(cacheKey);
+    const cacheKey = `hours:all:${year}`;
+    const cached = getCachedData<HoursEntry[]>(cacheKey);
     if (cached) {
       setAllEmployeesEntries(cached);
       setEntriesReady(true);
     }
 
     try {
-      const res = await authFetch(`/api/attendance?year=${year}`);
+      const res = await authFetch(`/api/hours?year=${year}`);
       if (res.status === 401) return;
       if (res.ok) {
         const data = await res.json();
@@ -372,7 +372,7 @@ function AttendanceContent() {
 
   const handleEntryChange = async (
     date: string,
-    updatedEntries: AttendanceEntry[],
+    updatedEntries: HoursEntry[],
     employeeId?: number,
     originalDate?: string
   ): Promise<EntryChangeResult> => {
@@ -390,7 +390,7 @@ function AttendanceContent() {
     try {
       // entry_date is the source day to clear; target_entry_date is where the
       // entries end up. They're the same unless the date field was changed.
-      const response = await authFetch('/api/attendance', {
+      const response = await authFetch('/api/hours', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -418,27 +418,27 @@ function AttendanceContent() {
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
 
-      // Reload attendance data to show updated entries
-      clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
-      clearCachedDataByPrefix('attendance:all:');
+      // Reload hours data to show updated entries
+      clearCachedDataByPrefix(`hours:data:${selectedEmployeeId}:`);
+      clearCachedDataByPrefix('hours:all:');
       if (viewAll) {
         await loadAllEmployeesData();
       } else {
-        await loadAttendanceData();
+        await loadHoursData();
       }
 
       toast({
-        title: 'Attendance Saved',
+        title: 'Hours Saved',
         description: updatedEntries.length === 0
           ? 'Entries deleted successfully.'
           : `${updatedEntries.length} ${updatedEntries.length === 1 ? 'entry' : 'entries'} saved successfully.`,
       });
       return { success: true };
     } catch (error) {
-      console.error('Failed to save attendance:', error);
+      console.error('Failed to save hours:', error);
       toast({
         title: 'Save Failed',
-        description: error instanceof Error ? error.message : 'There was an error saving your attendance. Please try again.',
+        description: error instanceof Error ? error.message : 'There was an error saving your hours. Please try again.',
         variant: 'destructive',
       });
       return { success: false, error: error instanceof Error ? error.message : 'Save failed' };
@@ -529,7 +529,7 @@ function AttendanceContent() {
   if (authLoading || loading || !entriesReady) {
     return (
       <div className="min-h-screen p-3">
-        <PageLoading label="Loading attendance..." />
+        <PageLoading label="Loading hours..." />
       </div>
     );
   }
@@ -747,24 +747,24 @@ function AttendanceContent() {
         </div>
 
         {(viewAll || selectedEmployeeId) && (
-          <HelpArea helpId="attendance-grid" bubblePosition="top">
+          <HelpArea helpId="hours-grid" bubblePosition="top">
             <div className="space-y-3">
               {view === 'year' && yearLayout === 'calendar' && (
-                <AttendanceGridYearCalendar
+                <HoursGridYearCalendar
                   year={year}
                   {...gridProps}
                 />
               )}
 
               {view === 'year' && yearLayout !== 'calendar' && (
-                <AttendanceGridYear
+                <HoursGridYear
                   year={year}
                   {...gridProps}
                 />
               )}
 
               {view === 'month' && (
-                <AttendanceGridMonth
+                <HoursGridMonth
                   year={currentDate.getFullYear()}
                   month={currentDate.getMonth() + 1}
                   {...gridProps}
@@ -772,7 +772,7 @@ function AttendanceContent() {
               )}
 
               {view === 'week' && (
-                <AttendanceGridWeek
+                <HoursGridWeek
                   weekStart={parseDateStr(getWeekBounds(currentDate).start)}
                   {...gridProps}
                 />
@@ -789,9 +789,9 @@ function AttendanceContent() {
             employeeId={selectedEmployeeId}
             authFetch={authFetch}
             onSave={async () => {
-              clearCachedDataByPrefix(`attendance:data:${selectedEmployeeId}:`);
-              clearCachedDataByPrefix('attendance:all:');
-              await loadAttendanceData();
+              clearCachedDataByPrefix(`hours:data:${selectedEmployeeId}:`);
+              clearCachedDataByPrefix('hours:all:');
+              await loadHoursData();
               toast({
                 title: 'Bulk Entry Saved',
                 description: 'Date range entries have been saved successfully.',
@@ -805,7 +805,7 @@ function AttendanceContent() {
             <UserPlus className="w-16 h-16 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-1.5">No Employees Yet</h2>
             <p className="text-muted-foreground mb-3">
-              Go to the Employees tab to add employees and get started with attendance tracking.
+              Go to the Employees tab to add employees and get started with hours tracking.
             </p>
             <Link href="/employees">
               <Button>
@@ -819,14 +819,14 @@ function AttendanceContent() {
   );
 }
 
-export default function AttendancePage() {
+export default function HoursPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
         <Spinner />
       </div>
     }>
-      <AttendanceContent />
+      <HoursContent />
     </Suspense>
   );
 }

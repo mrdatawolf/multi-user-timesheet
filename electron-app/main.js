@@ -516,7 +516,7 @@ function focusMainWindow() {
 
 async function runInApp(script) {
   if (!mainWindow || mainWindow.isDestroyed()) {
-    throw new Error('The attendance window is not available yet.');
+    throw new Error('The hours window is not available yet.');
   }
 
   await mainWindow.webContents.executeJavaScript('document.readyState', true);
@@ -603,7 +603,7 @@ async function logBreakFromTray(breakType, durationMinutes) {
     }));
 
     if (!result.ok) {
-      showNotification('Attendance', result.error);
+      showNotification('Hours', result.error);
       focusMainWindow();
       return;
     }
@@ -630,7 +630,7 @@ async function logBreakFromTray(breakType, durationMinutes) {
       }, durationMinutes * 60 * 1000);
     }
   } catch (error) {
-    showNotification('Attendance', error.message || 'Unable to log break from the tray.');
+    showNotification('Hours', error.message || 'Unable to log break from the tray.');
     focusMainWindow();
   }
 }
@@ -667,7 +667,7 @@ async function startBreakFromTray() {
     }));
 
     if (!result.ok) {
-      showNotification('Attendance', result.error);
+      showNotification('Hours', result.error);
       focusMainWindow();
       return;
     }
@@ -689,7 +689,7 @@ async function startBreakFromTray() {
       stopActiveBreak(false);
     }, targetBreak.durationMinutes * 60 * 1000);
   } catch (error) {
-    showNotification('Attendance', error.message || 'Unable to start break from the tray.');
+    showNotification('Hours', error.message || 'Unable to start break from the tray.');
     focusMainWindow();
   }
 }
@@ -803,7 +803,7 @@ async function checkBreakReminders() {
       const label = BREAK_LABELS[breakType] || 'break';
       const action = breakType === 'lunch'
         ? 'Right-click the tray icon to start lunch.'
-        : 'Open Attendance to log it when you are ready.';
+        : 'Open Hours to log it when you are ready.';
       showNotification('Break reminder', `It is time for your ${label}. ${action}`);
     }
   } catch {
@@ -830,12 +830,12 @@ function createTray() {
     : path.join(__dirname, '..', 'public', 'default.png');
   const image = nativeImage.createFromPath(iconPath);
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image.resize({ width: 16, height: 16 }));
-  tray.setToolTip('Attendance Management');
+  tray.setToolTip('Hours Worked Tracker');
 
   const breakEnabled = shouldShowBreakTrays();
   const buildMenu = () => Menu.buildFromTemplate([
     {
-      label: 'Open Attendance',
+      label: 'Open Hours',
       click: focusMainWindow
     },
     { type: 'separator' },
@@ -874,7 +874,7 @@ function createBreakTray() {
       click: startBreakFromTray
     },
     {
-      label: 'Open Attendance',
+      label: 'Open Hours',
       click: focusMainWindow
     },
     { type: 'separator' },
@@ -914,7 +914,7 @@ function createLunchTray() {
       click: () => logBreakFromTray('lunch', LUNCH_DURATION_MINUTES)
     },
     {
-      label: 'Open Attendance',
+      label: 'Open Hours',
       click: focusMainWindow
     },
     { type: 'separator' },
@@ -984,7 +984,7 @@ function createSettingsWindow() {
   settingsWindow = new BrowserWindow({
     width: 700,
     height: 650,
-    title: 'Settings - Attendance Management',
+    title: 'Settings - Hours Worked Tracker',
     parent: mainWindow,
     modal: true,
     resizable: false,

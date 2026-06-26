@@ -110,8 +110,8 @@ export interface ThemeConfig {
 
   /** Layout preferences for different pages */
   layout: {
-    /** Attendance page layout configuration */
-    attendance: {
+    /** Hours page layout configuration */
+    hours: {
       /** Order of sections: 'balanceFirst' or 'recordFirst' */
       sectionOrder: 'balanceFirst' | 'recordFirst';
 

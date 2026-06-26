@@ -5,17 +5,14 @@ import { Button } from '@/components/ui/button';
 import { MultiEntryDialog } from './multi-entry-dialog';
 import { useTheme } from '@/lib/theme-context';
 import { getTheme } from '@/lib/themes';
-import type { AttendanceEntry, EntryChangeResult } from '@/lib/attendance-types';
-import { useAttendanceCell } from '@/hooks/use-attendance-cell';
+import type { HoursEntry, EntryChangeResult } from '@/lib/hours-types';
+import { useHoursCell } from '@/hooks/use-hours-cell';
 
-// Re-export types for backward compatibility
-export type { AttendanceEntry };
-
-interface AttendanceGridProps {
+interface HoursGridProps {
   year: number;
   employeeId: number;
-  entries: AttendanceEntry[];
-  onEntryChange: (date: string, entries: AttendanceEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
+  entries: HoursEntry[];
+  onEntryChange: (date: string, entries: HoursEntry[], employeeId?: number, originalDate?: string) => Promise<EntryChangeResult>;
   overtimeThresholdHours?: number;
   employeeNameMap?: Record<number, string>;
   readOnly?: boolean;
@@ -36,7 +33,7 @@ const MONTHS = [
   { name: 'Dec', num: 12 },
 ];
 
-export function AttendanceGridYear({
+export function HoursGridYear({
   year,
   employeeId,
   entries,
@@ -44,22 +41,22 @@ export function AttendanceGridYear({
   overtimeThresholdHours,
   employeeNameMap,
   readOnly,
-}: AttendanceGridProps) {
+}: HoursGridProps) {
   const { theme: themeId } = useTheme();
   const themeConfig = getTheme(themeId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedEntries, setSelectedEntries] = useState<AttendanceEntry[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<HoursEntry[]>([]);
 
   const {
     getEntriesForDate,
     getCellDisplay,
     getCellColorClass,
     hasNotes,
-  } = useAttendanceCell({ entries, overtimeThresholdHours });
+  } = useHoursCell({ entries, overtimeThresholdHours });
 
-  const getEntriesForDay = (month: number, day: number): AttendanceEntry[] => {
+  const getEntriesForDay = (month: number, day: number): HoursEntry[] => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return getEntriesForDate(dateStr);
   };
@@ -72,7 +69,7 @@ export function AttendanceGridYear({
     setDialogOpen(true);
   };
 
-  const handleSave = (date: string, updatedEntries: AttendanceEntry[], originalDate?: string) => {
+  const handleSave = (date: string, updatedEntries: HoursEntry[], originalDate?: string) => {
     return onEntryChange(date, updatedEntries, undefined, originalDate);
   };
 
@@ -80,7 +77,7 @@ export function AttendanceGridYear({
     return new Date(year, month, 0).getDate();
   };
 
-  const getCellTooltip = (entries: AttendanceEntry[]): string => {
+  const getCellTooltip = (entries: HoursEntry[]): string => {
     if (entries.length === 0) return '';
     return entries
       .map(e => `${e.hours}h${e.work_location ? ` (${e.work_location})` : ''}${e.notes ? ` - ${e.notes}` : ''}`)
@@ -140,7 +137,7 @@ export function AttendanceGridYear({
                 })}
               </tr>
               {/* Month separator (if theme config enables it) */}
-              {themeConfig.layout.attendance.showMonthSeparators && index < MONTHS.length - 1 && (
+              {themeConfig.layout.hours.showMonthSeparators && index < MONTHS.length - 1 && (
                 <tr className="h-2">
                   <td colSpan={32} className="p-0"></td>
                 </tr>
@@ -161,6 +158,3 @@ export function AttendanceGridYear({
     </div>
   );
 }
-
-// Backward-compatible alias
-export const AttendanceGrid = AttendanceGridYear;

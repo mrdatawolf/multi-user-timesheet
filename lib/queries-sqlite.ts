@@ -18,7 +18,7 @@ export interface Employee {
   is_active: number;
 }
 
-export interface AttendanceEntry {
+export interface HoursEntry {
   id: number;
   employee_id: number;
   entry_date: string;
@@ -67,46 +67,46 @@ export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Em
   return { id, ...employee };
 }
 
-// Attendance entry queries
-export async function getAllEntries(startDate?: string, endDate?: string): Promise<AttendanceEntry[]> {
+// Hours entry queries
+export async function getAllEntries(startDate?: string, endDate?: string): Promise<HoursEntry[]> {
   if (startDate && endDate) {
     const result = await db.execute({
-      sql: 'SELECT * FROM attendance_entries WHERE entry_date >= ? AND entry_date <= ? ORDER BY entry_date DESC',
+      sql: 'SELECT * FROM hours_entries WHERE entry_date >= ? AND entry_date <= ? ORDER BY entry_date DESC',
       args: [startDate, endDate],
     });
-    return result.rows as unknown as AttendanceEntry[];
+    return result.rows as unknown as HoursEntry[];
   }
-  const result = await db.execute('SELECT * FROM attendance_entries ORDER BY entry_date DESC');
-  return result.rows as unknown as AttendanceEntry[];
+  const result = await db.execute('SELECT * FROM hours_entries ORDER BY entry_date DESC');
+  return result.rows as unknown as HoursEntry[];
 }
 
-export async function getEntriesForDateRange(employeeId: number, startDate: string, endDate: string): Promise<AttendanceEntry[]> {
+export async function getEntriesForDateRange(employeeId: number, startDate: string, endDate: string): Promise<HoursEntry[]> {
   const result = await db.execute({
-    sql: `SELECT * FROM attendance_entries
+    sql: `SELECT * FROM hours_entries
           WHERE employee_id = ? AND entry_date >= ? AND entry_date <= ?
           ORDER BY entry_date`,
     args: [employeeId, startDate, endDate],
   });
 
-  return result.rows as unknown as AttendanceEntry[];
+  return result.rows as unknown as HoursEntry[];
 }
 
-export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<void> {
+export async function upsertEntry(entry: Omit<HoursEntry, 'id'>): Promise<void> {
   const existing = await db.execute({
-    sql: 'SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+    sql: 'SELECT id FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
     args: [entry.employee_id, entry.entry_date],
   });
 
   if (existing.rows.length > 0) {
     await db.execute({
-      sql: `UPDATE attendance_entries
+      sql: `UPDATE hours_entries
             SET hours = ?, work_location = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
             WHERE employee_id = ? AND entry_date = ?`,
       args: [entry.hours, entry.work_location || null, entry.notes || null, entry.employee_id, entry.entry_date],
     });
   } else {
     await db.execute({
-      sql: `INSERT INTO attendance_entries (employee_id, entry_date, hours, work_location, notes)
+      sql: `INSERT INTO hours_entries (employee_id, entry_date, hours, work_location, notes)
             VALUES (?, ?, ?, ?, ?)`,
       args: [entry.employee_id, entry.entry_date, entry.hours, entry.work_location || null, entry.notes || null],
     });
@@ -115,7 +115,7 @@ export async function upsertEntry(entry: Omit<AttendanceEntry, 'id'>): Promise<v
 
 export async function deleteEntry(employeeId: number, entryDate: string): Promise<void> {
   await db.execute({
-    sql: 'DELETE FROM attendance_entries WHERE employee_id = ? AND entry_date = ?',
+    sql: 'DELETE FROM hours_entries WHERE employee_id = ? AND entry_date = ?',
     args: [employeeId, entryDate],
   });
 }

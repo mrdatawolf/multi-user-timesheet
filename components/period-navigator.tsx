@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { ViewType } from '@/lib/attendance-types';
+import type { ViewType } from '@/lib/hours-types';
 import { getWeekDates, formatDateStr } from '@/lib/date-helpers';
 
 const MONTH_NAMES = [

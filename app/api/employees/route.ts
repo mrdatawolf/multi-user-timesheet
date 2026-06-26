@@ -600,7 +600,7 @@ export async function DELETE(request: NextRequest) {
       // Clear employee_id link on any auth user referencing this employee
       await clearEmployeeIdByEmployee(parseInt(employeeId));
 
-      // Hard delete — CASCADE handles attendance_entries, employee_allocations, break_entries, office_presence
+      // Hard delete — CASCADE handles hours_entries
       await db.execute({
         sql: 'DELETE FROM employees WHERE id = ?',
         args: [employeeId],

@@ -17,7 +17,7 @@ This folder contains all application theme configurations. Each theme defines ap
 - **File**: `default.ts`
 - **Features**:
   - Dark background for reduced eye strain
-  - Attendance Record shown first
+  - Hours Grid shown first
   - Visual month separators
 
 ## Creating a New Theme
@@ -63,7 +63,7 @@ export const oceanTheme: ThemeConfig = {
   },
 
   layout: {
-    attendance: {
+    hours: {
       // 'balanceFirst' or 'recordFirst'
       sectionOrder: 'balanceFirst',
       showMonthSeparators: false,
@@ -130,7 +130,7 @@ interface ThemeConfig {
   };
 
   layout: {
-    attendance: {
+    hours: {
       sectionOrder: 'balanceFirst' | 'recordFirst';
       showMonthSeparators: boolean;
     };
@@ -145,11 +145,11 @@ interface ThemeConfig {
 ### Layout Options
 
 #### `sectionOrder`
-- `'balanceFirst'`: Balance Cards → Attendance Record (original layout)
-- `'recordFirst'`: Attendance Record → Balance Cards (optimized layout)
+- `'balanceFirst'`: Balance Cards → Hours Grid (original layout)
+- `'recordFirst'`: Hours Grid → Balance Cards (optimized layout)
 
 #### `showMonthSeparators`
-- `true`: Show visual gaps between each month in the attendance grid
+- `true`: Show visual gaps between each month in the hours grid
 - `false`: No gaps between months (compact view)
 
 ### Appearance Options
@@ -189,7 +189,7 @@ function MyComponent() {
 
   // Access theme properties
   const isDark = themeConfig.appearance.isDark;
-  const sectionOrder = themeConfig.layout.attendance.sectionOrder;
+  const sectionOrder = themeConfig.layout.hours.sectionOrder;
 
   return <div>Current theme: {themeConfig.name}</div>;
 }
@@ -200,15 +200,15 @@ function MyComponent() {
 ```typescript
 const themeConfig = getTheme(themeId);
 
-{themeConfig.layout.attendance.sectionOrder === 'recordFirst' ? (
+{themeConfig.layout.hours.sectionOrder === 'recordFirst' ? (
   <>
-    <AttendanceRecord />
+    <HoursGrid />
     <BalanceCards />
   </>
 ) : (
   <>
     <BalanceCards />
-    <AttendanceRecord />
+    <HoursGrid />
   </>
 )}
 ```

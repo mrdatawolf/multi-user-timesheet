@@ -175,7 +175,7 @@ export function EmployeeLinkSettings() {
       <CardHeader>
         <CardTitle>Employee Profile Link</CardTitle>
         <CardDescription>
-          Link your user account to an employee profile for attendance tracking
+          Link your user account to an employee profile for hours tracking
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

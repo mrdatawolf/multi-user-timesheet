@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     const group = await getGroupById(user.group_id);
     const role = await getUserRole(user.id);
 
-    // Look up employee abbreviation from attendance.db if user is linked
+    // Look up employee abbreviation from hours.db if user is linked
     let employee_abbreviation: string | undefined;
     if (user.employee_id) {
       try {

@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide explains how to build and deploy the Attendance Management application.
+This guide explains how to build and deploy the Hours Worked Tracker application.
 
 ## Build Options
 
@@ -110,7 +110,7 @@ This will automatically build distributions for **every brand** in the `public/`
 
 ### Electron Application
 
-**Location:** `dist-electron/Attendance Management Setup 0.9.0.exe`
+**Location:** `dist-electron/Hours Worked Tracker Setup 0.9.0.exe`
 
 **How to distribute:**
 1. Share the installer exe file
@@ -191,7 +191,7 @@ All databases are stored in the `databases/` folder:
 
 **Electron app:**
 ```
-C:\Program Files\Attendance Management\resources\server\databases\
+C:\Program Files\Hours Worked Tracker\resources\server\databases\
 ```
 
 **Standalone server:**

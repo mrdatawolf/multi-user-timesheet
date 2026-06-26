@@ -30,17 +30,17 @@ Or double-click: `scripts/reset-database.bat`
 
 For development:
 ```bash
-del databases\attendance.db
-del databases\attendance.db-shm
-del databases\attendance.db-wal
+del databases\hours.db
+del databases\hours.db-shm
+del databases\hours.db-wal
 ```
 
 For standalone server:
 ```bash
 cd .next\standalone
-del databases\attendance.db
-del databases\attendance.db-shm
-del databases\attendance.db-wal
+del databases\hours.db
+del databases\hours.db-shm
+del databases\hours.db-wal
 ```
 
 **Step 3 - Restart**
@@ -106,17 +106,17 @@ start-server.bat
 
 **Development:**
 ```
-databases/attendance.db
+databases/hours.db
 ```
 
 **Standalone Server:**
 ```
-.next/standalone/databases/attendance.db
+.next/standalone/databases/hours.db
 ```
 
 **Electron App (Installed):**
 ```
-C:\Program Files\Attendance Management\resources\server\databases\attendance.db
+C:\Program Files\Hours Worked Tracker\resources\server\databases\hours.db
 ```
 
 ---
@@ -127,7 +127,7 @@ When you reset the database:
 
 ✅ **Removed:**
 - All employees
-- All attendance entries
+- All hours entries
 - All custom data
 
 ✅ **Kept:**
@@ -194,7 +194,7 @@ The database includes these tables:
    - id, code, description, hours_limit, default_allocation
    - is_active, created_at, updated_at
 
-3. **attendance_entries**
+3. **hours_entries**
    - id, employee_id, entry_date, time_code, time_code_id
    - hours, notes
    - created_at, updated_at

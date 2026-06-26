@@ -24,7 +24,7 @@ import { useHelp } from '@/lib/help-context';
 import { ChangePasswordDialog } from '@/components/change-password-dialog';
 
 const NAV_ITEMS = [
-  { href: '/attendance', label: 'Attendance', enabled: true, superuserOnly: false },
+  { href: '/hours', label: 'Hours', enabled: true, superuserOnly: false },
   { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false },
   { href: '/users', label: 'Users', enabled: true, superuserOnly: true },
   { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false },
@@ -44,7 +44,7 @@ export function Navbar() {
   // Persist the last visited main page so the app can return to it on
   // re-open or on next login, keyed per-user so a shared browser doesn't
   // hand one user's last page to the next person who logs in.
-  const TRACKED_PATHS = ['/attendance', '/employees', '/users', '/dashboard', '/reports', '/settings'];
+  const TRACKED_PATHS = ['/hours', '/employees', '/users', '/dashboard', '/reports', '/settings'];
   useEffect(() => {
     if (isAuthenticated && user && TRACKED_PATHS.includes(pathname)) {
       localStorage.setItem(lastVisitedPageKey(user.username), pathname);
