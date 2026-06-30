@@ -15,33 +15,6 @@ import { db, initializeDatabase } from './db-sqlite';
 import { authDb, ensureAuthInitialized } from './db-auth';
 import bcrypt from 'bcryptjs';
 
-function daysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function weekdayDatesAgo(startDaysAgo: number, count: number): string[] {
-  const dates: string[] = [];
-  let offset = startDaysAgo;
-  while (dates.length < count) {
-    const date = new Date();
-    date.setDate(date.getDate() - offset);
-    const dow = date.getDay();
-    if (dow !== 0 && dow !== 6) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      dates.push(`${y}-${m}-${d}`);
-    }
-    offset++;
-  }
-  return dates;
-}
-
 interface HoursSeedEntry {
   empNum: string;
   date: string;
@@ -50,15 +23,23 @@ interface HoursSeedEntry {
   notes: string | null;
 }
 
-function range(
-  empNum: string,
-  startDaysAgo: number,
-  count: number,
-  hoursPerDay: number,
-  workLocation: 'onsite' | 'remote' | null,
-  notes: string | null = null
-): HoursSeedEntry[] {
-  return weekdayDatesAgo(startDaysAgo, count).map(date => ({ empNum, date, hours: hoursPerDay, workLocation, notes }));
+// Week of June 8–13, 2026 (Mon–Sat) — matches "FOR THE PERIOD ENDING Jun 13, 2026"
+// in both source Excel files. Hours distributed 8h/day Mon–Fri for REG, then OT on Sat.
+const WEEK_DATES = ['2026-06-08', '2026-06-09', '2026-06-10', '2026-06-11', '2026-06-12'];
+const SAT = '2026-06-13';
+
+function weekEntries(empNum: string, reg: number, ot: number): HoursSeedEntry[] {
+  const entries: HoursSeedEntry[] = [];
+  let remaining = reg;
+  for (const date of WEEK_DATES) {
+    if (remaining <= 0) break;
+    entries.push({ empNum, date, hours: Math.min(8, remaining), workLocation: 'onsite', notes: null });
+    remaining -= 8;
+  }
+  if (ot > 0) {
+    entries.push({ empNum, date: SAT, hours: ot, workLocation: 'onsite', notes: null });
+  }
+  return entries;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,27 +227,79 @@ export async function seedDemoData() {
     console.log(`  ✓ ${Object.keys(employeeIds).length} employees ready`);
 
     // -----------------------------------------------------------------------
-    // 3. Demo hours entries — a handful from Group 1 to exercise the UI
-    //    G01-001 (Jessica Adams)  regular work pattern
-    //    G01-003 (Tim Alexander)  overtime weeks to trigger the OT flag
+    // 3. Hours entries from Worksheet.xlsx, period ending Jun 13, 2026.
+    //    REG hours are distributed 8h/day Mon–Fri; OT goes on Saturday.
+    //    Names were matched from Worksheet.xlsx to TIME SHEETS.xls groupings.
+    //    Employees with 0 hours or no clear name match are omitted.
     // -----------------------------------------------------------------------
     console.log('');
     console.log('Creating demo hours entries...');
 
     const hoursEntries: HoursSeedEntry[] = [
-      ...range('G01-001', 70, 10, 8, 'onsite'),
-      ...range('G01-001', 21, 5,  8, 'remote'),
+      // Group 1
+      ...weekEntries('G01-003', 40,     0),    // Alexander, Tim
+      ...weekEntries('G01-006', 30,     0),    // Hammack, George D.
+      ...weekEntries('G01-007', 40,     0),    // Hulsey, Ashley
+      ...weekEntries('G01-009', 30,     0),    // Lay, Michael
+      ...weekEntries('G01-010', 40,    11),    // Lewis, Ricky
+      ...weekEntries('G01-011', 40,    19),    // McGaughy, Johnny
+      ...weekEntries('G01-012', 37,     0),    // McWhirter, Alex
+      ...weekEntries('G01-013', 40,    11),    // McWhirter, Kenneth
+      ...weekEntries('G01-014', 40,     9),    // Naylor, Dennis
+      ...weekEntries('G01-018', 40,     0),    // Triance, Griffin
+      ...weekEntries('G01-020', 40,     0),    // Warren, Lonnie
+      ...weekEntries('G01-021', 40,    10),    // Akers, Robert
+      ...weekEntries('G01-022', 32,     0),    // Carter, Billy
+      ...weekEntries('G01-024', 40,     5),    // Bell, Earnie
+      ...weekEntries('G01-025', 38.5,   0),    // Cochran, Pat ("Cochran, Patricia")
+      ...weekEntries('G01-026', 36,     0),    // Garrison, Lee
+      ...weekEntries('G01-028', 40,     7),    // McCullar, Justin
+      ...weekEntries('G01-029', 40,     2.5),  // Hammack, Brian
 
-      // Tim Alexander — two 50 h/week sprints (10 h × 5 days)
-      ...range('G01-003', 28, 5, 10, 'onsite', 'Crunch week'),
-      ...range('G01-003', 21, 5, 10, 'onsite', 'Crunch week'),
-      ...range('G01-003', 70, 10, 8, 'onsite'),
+      // Group 2
+      ...weekEntries('G02-001', 40,     0),    // Stewart, Larry
+      ...weekEntries('G02-002', 40,    10),    // Bagwell, Devin
+      ...weekEntries('G02-003', 40,     0),    // Beckman, Patrick
+      ...weekEntries('G02-004', 40,     6),    // Dodd, Stephen
+      ...weekEntries('G02-005', 40,     0),    // Gann, Chris ("Gann, Christopher")
+      ...weekEntries('G02-006', 40,    10),    // Gittlein, Andrew
+      ...weekEntries('G02-007', 40,     0),    // Jeffreys, Seth
+      ...weekEntries('G02-009', 34,     0),    // Myers, Jayden
+      ...weekEntries('G02-010', 20,     0),    // Reeves, Coy
+      ...weekEntries('G02-011', 40,     6),    // Smith, Eric
 
-      ...range('G01-006', 45, 10, 8, 'onsite'),
-      ...range('G01-006', 7,  5,  8, 'remote'),
+      // Group 3
+      ...weekEntries('G03-002', 37,     0),    // Pigg, Tara
+      ...weekEntries('G03-003', 15,     0),    // Riddle, Bonnie
 
-      ...range('G02-001', 60, 10, 8, 'onsite'),
-      ...range('G02-001', 14, 5,  8, 'remote'),
+      // Group 4
+      ...weekEntries('G04-003', 40,    11.75), // Walker, Barbara
+
+      // Group 5
+      ...weekEntries('G05-001', 40,     0),    // Boatright, Randy
+      ...weekEntries('G05-002', 40,     0),    // Cagle, Bradley ("Cagle, Olan")
+      ...weekEntries('G05-003', 40,     0),    // Snoddy, Leisa
+      ...weekEntries('G05-004', 38.25,  0),    // Walker, Anthony
+      ...weekEntries('G05-006', 40,     0),    // Morgan, Shane
+      ...weekEntries('G05-007', 40,     1),    // Bryant, Nathan
+      ...weekEntries('G05-008', 40,    20),    // Crow, Brad ("Crow, Bradley")
+      ...weekEntries('G05-011', 40,    15),    // Potter, Victor
+      ...weekEntries('G05-012', 40,    15),    // Vess, Michael
+      ...weekEntries('G05-013', 40,     0),    // Crow, Cameron
+      ...weekEntries('G05-014', 40,     0),    // Crow, Jennifer
+      ...weekEntries('G05-015', 40,     0),    // Dean, Thomas
+      ...weekEntries('G05-016', 40,     0),    // Gustus, Dylon
+      ...weekEntries('G05-017', 34,     0),    // Hammack, George (Group 5)
+      ...weekEntries('G05-019', 40,    20),    // Lewis, Dudley
+      ...weekEntries('G05-020', 40,     0),    // McCown, Selena
+      ...weekEntries('G05-021', 20,     0),    // McWhirter, Cody
+      ...weekEntries('G05-022', 40,     0),    // Melson, Alex
+      ...weekEntries('G05-023', 40,    10),    // Morgan, Cody
+      ...weekEntries('G05-026', 40,     0),    // Winkles, Tina
+
+      // Group 6
+      ...weekEntries('G06-002', 40,     0),    // Bracken, William
+      ...weekEntries('G06-007', 40,     0),    // Hulsey, Aaron
     ];
 
     let entriesCreated = 0;
@@ -384,8 +417,9 @@ export async function seedDemoData() {
     console.log(`║  Employees: ${totalEmployees} across 6 groups${' '.repeat(Math.max(0, 34 - String(totalEmployees).length))}║`);
     console.log(`║  ${groupSummary}${' '.repeat(Math.max(0, 57 - groupSummary.length))}║`);
     console.log('║                                                            ║');
-    console.log(`║  Hours entries: ${entriesCreated} (Group 1 + Group 2 demo data)${' '.repeat(Math.max(0, 17 - String(entriesCreated).length))}║`);
-    console.log('║  - Tim Alexander (G01-003) has overtime weeks              ║');
+    console.log(`║  Hours entries: ${entriesCreated} (real data, week of Jun 8–13 2026)${' '.repeat(Math.max(0, 12 - String(entriesCreated).length))}║`);
+    console.log('║  - Period ending Jun 13 matches source Worksheet.xlsx      ║');
+    console.log('║  - Multiple OT employees (McGaughy 19h, Crow 20h, etc.)    ║');
     console.log('║                                                            ║');
     console.log('║  Logins:                                                   ║');
     console.log('║    admin    / admin123  (Administrator)                    ║');

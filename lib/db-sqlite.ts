@@ -114,12 +114,48 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Create report_other_hours table: manual "Other" hours adjustment per employee
+  // per week, used by the Grayson Time Report (e.g. holiday/bereavement/correction
+  // hours that aren't captured by daily hours_entries since this app doesn't track
+  // leave types).
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS report_other_hours (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      week_start_date DATE NOT NULL,
+      hours REAL NOT NULL DEFAULT 0,
+      updated_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(employee_id, week_start_date),
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create report_notes table: free-text "Changes" notes per employee per
+  // report period, used by the Grayson Time Report.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS report_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      period_start DATE NOT NULL,
+      notes TEXT,
+      updated_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(employee_id, period_start),
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
   // Validate schema after initialization
   await validateSchema();
 
   console.log('✓ Hours database initialized');
   console.log('  - Employees table created');
   console.log('  - Hours entries table created');
+  console.log('  - Report other hours table created');
+  console.log('  - Report notes table created');
 }
 
 async function validateSchema() {
@@ -191,6 +227,8 @@ export async function clearDatabaseForDemo() {
   // Delete in order to respect foreign key constraints
   const tablesToClear = [
     'hours_entries',
+    'report_other_hours',
+    'report_notes',
     'employees',
   ];
 
