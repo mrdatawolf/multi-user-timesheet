@@ -24,11 +24,12 @@ import { useHelp } from '@/lib/help-context';
 import { ChangePasswordDialog } from '@/components/change-password-dialog';
 
 const NAV_ITEMS = [
-  { href: '/hours', label: 'Hours', enabled: true, superuserOnly: false },
-  { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false },
-  { href: '/users', label: 'Users', enabled: true, superuserOnly: true },
-  { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false },
-  { href: '/reports', label: 'Reports', enabled: config.features.enableReports, superuserOnly: false },
+  { href: '/hours', label: 'Hours', enabled: true, superuserOnly: false, managerOnly: false },
+  { href: '/timesheet', label: 'Timesheet', enabled: true, superuserOnly: false, managerOnly: true },
+  { href: '/employees', label: 'Employees', enabled: true, superuserOnly: false, managerOnly: false },
+  { href: '/users', label: 'Users', enabled: true, superuserOnly: true, managerOnly: false },
+  { href: '/dashboard', label: 'Dashboard', enabled: config.features.enableDashboard, superuserOnly: false, managerOnly: false },
+  { href: '/reports', label: 'Reports', enabled: config.features.enableReports, superuserOnly: false, managerOnly: false },
 ];
 
 export function Navbar() {
@@ -52,8 +53,8 @@ export function Navbar() {
   }, [pathname, isAuthenticated, user]);
   const enabledItems = NAV_ITEMS.filter(item => {
     if (!item.enabled) return false;
-    // superuserOnly items are visible to admins and managers
     if (item.superuserOnly && !showAdminMenu && !isManager) return false;
+    if (item.managerOnly && !isManager && !showAdminMenu) return false;
     return true;
   });
 
