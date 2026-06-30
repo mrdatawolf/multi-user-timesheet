@@ -37,7 +37,8 @@ if (electronPackage.version !== version) {
 // Update electron-builder.json with brand name (generate from template if missing)
 const electronBuilderPath = path.join(__dirname, '..', 'electron-builder.json');
 const electronBuilderTemplatePath = path.join(__dirname, '..', 'electron-builder.template.json');
-const electronBuilderSource = fs.existsSync(electronBuilderPath) ? electronBuilderPath : electronBuilderTemplatePath;
+const electronBuilderExists = fs.existsSync(electronBuilderPath);
+const electronBuilderSource = electronBuilderExists ? electronBuilderPath : electronBuilderTemplatePath;
 const electronBuilder = JSON.parse(fs.readFileSync(electronBuilderSource, 'utf8'));
 
 // Create product name with brand prefix
@@ -45,9 +46,17 @@ const productName = brandId === 'Default'
   ? 'Hours Worked Tracker'
   : `${brandId} Hours`;
 
-if (electronBuilder.productName !== productName) {
-  console.log(`Updating productName from "${electronBuilder.productName}" to "${productName}"`);
+const productNameChanged = electronBuilder.productName !== productName;
+if (productNameChanged) {
   electronBuilder.productName = productName;
+}
+
+// Always write the file if it doesn't exist yet (it's gitignored so fresh clones won't have it)
+if (!electronBuilderExists) {
+  fs.writeFileSync(electronBuilderPath, JSON.stringify(electronBuilder, null, 2) + '\n');
+  console.log('✓ electron-builder.json created from template');
+} else if (productNameChanged) {
+  console.log(`Updating productName from "${electronBuilderSource}" to "${productName}"`);
   fs.writeFileSync(electronBuilderPath, JSON.stringify(electronBuilder, null, 2) + '\n');
   console.log('✓ Product name updated successfully');
 } else {
